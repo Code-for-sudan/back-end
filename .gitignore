@@ -172,3 +172,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# Local environment variables file
+#   This file is used to set environment variables for local development.
+#   It is recommended to not include it in version control to avoid exposing sensitive information.
+.env
+.env.dev
+.env.prod
+.env.test
