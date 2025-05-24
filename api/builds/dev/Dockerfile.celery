@@ -1,0 +1,14 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/ /app/requirements/
+RUN pip install --upgrade pip
+RUN pip install -r requirements/dev.txt
+
+COPY . .
+
+# Run Celery worker by default, connecting to Redis as broker
+CMD ["celery", "-A", "api", "worker", "--loglevel=info"]

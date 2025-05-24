@@ -13,3 +13,23 @@ services:
     env_file:
       - .env
       - .env.dev
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+  celery:
+    build:
+      context: .
+      dockerfile: builds/dev/Dockerfile.celery
+    container_name: celery_worker
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    env_file:
+      - .env
+      - .env.dev
