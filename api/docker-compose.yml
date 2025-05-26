@@ -4,7 +4,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: builds/dev/Dockerfile  # Point to dev build
+      dockerfile: builds/dev/Dockerfile  # Web app Dockerfile
     command: DJANGO_ENV=dev python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -13,6 +13,23 @@ services:
     env_file:
       - .env
       - .env.dev
+    depends_on:
+      - db
+      - redis
+
+  # db:
+  #   image: mysql:8
+  #   container_name: mysql
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: your_db_name
+  #     MYSQL_USER: your_db_user
+  #     MYSQL_PASSWORD: your_db_password
+  #   volumes:
+  #     - db_data:/var/lib/mysql
+
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -21,11 +38,13 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+
   celery:
     build:
       context: .
       dockerfile: builds/dev/Dockerfile.celery
     container_name: celery_worker
+    command: celery -A api worker --loglevel=info
     volumes:
       - .:/app
     depends_on:
@@ -33,3 +52,21 @@ services:
     env_file:
       - .env
       - .env.dev
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: builds/dev/Dockerfile.celery  # Same Dockerfile as Celery worker
+    container_name: celery_beat
+    command: celery -A api beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    env_file:
+      - .env
+      - .env.dev
+
+volumes:
+  redis_data:
+  db_data:

@@ -1,10 +1,9 @@
 """
 Celery configuration file for Django API project.
 """
+from __future__ import absolute_import, unicode_literals # Always on the top of the file
 import environ, os, logging
-from __future__ import absolute_import, unicode_literals
-from celery import Celery
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken # type: ignore
+from celery import Celery, shared_task
 from django.utils.timezone import now
 
 
@@ -24,6 +23,9 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Set the autodiscover to True
 app.autodiscover_tasks()
+
+# This tells Celery Beat to use the Django ORM
+app.conf.beat_scheduler = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Create a logger for Celery tasks
 logger = logging.getLogger('celery')
@@ -57,7 +59,7 @@ def clean_expired_blacklisted_tokens():
     Raises:
         Exception: If there is an error during the deletion process.
     """
-    
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken # type: ignore
     try:
         expired_tokens = BlacklistedToken.objects.filter(token__expires_at__lt=now())
         count = expired_tokens.count()
