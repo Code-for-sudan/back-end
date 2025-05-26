@@ -131,3 +131,34 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+#### CELERY CONFIGURATION ####
+# Broker URL for Redis (Celery)
+CELERY_BROKER_URL = env('REDAIS_DATABASE_URL')
+
+# Store Celery task results in Redis (Optional)
+CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')
+
+# Import task modules for the django project app
+CELERY_IMPORTS = ()
+
+# Set Celery to use the same time zone as Django
+CELERY_TIMEZONE = 'UTC'
+CELERY_ENABLE_UTC = True
+
+# Optional: Serialization formats
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# Enable events (for Flower monitoring, optional)
+CELERY_SEND_EVENTS = True
+
+# Schedule the Celery task to delete expired tokens every hour
+CELERY_BEAT_SCHEDULE = {
+    
+}
+
+# (Optional) Track started tasks
+CELERY_TRACK_STARTED = True
