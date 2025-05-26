@@ -23,6 +23,8 @@ env = environ.Env(
     DEBUG=(bool, False),
     SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, []),
+    REDAIS_DATABASE_URL=(str, ''),
+    CELERY_BROKER_URL=(str, ''),
 )
 
 
@@ -135,7 +137,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 #### CELERY CONFIGURATION ####
 # Broker URL for Redis (Celery)
-CELERY_BROKER_URL = env('REDAIS_DATABASE_URL')
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 
 # Store Celery task results in Redis (Optional)
 CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')

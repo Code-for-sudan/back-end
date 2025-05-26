@@ -4,7 +4,12 @@ Celery configuration file for Django API project.
 from __future__ import absolute_import, unicode_literals
 import os
 from celery import Celery
+import environ
 
+# Load environment variables from .env file
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api.settings')
