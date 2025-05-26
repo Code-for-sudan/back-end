@@ -1,13 +1,13 @@
-import os, random, hashlib, logging
+import os, random, hashlib, logging, secrets
 from datetime import timedelta
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
 from django.utils.timezone import now
-from accounts. import UserManager
+from accounts.userManager import UserManager
+from phonenumber_field.modelfields import PhoneNumberField
 
 # Create a models
-logger = logging.getLogger('models')
-
+logger = logging.getLogger('accounts_models')
 
 class User(AbstractBaseUser, PermissionsMixin):
     """"
@@ -47,10 +47,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         (FEMALE, 'Female'),
     ]
 
+    class Meta:
+        verbose_name = "User"
+        verbose_name_plural = "Users"
+
     email = models.EmailField(unique=True)  # Use email instead of username
     first_name = models.CharField(max_length=50, default="Unknown")
     last_name = models.CharField(max_length=50, default="Unknown")
     profile_picture = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
+    phone_number = PhoneNumberField(blank=True, null=True, unique=True, db_index=True)
+    whatsapp_number = PhoneNumberField(blank=True, null=True, unique=True, db_index=True)
     otp = models.CharField(max_length=64, blank=True, null=True, db_index=True)  # Store hashed OTP
     otp_expires_at = models.DateTimeField(blank=True, null=True, db_index=True)  # Expiration time
     is_active = models.BooleanField(default=True)
@@ -84,7 +90,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             str: The plain 6-digit OTP.
         """
 
-        otp_code = str(random.randint(100000, 999999))  # Generate a 6-digit OTP
+        otp_code = str(secrets.randbelow(900000) + 100000)  # 6-digit OTP
         hashed_otp = hashlib.sha256(otp_code.encode()).hexdigest()  # Hash OTP for security
         self.otp = hashed_otp
         self.otp_expires_at = now() + timedelta(minutes=5)  # OTP expires in 5 minutes
@@ -108,13 +114,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         """
 
         # Chech the opt code time
-        if self.otp_expires_at and now() > self.otp_expires_at:
+        if not self.otp_expires_at or now() > self.otp_expires_at:
             logger.info("OTP has expired.")
             return False
+
         hashed_input_otp = hashlib.sha256(otp_input.encode()).hexdigest()
         if self.otp != hashed_input_otp:
             logger.info("Invalid OTP.")
             return False
+
         self.otp = None  # Clear OTP after successful verification
         self.otp_expires_at = None
         self.save()
@@ -122,9 +130,5 @@ class User(AbstractBaseUser, PermissionsMixin):
         return True
 
     def __str__(self):
-        return "Email: {}, First Name: {}, Last Name: {}, Gender: {}".format(
-            self.email,
-            self.first_name,
-            self.last_name,
-            self.gender
-        )
+        return f"Email: {self.email}, First Name: {self.first_name}, Last Name: {self.last_name}, Gender: {self.gender}"
+
