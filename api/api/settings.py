@@ -235,6 +235,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'accounts_models': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 
