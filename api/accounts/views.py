@@ -16,8 +16,27 @@ logger = logging.getLogger('accounts_views')
 @permission_classes([AllowAny])
 def verify_otp(request):
     """
-    Verify OTP for user email and return JWT tokens on success.
+    Handles OTP verification for user login.
+    This function verifies the OTP (One-Time Password) provided by the user
+    and returns a response indicating the success or failure of the verification.
+    If successful, it generates JWT tokens for the user and sets a refresh token
+    as an HTTP-only cookie.
+    Args:
+        request (Request): The HTTP request object containing the user's email
+                           and OTP code in the request data.
+    Returns:
+        Response: A Django REST framework Response object with the following:
+            - HTTP 200 OK: If the OTP verification is successful, returns a success
+              message, access token, and user details.
+            - HTTP 400 Bad Request: If the email or OTP code is missing, or if the
+              OTP code is invalid.
+            - HTTP 404 Not Found: If no user is found with the provided email.
+    Side Effects:
+        - Sets a secure, HTTP-only cookie for the refresh token with a 1-day expiration.
+    Raises:
+        None
     """
+
     user_email = request.data.get('email', '').strip().lower()
     otp_code = request.data.get('otp_code')
 
