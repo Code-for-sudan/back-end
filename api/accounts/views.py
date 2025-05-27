@@ -18,11 +18,11 @@ def verify_otp(request):
     """
     Verify OTP for user email and return JWT tokens on success.
     """
-    user_email = request.data.get('email')
+    user_email = request.data.get('email', '').strip().lower()
     otp_code = request.data.get('otp_code')
 
     if not user_email or not otp_code:
-        logger.warning(f"Missing email or OTP in request: {request.data}")
+        logger.error(f"Missing email or OTP in request: {request.data}")
         return Response(
             {'message': 'Email and OTP code are required.'},
             status=status.HTTP_400_BAD_REQUEST
@@ -51,8 +51,7 @@ def verify_otp(request):
             'user': {
                 'id': str(user.id),
                 'email': user.email,
-                'role': user.role,
-                'name': user.name,
+                'first name': user.first_name,
             }
         },
         status=status.HTTP_200_OK

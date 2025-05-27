@@ -3,5 +3,5 @@ from django.urls import path
 
 
 urlpatterns = [
-    path('auth/reset-password/verify/', views.verfy_otp, name='verfy_otp'),
+    path('auth/reset-password/verify/', views.verify_otp, name='verify_otp'),
 ]
