@@ -1,0 +1,59 @@
+name: Django CI/CD - Dev
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # Optional: Use GitHub's Redis & MySQL for speed, OR use Docker Compose as below
+      # For now, we will **skip** this and use Docker Compose for full-stack
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python tools (black, flake8, mypy)
+        run: |
+          pip install black flake8 mypy
+
+      - name: Lint with flake8
+        run: flake8 .
+
+      - name: Format check with black
+        run: black --check .
+
+      # Optional: Type check with mypy (only if you have type annotations)
+      # - name: Type check with mypy
+      #   run: mypy .
+
+      - name: Build Docker containers
+        run: docker compose -f docker-compose.dev.yml build
+
+      - name: Wait for DB to be ready
+        run: |
+          docker compose -f docker-compose.dev.yml up -d
+          sleep 10  # You can replace this with a proper wait-for-it script if needed
+
+      - name: Apply Migrations
+        run: docker compose -f docker-compose.dev.yml run --rm web python manage.py migrate
+
+      - name: Run Tests
+        run: docker compose -f docker-compose.dev.yml run --rm web python manage.py test
+
+      - name: Tear Down
+        run: docker compose -f docker-compose.dev.yml down -v
