@@ -42,7 +42,6 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,8 +49,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'accounts.apps.AccountsConfig',
+    'authentication.apps.AuthenticationConfig',
+    'registration.apps.RegistrationConfig',
     'rest_framework',
     'django_celery_beat',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # For token blacklisting
 ]
 
 MIDDLEWARE = [
