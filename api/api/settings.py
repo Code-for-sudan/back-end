@@ -268,3 +268,6 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,  # requires blacklist app
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# The custom user model that will handel the outh
+AUTH_USER_MODEL = 'accounts.User'
