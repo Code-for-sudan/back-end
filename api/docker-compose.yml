@@ -1,10 +1,10 @@
-version: '3.9'
+version: "3.9"
 
 services:
   web:
     build:
       context: .
-      dockerfile: builds/dev/Dockerfile  # Web app Dockerfile
+      dockerfile: builds/dev/Dockerfile # Web app Dockerfile
     command: DJANGO_ENV=dev python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -14,7 +14,6 @@ services:
       - .env
       - .env.dev
     depends_on:
-      - db
       - redis
 
   # db:
@@ -56,7 +55,7 @@ services:
   celery_beat:
     build:
       context: .
-      dockerfile: builds/dev/Dockerfile.celery  # Same Dockerfile as Celery worker
+      dockerfile: builds/dev/Dockerfile.celery # Same Dockerfile as Celery worker
     container_name: celery_beat
     command: celery -A api beat --loglevel=info
     volumes:
