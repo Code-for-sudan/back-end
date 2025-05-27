@@ -181,3 +181,4 @@ cython_debug/
 .env.dev
 .env.prod
 .env.test
+migrations/
