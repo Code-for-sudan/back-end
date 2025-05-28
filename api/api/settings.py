@@ -245,6 +245,16 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'accounts_views': {
+            'handlers': ['file'],
+            'level': 'ERROR',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'accounts_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'ERROR',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 
