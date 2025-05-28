@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debug - List files
+        run: |
+         pwd
+         ls -R
       - name: Checkout code
         uses: actions/checkout@v4
 
