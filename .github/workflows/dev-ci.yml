@@ -17,15 +17,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Debug - List files
-        run: |
-         pwd
-         ls -R
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
+      - name: Create .env file
+        run: |
+          echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> api/.env
+          echo "DJANGO_DEBUG=${{ secrets.DEBUG }}" >> api/.env
+          echo "DATABASE_URL=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
+          echo "DATABASE_URL=${{ secrets.REDAIS_DATABASE_URL }}" >> api/.env
+          echo "DATABASE_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
+      - name: Create .env.dev file
+        run: |
+          echo "DJANGO_SECRET_KEY=${{ secrets.DEBUG }}" >> api/.env
+          echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_ENV }}" >> api/.env
       - name: Build Docker containers
         run: docker compose -f api/docker-compose.yml build
 
