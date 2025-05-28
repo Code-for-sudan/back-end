@@ -39,6 +39,11 @@ jobs:
         run: |
           docker compose -f api/docker-compose.yml build
           sleep 10  # Optional: Replace with proper wait-for-it script
+    
+      - name: Debug - List files
+        run: |
+          pwd
+          ls -R
 
       - name: Apply Migrations
         run: |
