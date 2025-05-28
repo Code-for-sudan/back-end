@@ -11,49 +11,52 @@ on:
       - development
 
 jobs:
-  lint-test:
+  test:
     runs-on: ubuntu-latest
-
-      # Services
-      # Optional: Use GitHub's Redis & MySQL for speed, OR use Docker Compose as below
-      # For now, we will **skip** this and use Docker Compose for full-stack
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install Python tools (black, flake8, mypy)
+  
+      - name: Create .env file
         run: |
-          pip install black flake8 mypy
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
+          echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
+          echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
+          echo "REDAIS_DATABASE_URL=${{ secrets.REDAIS_DATABASE_URL }}" >> api/.env
+          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
 
-      - name: Lint with flake8
-        run: flake8 .
-
-      - name: Format check with black
-        run: black --check .
-
-      # Optional: Type check with mypy (only if you have type annotations)
-      # - name: Type check with mypy
-      #   run: mypy .
-
+      - name: Create .env.dev file
+        run: |
+           echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
+           echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
+           
       - name: Build Docker containers
-        run: docker compose -f docker-compose.dev.yml build
+        run: docker compose -f api/docker-compose.yml build
 
       - name: Wait for DB to be ready
         run: |
-          docker compose -f docker-compose.dev.yml up -d
-          sleep 10  # You can replace this with a proper wait-for-it script if needed
+          docker compose -f api/docker-compose.yml build
+          sleep 10  # Optional: Replace with proper wait-for-it script
+    
+      - name: Debug - List files
+        run: |
+          pwd
+          ls -R
 
       - name: Apply Migrations
-        run: docker compose -f docker-compose.dev.yml run --rm web python manage.py migrate
+        run: |
+         docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
 
       - name: Run Tests
-        run: docker compose -f docker-compose.dev.yml run --rm web python manage.py test
+        run: |
+          docker compose -f api/docker-compose.yml run --rm web python manage.py test
 
       - name: Tear Down
-        run: docker compose -f docker-compose.dev.yml down -v
+        run: |
+          docker compose -f api/docker-compose.yml down -v
