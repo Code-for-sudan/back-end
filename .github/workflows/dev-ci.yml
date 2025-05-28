@@ -27,7 +27,7 @@ jobs:
           python-version: '3.11'
 
       - name: Build Docker containers
-        run: docker compose -f api/docker-compose.dev.yml build
+        run: docker compose -f api/docker-compose.yml build
 
       - name: Wait for DB to be ready
         run: |
@@ -36,12 +36,12 @@ jobs:
 
       - name: Apply Migrations
         run: |
-          docker compose -f api/docker-compose.dev.yml run --rm web python manage.py migrate
+         docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
 
       - name: Run Tests
         run: |
-          docker compose -f api/docker-compose.dev.yml run --rm web python manage.py test
+          docker compose -f api/docker-compose.yml run --rm web python manage.py test
 
       - name: Tear Down
         run: |
-          docker compose -f api/docker-compose.dev.yml down -v
+          docker compose -f api/docker-compose.yml down -v
