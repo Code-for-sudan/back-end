@@ -28,14 +28,17 @@ jobs:
 
       - name: Wait for DB to be ready
         run: |
-          docker compose -f api/ docker-compose.dev.yml up -d
+    docker compose -f api/docker-compose.dev.yml up -d
           sleep 10  # Optional: Replace with proper wait-for-it script
 
       - name: Apply Migrations
-        run: docker compose -f api/ docker-compose.dev.yml run --rm web python manage.py migrate
+        run: |
+    docker compose -f api/docker-compose.dev.yml run --rm web python manage.py migrate
 
       - name: Run Tests
-        run: docker compose -f api docker-compose.dev.yml run --rm web python manage.py test
+        run: |
+    docker compose -f api/docker-compose.dev.yml run --rm web python manage.py test
 
       - name: Tear Down
-        run: docker compose -f api/ docker-compose.dev.yml down -v
+        run: |
+    docker compose -f api/docker-compose.dev.yml down -v
