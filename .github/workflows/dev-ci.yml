@@ -30,8 +30,8 @@ jobs:
           echo "DATABASE_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
       - name: Create .env.dev file
         run: |
-          echo "DJANGO_SECRET_KEY=${{ secrets.DEBUG }}" >> api/.env
-          echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_ENV }}" >> api/.env
+          echo "DJANGO_SECRET_KEY=${{ secrets.DEBUG }}" >> api/.env.dev
+          echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
       - name: Build Docker containers
         run: docker compose -f api/docker-compose.yml build
 
