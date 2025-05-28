@@ -17,7 +17,7 @@ class LoginView(APIView):
             user_data = {
                 "id": user.id,
                 "email": user.email,
-                "name": f"{user.first_name} {user.last_name}".strip(), # name is a combination of first and last name
+                "first_name": user.first_name, # Temporary, changed later to match the expected output
             }
             return Response({
                 # if login is successful, return the tokens and user data
@@ -25,4 +25,10 @@ class LoginView(APIView):
                 "refresh": str(refresh),
                 "user": user_data
             })
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) # If validation fails, return errors with 400 status
+        # Check if there are any non-field errors in the serializer's validation errors.
+        # If "non_field_errors" is present or contains the specific message "Invalid email or password.",
+        # return a 401 Unauthorized response with the serializer's errors.
+        # Otherwise, return a 400 Bad Request response with the serializer's errors.
+        if "non_field_errors" in serializer.errors or "Invalid email or password." in serializer.errors.get("non_field_errors", []):
+            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
