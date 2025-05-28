@@ -24,7 +24,7 @@ jobs:
           python-version: '3.11'
 
       - name: Build Docker containers
-        run: docker compose -f docker-compose.dev.yml build
+        run: docker compose -f api/docker-compose.dev.yml
 
       - name: Wait for DB to be ready
         run: |
