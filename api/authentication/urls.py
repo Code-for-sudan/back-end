@@ -3,6 +3,6 @@ from django.urls import path
 
 
 urlpatterns = [
-    path('google/auth', views.login_view, name='google_auth'),
-    path('google/callback', views.callback_view, name='google_callback'),
+    path('google/auth', views.google_login, name='google_auth'),
+    path('google/callback', views.google_callback, name='google_callback'),
 ]

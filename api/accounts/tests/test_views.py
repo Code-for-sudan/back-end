@@ -115,3 +115,14 @@ class VerifyOTPTests(TestCase):
         with self.assertLogs('accounts_views', level='ERROR') as cm:
             self.client.post(self.url, data={})
         self.assertTrue(any('Missing email or OTP in request:' in message for message in cm.output))
+
+    ###TODO: Add throttling tests for the Verify OTP endpoint
+    def test_throttling(self):
+        # This test assumes that you have set up throttling in your Django REST Framework settings
+        for _ in range(5):  # Assuming the throttle limit is 5 requests
+            response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': '123456'})
+            self.assertEqual(response.status_code, 200)
+
+        # The next request should hit the throttle limit
+        response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': '123456'})
+        self.assertEqual(response.status_code, 429)  # Too Many Requests
