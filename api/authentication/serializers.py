@@ -5,6 +5,9 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class LoginSerializer(serializers.Serializer):
+    """
+    A Login serializer for user authentication validating user's email and password, returning the user instance if valid.
+    """
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 

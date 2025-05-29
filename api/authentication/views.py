@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import LoginSerializer
 
+
 logger = logging.getLogger('authentication_views') # Create Logger
 
 class LoginView(APIView):
