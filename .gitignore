@@ -182,3 +182,15 @@ cython_debug/
 .env.prod
 .env.test
 migrations/
+
+db.sqlite3
+media/*
+static/*
+*.log
+*.swp
+tmp.py
+*.env
+celerybeat-schedule
+media/
+log/
+.vscode/
