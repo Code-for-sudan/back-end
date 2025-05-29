@@ -26,6 +26,9 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, []),
     REDAIS_DATABASE_URL=(str, ''),
     CELERY_BROKER_URL=(str, ''),
+    GOOGLE_REDIRECT_URI=(str, ''),
+    GOOGLE_CLIENT_ID=(str, ''),
+    GOOGLE_CLIENT_SECRET=(str, ''),
 )
 
 
@@ -287,3 +290,8 @@ SIMPLE_JWT = {
 
 # The custom user model that will handel the outh
 AUTH_USER_MODEL = 'accounts.User'
+
+# Google OAuth2 settings
+GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
