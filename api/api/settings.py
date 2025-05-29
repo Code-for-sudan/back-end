@@ -60,9 +60,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',  # For token blacklisting
     'drf_spectacular',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Must be high in the list
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -175,6 +177,40 @@ CELERY_BEAT_SCHEDULE = {
 
 # (Optional) Track started tasks
 CELERY_TRACK_STARTED = True
+
+#### CORS Configuration ####
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",    # React development server
+    ###TODO: Add your frontend domain here
+    # "https://your-frontend-domain.com",  # Replace with your actual frontend domain
+]
+
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies (for refresh tokens)
+
+# Without this, Django might reject POST/PUT/DELETE requests
+# from your React app, even if CORS allows them.
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    ###TODO: Add your frontend domain here
+    # "https://your-frontend-domain.com",  # Replace with your actual frontend domain
+]
+
+# Allow specific headers if needed (optional)
+CORS_ALLOW_HEADERS = [
+    'authorization',
+    'content-type',
+    'x-csrftoken',
+    'accept',
+    'origin',
+    'user-agent',
+    'x-requested-with',
+]
+
+# Add this for local development (optional, only for testing)
+CORS_ALLOW_ALL_ORIGINS = False
+
 
 ####  Logging Configuration ####
 # Create a 'logs' directory in your project root
