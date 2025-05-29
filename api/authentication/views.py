@@ -1,13 +1,18 @@
 import requests, logging
-from django.contrib.auth import get_user_model
+from rest_framework import status # type: ignore
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
+from rest_framework.decorators import api_view, permission_classes # type: ignore
+from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
+from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from rest_framework.decorators import api_view
-from rest_framework import status # type: ignore
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from .serializers import UserSerializer
 from .utils import generate_jwt_tokens
+
 
 # Create a logger for this module
 logger = logging.getLogger('authentication')
@@ -16,6 +21,8 @@ logger = logging.getLogger('authentication')
 User = get_user_model()
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
 def google_login(request):
     """
     Redirect user to Google's OAuth 2.0 authentication page.
@@ -32,6 +39,8 @@ def google_login(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
 def google_callback(request):
     """
     Handles the Google OAuth2 callback to authenticate a user.
