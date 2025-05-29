@@ -323,6 +323,14 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',  # Browsable API for dev only
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/minute',         # 10 requests per minute for anonymous users
+        'user': '100/hour',          # 100 requests per hour for authenticated users
+    },
 }
 
 # Simple JWT settings
