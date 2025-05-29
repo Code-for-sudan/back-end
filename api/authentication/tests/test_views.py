@@ -54,3 +54,38 @@ class UserSigninTests(APITestCase):
         response = self.client.post(self.signin_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['message'], 'Email and password are required.')
+
+
+class ResetPasswordConfirmAPITest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="reset@example.com",
+            password="oldpassword",
+            first_name="Reset",
+            last_name="User"
+        )
+        self.otp = self.user.generate_otp()  # Generates and saves OTP
+
+    def test_reset_password_success(self):
+        url = reverse('reset-password-confirm')
+        data = {
+            "email": "reset@example.com",
+            "otp": self.otp,
+            "new_password": "newsecurepassword"
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("message", response.data)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("newsecurepassword"))
+
+    def test_reset_password_invalid_otp(self):
+        url = reverse('reset-password-confirm')
+        data = {
+            "email": "reset@example.com",
+            "otp": "wrongotp",
+            "new_password": "newsecurepassword"
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("message", response.data)

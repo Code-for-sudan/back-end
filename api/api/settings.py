@@ -258,6 +258,7 @@ LOGGING = {
         'authentication_tests': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
+        },
         'accounts_views': {
             'handlers': ['file'],
             'level': 'ERROR',  # Set to DEBUG for detailed logs
@@ -271,6 +272,7 @@ LOGGING = {
         },
     },
 }
+
 
 #### Rest Framework Configuration ####
 REST_FRAMEWORK = {
