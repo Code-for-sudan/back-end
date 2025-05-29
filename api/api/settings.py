@@ -258,6 +258,16 @@ LOGGING = {
             'level': 'ERROR',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'authentication_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'authentication_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 

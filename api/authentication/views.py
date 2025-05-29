@@ -9,7 +9,7 @@ from django.shortcuts import redirect
 from .serializers import UserSerializer
 from .utils import generate_jwt_tokens
 
-# Create the looger instance for the celery tasks
+# Create a logger for this module
 logger = logging.getLogger('authentication')
 
 # Get the user model
