@@ -1,8 +1,13 @@
+import logging
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
+# Get the user model
 User = get_user_model()
+# Create a logger for this module
+logger = logging.getLogger('authentication_serializers')
+
 
 class LoginSerializer(serializers.Serializer):
     """
@@ -17,7 +22,8 @@ class LoginSerializer(serializers.Serializer):
 
         user = authenticate(username=email, password=password)
         if not user:
-            print("[LoginSerializer] Authentication failed.")
+            # Log the failed authentication attempt
+            logger.error(f"[LoginSerializer] Authentication failed for email: {email}")
             raise serializers.ValidationError("Invalid email or password.")
         data['user'] = user
         return data
