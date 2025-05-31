@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
-from api.accounts.serializers import UserSerializer
+from accounts.serializers import UserSerializer
 from ..models import User
 
 
@@ -30,7 +30,7 @@ class UserSerializerTestCase(TestCase):
             "whatsapp_number": "1112223333",
             "otp": "654321",
             "password": "validpassword",
-            "gender": "male"
+            "gender": "M"
         }
 
     def test_serializer_with_all_fields(self):

@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
-from ..accounts.serializers import UserSerializer
+from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 
 
