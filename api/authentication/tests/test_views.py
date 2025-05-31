@@ -57,6 +57,23 @@ class UserSigninTests(APITestCase):
 
 
 class ResetPasswordConfirmAPITest(APITestCase):
+    """
+    Test suite for password reset confirmation functionality.
+    Classes:
+        ResetPasswordConfirmAPITest: Test cases for the reset password confirm API endpoint.
+    Methods:
+        setUp(self):
+            Sets up the test environment by defining the reset password URL, creating a test user, and generating an OTP.
+        test_reset_password_success(self):
+            Tests that a user can successfully reset their password with a valid OTP.
+        test_reset_password_invalid_otp(self):
+            Tests that attempting to reset the password with an invalid OTP returns a 400 status code.
+        test_reset_password_missing_fields(self):
+            Tests that attempting to reset the password without providing all required fields returns a 400 status code.
+        test_reset_password_nonexistent_user(self):
+            Tests that attempting to reset the password for a non-existent user returns a 400 status code.
+    """
+
     def setUp(self):
         self.user = User.objects.create_user(
             email="reset@example.com",
@@ -84,6 +101,27 @@ class ResetPasswordConfirmAPITest(APITestCase):
         data = {
             "email": "reset@example.com",
             "otp": "wrongotp",
+            "new_password": "newsecurepassword"
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("message", response.data)
+
+    def test_reset_password_missing_fields(self):
+        url = reverse('reset-password-confirm')
+        data = {
+            "email": "reset@example.com",
+            # Missing otp and new_password
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("message", response.data)
+
+    def test_reset_password_nonexistent_user(self):
+        url = reverse('reset-password-confirm')
+        data = {
+            "email": "notfound@example.com",
+            "otp": "123456",
             "new_password": "newsecurepassword"
         }
         response = self.client.post(url, data)

@@ -6,7 +6,6 @@ from rest_framework import status # type: ignore
 from django.contrib.auth import authenticate
 
 from accounts.models import User
-from .serializers import ResetPasswordConfirmSerializer
 from .utils import generate_jwt_tokens
 
 logger = logging.getLogger('authentication_views') # Create Logger
@@ -80,27 +79,38 @@ def login(request):
 @permission_classes([AllowAny])
 def reset_password_confirm(request):
     """
-    POST endpoint to confirm OTP and reset password.
+    Handles password reset by verifying OTP and setting a new password.
+    Args:
+        request (Request): The HTTP request object containing email, OTP, and new password.
+    Returns:
+        Response:
+            - 200 OK with a success message if OTP is valid and password is reset.
+            - 400 BAD REQUEST with an error message if any field is missing, the user does not exist, or OTP is invalid.
+    Raises:
+        KeyError: If 'email', 'otp', or 'new_password' is not present in the request data.
+    Side Effects:
+        - Logs errors for missing fields, invalid OTP, or non-existent users.
+        - Updates the user's password if OTP verification is successful.
     """
-    logger.info(f"Password reset attempt for email: {request.data.get('email')}")
-    serializer = ResetPasswordConfirmSerializer(data=request.data)
-    if not serializer.is_valid():
-        logger.error(f"Password reset validation failed: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('new_password')
+    except KeyError:
+        logger.error('Email, OTP, and new password are required.')
+        return Response({'message': 'Email, OTP, and new password are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    email = serializer.validated_data['email']
-    otp = serializer.validated_data['otp']
-    new_password = serializer.validated_data['new_password']
+    logger.info(f"Password reset attempt for email: {email}")
 
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
         logger.error(f"User with email {email} does not exist.")
-        return Response({'message': 'Invalid email or OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
     if not user.verify_otp(otp):
         logger.error(f"Invalid or expired OTP for user {email}.")
-        return Response({'message': 'Invalid email or OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'Invalid OTP.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user.set_password(new_password)
     user.save()
