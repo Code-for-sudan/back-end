@@ -3,6 +3,7 @@ import logging
 from rest_framework.decorators import api_view, permission_classes # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
+from drf_spectacular.utils import extend_schema
 from .serializers import UserSerializer # type: ignore
 from rest_framework import status # type: ignore
 from .models import User # type: ignore
@@ -10,6 +11,8 @@ from .models import User # type: ignore
 
 # Create a logger for this module
 logger = logging.getLogger('accounts_views')
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def sign_up(request):
