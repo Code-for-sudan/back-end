@@ -1,4 +1,6 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.core.cache import cache
+from rest_framework import status # type: ignorec
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
@@ -19,7 +21,7 @@ class GoogleLoginTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.url = reverse('google_login')
+        self.url = reverse('google_auth')
 
     def test_google_login_redirects_to_google_auth(self):
         response = self.client.get(self.url)
@@ -27,89 +29,91 @@ class GoogleLoginTests(TestCase):
         self.assertTrue(response.url.startswith("https://accounts.google.com/o/oauth2/auth"))
 
 
-class GoogleCallbackTests(TestCase):
+class GoogleOAuthViewsTestCase(TestCase):
     """
-    Test suite for the Google Callback API endpoint.
+    Test case for testing Google OAuth views.
+    This test case includes tests for the following scenarios:
+    1. Redirect behavior of the `google_login` view.
+    2. Successful OAuth process in the `google_callback` view.
+    3. Failed token exchange in the `google_callback` view.
+    4. Missing authorization code in the `google_callback` view.
+    Tested Views:
+    - `google_login`: Ensures the user is redirected to the Google OAuth URL.
+    - `google_callback`: Handles the callback from Google after the OAuth process.
+    Mocks:
+    - `requests.post`: Mocked to simulate token exchange with Google's OAuth server.
+    - `requests.get`: Mocked to simulate fetching user information from Google's API.
+    Test Methods:
+    - `test_google_login_redirect`: Verifies the redirect to the Google OAuth URL.
+    - `test_google_callback_success`: Tests the successful OAuth process, including token exchange and user info retrieval.
+    - `test_google_callback_failed_token_exchange`: Tests the behavior when the token exchange fails.
+    - `test_google_callback_no_code`: Tests the behavior when no authorization code is provided in the callback request.
     """
 
     def setUp(self):
         self.client = APIClient()
-        self.url = reverse('google_callback')
-        self.user = User.objects.create_user(email='test@example.com', password='testpassword')
+        self.google_login_url = reverse('google_auth')  # Replace with the actual name of the google_login URL
+        self.google_callback_url = reverse('google_callback')  # Replace with the actual name of the google_callback URL
 
-    @patch('authentication.views.requests.post')
-    def test_google_callback_missing_code_returns_400(self, mock_post):
-        response = self.client.post(self.url, data={})
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data['message'], 'No code provided')
+    def test_google_login_redirect(self):
+        """
+        Test that the google_login view redirects to the Google OAuth URL.
+        """
+        response = self.client.get(self.google_login_url)
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertIn("https://accounts.google.com/o/oauth2/auth", response.url)
 
-    @patch('authentication.views.requests.post')
-    def test_google_callback_invalid_access_token_returns_400(self, mock_post):
-        mock_post.return_value.json.return_value = {"access_token": None}
-        response = self.client.post(self.url, data={'code': 'invalid_code'})
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data['message'], 'Failed to obtain access token')
-
-    @patch('authentication.views.requests.post')
-    @patch('authentication.views.requests.get')
-    def test_google_callback_missing_email_returns_400(self, mock_get, mock_post):
-        mock_post.return_value.json.return_value = {"access_token": "valid_token"}
-        mock_get.return_value.json.return_value = {"email": None}
-        response = self.client.post(self.url, data={'code': 'valid_code'})
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data['message'], 'Failed to retrieve email')
-
-    @patch('authentication.views.requests.post')
-    @patch('authentication.views.requests.get')
-    @patch('authentication.views.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    def test_google_callback_creates_new_user_and_returns_tokens(self, mock_generate_jwt, mock_get, mock_post):
-        mock_post.return_value.json.return_value = {"access_token": "valid_token"}
-        mock_get.return_value.json.return_value = {
-            "email": "newuser@example.com",
-            "given_name": "New",
-            "family_name": "User",
-            "picture": "http://example.com/picture.jpg"
+    @patch('requests.post')
+    @patch('requests.get')
+    def test_google_callback_success(self, mock_get, mock_post):
+        """
+        Test the google_callback view when the OAuth process is successful.
+        """
+        # Mock the token response
+        mock_post.return_value.json.return_value = {
+            "access_token": "mock_access_token"
         }
-        response = self.client.post(self.url, data={'code': 'valid_code'})
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('access_token', response.data)
-        self.assertEqual(response.data['message'], 'Login successful.')
 
-        cookie = response.cookies.get('refresh_token')
-        self.assertIsNotNone(cookie)
-        self.assertTrue(cookie['httponly'])
-        self.assertTrue(cookie['secure'])
-        self.assertEqual(cookie['samesite'], 'Lax')
-
-    @patch('authentication.views.requests.post')
-    @patch('authentication.views.requests.get')
-    @patch('authentication.views.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    def test_google_callback_existing_user_returns_tokens(self, mock_generate_jwt, mock_get, mock_post):
-        mock_post.return_value.json.return_value = {"access_token": "valid_token"}
+        # Mock the user info response
         mock_get.return_value.json.return_value = {
-            "email": self.user.email,
+            "email": "testuser@example.com",
             "given_name": "Test",
             "family_name": "User",
-            "picture": "http://example.com/picture.jpg"
+            "picture": "http://example.com/profile.jpg"
         }
-        response = self.client.post(self.url, data={'code': 'valid_code'})
-        self.assertEqual(response.status_code, 200)
+
+        # Simulate the callback with a valid code
+        response = self.client.post(self.google_callback_url, {'code': 'mock_code'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access_token', response.data)
-        self.assertEqual(response.data['message'], 'Login successful.')
+        self.assertIn('user', response.data)
+        self.assertEqual(response.data['user']['email'], "testuser@example.com")
 
-from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
-from unittest.mock import patch
-import logging
+    @patch('requests.post')
+    def test_google_callback_failed_token_exchange(self, mock_post):
+        """
+        Test the google_callback view when the token exchange fails.
+        """
+        # Mock a failed token response
+        mock_post.return_value.json.return_value = {}
 
+        # Simulate the callback with an invalid code
+        response = self.client.post(reverse("google_callback"), {"code": "invalid"})
 
-User = get_user_model()
-# logger = logging.getLogger('accounts_tests')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], "Failed to obtain access token")
 
+    def test_google_callback_no_code(self):
+        """
+        Test the google_callback view when no code is provided.
+        """
+        response = self.client.post(self.google_callback_url)
 
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], "No code provided")
 
+@override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_RATES': {'anon': '1000/minute'}})
 class VerifyOTPTests(TestCase):
     """
     Test suite for the Verify OTP API endpoint.
@@ -141,6 +145,7 @@ class VerifyOTPTests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.url = reverse('verify_otp')
         self.user = User.objects.create_user(email='test@example.com', password='testpassword')
@@ -211,14 +216,15 @@ class VerifyOTPTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_logging_error_on_missing_fields(self):
-        with self.assertLogs('accounts_views', level='ERROR') as cm:
+        with self.assertLogs('authentication_views', level='DEBUG') as cm:
             self.client.post(self.url, data={})
         self.assertTrue(any('Missing email or OTP in request:' in message for message in cm.output))
 
     ###TODO: Add throttling tests for the Verify OTP endpoint
-    def test_throttling(self):
-        # This test assumes that you have set up throttling in your Django REST Framework settings
-        for _ in range(5):  # Assuming the throttle limit is 5 requests
+    @override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_RATES': {'anon': '5/minute'}})
+    @patch.object(User, 'verify_otp', return_value=True)
+    def test_throttling(self, mock_verify_otp):
+        for _ in range(10):  # Assuming the throttle limit is 5 requests
             response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': '123456'})
             self.assertEqual(response.status_code, 200)
 

@@ -15,7 +15,7 @@ from .utils import generate_jwt_tokens
 
 
 # Create a logger for this module
-logger = logging.getLogger('authentication')
+logger = logging.getLogger('authentication_views')
 
 # Get the user model
 User = get_user_model()
@@ -76,7 +76,7 @@ def google_callback(request):
     """
 
     # Get the code from the query parameters
-    code = request.GET.get("code")
+    code = request.POST.get("code")
 
     # Check if code is provided
     if not code:
@@ -202,7 +202,6 @@ def verify_otp(request):
 
     user_email = request.data.get('email', '').strip().lower()
     otp_code = request.data.get('otp_code')
-
     if not user_email or not otp_code:
         logger.error(f"Missing email or OTP in request: {request.data}")
         return Response(
