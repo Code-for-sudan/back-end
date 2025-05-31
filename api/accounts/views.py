@@ -15,7 +15,7 @@ logger = logging.getLogger('accounts_views')
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def sign_up(request):
+def sign_up_user(request):
     """
     Handles user registration.
     This view function receives a request containing user data, validates it using the UserSerializer,
