@@ -1,7 +1,8 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from api.accounts.serializers import UserSerializer
-from api.accounts.models import User
+from ..models import User
+
 
 class UserSerializerTestCase(TestCase):
     """
