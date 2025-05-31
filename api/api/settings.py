@@ -304,6 +304,16 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'accounts': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'accounts_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 
