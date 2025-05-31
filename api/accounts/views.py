@@ -3,8 +3,54 @@ import logging
 from rest_framework.decorators import api_view, permission_classes # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
+from .serializers import UserSerializer # type: ignore
+from rest_framework import status # type: ignore
+from .models import User # type: ignore
 
+
+# Create a logger for this module
+logger = logging.getLogger('accounts_views')
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def sign_up(request):
-    pass
+    """
+    Handles user registration.
+    This view function receives a request containing user data, validates it using the UserSerializer,
+    and creates a new user if the email does not already exist in the database. If the email is already
+    registered, it returns a 400 Bad Request response. On successful creation, it returns a 201 Created
+    response with the user data. If validation fails, it returns a 400 Bad Request response with error details.
+    Args:
+        request (Request): The HTTP request object containing user registration data.
+    Returns:
+        Response: A DRF Response object with a message and status code indicating the result of the operation.
+    """
+
+    serializer = UserSerializer(data=request.data)
+    if User.objects.filter(email=request.data['email']).exists():
+        # Log the error message
+        logger.error('User already exists.')
+        return Response(
+            {
+                'message': 'User already exists.'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {
+                'message': 'User created successfully.',
+                'data': serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+    else:
+        # Log the error message
+        logger.error('User creation failed: {}.'.format(serializer.errors))
+        return Response(
+            {
+                'message': 'User creation failed.',
+                'errors': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
