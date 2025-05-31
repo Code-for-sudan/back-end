@@ -1,115 +1,85 @@
-from django.test import TestCase
+import os
 from django.core.files.uploadedfile import SimpleUploadedFile
-from accounts.serializers import UserSerializer
-from ..models import User
+from django.test import TestCase
+from rest_framework.exceptions import ValidationError # type: ignore
+from ..serializers import UserSerializer
 
 
-class UserSerializerTestCase(TestCase):
+class UserSerializerTest(TestCase):
     """
-    TestCase for the UserSerializer, covering various scenarios for user creation and validation.
-    Tested Scenarios:
-    - Validation and saving with all required and optional fields present.
-    - Validation when optional fields (phone_number, whatsapp_number, otp) are missing.
-    - Validation when optional fields are provided as blank strings.
-    - Validation fails with an invalid email format.
-    - Validation fails when attempting to create a user with a duplicate email.
-    - Validation for gender field with an invalid value (test may be adjusted based on model enforcement).
-    - Validation and saving when a profile picture is uploaded as a PNG file.
-    - Validation and saving when a profile picture is uploaded with an uppercase file extension (e.g., .JPG).
-    - Validation fails when a profile picture is uploaded without a file extension.
-    - Validation and saving when the profile picture field is empty (None).
-    Each test ensures that the serializer behaves as expected for both valid and invalid input data.
+    Test suite for the UserSerializer.
+    This test suite includes the following test cases:
+    - test_valid_user_serializer: Tests that a serializer with valid user data is valid.
+    - test_invalid_user_serializer_missing_fields: Tests that a serializer with missing required fields is invalid and raises appropriate errors.
+    - test_invalid_user_serializer_short_password: Tests that a serializer with a password that is too short is invalid and raises appropriate errors.
+    - test_validate_profile_picture_valid_image: Tests that a serializer with a valid profile picture image is valid.
+    - test_validate_profile_picture_invalid_extension: Tests that a serializer with an invalid profile picture image extension raises a ValidationError.
+    - test_validate_profile_picture_large_image: Tests that a serializer with a profile picture image that is too large raises a ValidationError.
+    - test_create_user: Tests that a user can be successfully created with valid data and that the created user's attributes match the input data.
     """
 
     def setUp(self):
-        self.valid_data = {
-            "email": "valid@example.com",
-            "first_name": "Valid",
-            "last_name": "User",
-            "phone_number": "1112223333",
-            "whatsapp_number": "1112223333",
-            "otp": "654321",
-            "password": "validpassword",
-            "gender": "M"
+        self.valid_user_data = {
+            'email': 'test@example.com',
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'password': 'password123',
+            'gender': 'M'
         }
 
-    def test_serializer_with_all_fields(self):
-        serializer = UserSerializer(data=self.valid_data)
-        self.assertTrue(serializer.is_valid(), serializer.errors)
+    def test_valid_user_serializer(self):
+        serializer = UserSerializer(data=self.valid_user_data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_invalid_user_serializer_missing_fields(self):
+        invalid_data = self.valid_user_data.copy()
+        invalid_data.pop('email')
+        serializer = UserSerializer(data=invalid_data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('email', serializer.errors)
+
+    def test_invalid_user_serializer_short_password(self):
+        invalid_data = self.valid_user_data.copy()
+        invalid_data['password'] = '123'
+        serializer = UserSerializer(data=invalid_data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('password', serializer.errors)
+
+    def test_validate_profile_picture_valid_image(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile('test_1.png', image_file.read(), content_type='image/png')
+            data = self.valid_user_data.copy()
+            data['profile_picture'] = image
+            serializer = UserSerializer(data=data)
+            self.assertTrue(serializer.is_valid())
+
+    def test_validate_profile_picture_invalid_extension(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_2.webp')
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile('test_2.webp', image_file.read(), content_type='image/webp')
+            data = self.valid_user_data.copy()
+            data['profile_picture'] = image
+            serializer = UserSerializer(data=data)
+            with self.assertRaises(ValidationError):
+                serializer.is_valid(raise_exception=True)
+
+    def test_validate_profile_picture_large_image(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_3.jpg')
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile('test_3.jpg', image_file.read(), content_type='image/jpg')
+            data = self.valid_user_data.copy()
+            data['profile_picture'] = image
+            serializer = UserSerializer(data=data)
+            with self.assertRaises(ValidationError):
+                serializer.is_valid(raise_exception=True)
+
+    def test_create_user(self):
+        serializer = UserSerializer(data=self.valid_user_data)
+        self.assertTrue(serializer.is_valid())
         user = serializer.save()
-        self.assertEqual(user.email, self.valid_data["email"])
-        self.assertTrue(user.check_password(self.valid_data["password"]))
-
-    def test_serializer_with_optional_fields_missing(self):
-        data = self.valid_data.copy()
-        data.pop("phone_number")
-        data.pop("whatsapp_number")
-        data.pop("otp")
-        serializer = UserSerializer(data=data)
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-
-    def test_serializer_with_blank_strings(self):
-        data = self.valid_data.copy()
-        data["phone_number"] = ""
-        data["whatsapp_number"] = ""
-        serializer = UserSerializer(data=data)
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-
-    def test_serializer_with_invalid_email(self):
-        data = self.valid_data.copy()
-        data["email"] = "not-an-email"
-        serializer = UserSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("email", serializer.errors)
-
-    def test_serializer_with_duplicate_email(self):
-        User.objects.create_user(
-            email=self.valid_data["email"],
-            first_name="Other",
-            last_name="User",
-            password="anotherpassword",
-            gender="male"
-        )
-        serializer = UserSerializer(data=self.valid_data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("email", serializer.errors)
-
-    def test_serializer_with_invalid_gender(self):
-        data = self.valid_data.copy()
-        data["gender"] = "unknown"
-        serializer = UserSerializer(data=data)
-        # If gender choices are enforced in the model, this should fail
-        # Otherwise, this will pass. Adjust as per your model.
-        # self.assertFalse(serializer.is_valid())
-        # self.assertIn("gender", serializer.errors)
-
-    def test_serializer_profile_picture_png(self):
-        image_content = b"fake image content"
-        image = SimpleUploadedFile("profile.png", image_content, content_type="image/png")
-        data = self.valid_data.copy()
-        data["profile_picture"] = image
-        serializer = UserSerializer(data=data)
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-
-    def test_serializer_profile_picture_uppercase_extension(self):
-        image_content = b"fake image content"
-        image = SimpleUploadedFile("profile.JPG", image_content, content_type="image/jpeg")
-        data = self.valid_data.copy()
-        data["profile_picture"] = image
-        serializer = UserSerializer(data=data)
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-
-    def test_serializer_profile_picture_no_extension(self):
-        image_content = b"fake image content"
-        image = SimpleUploadedFile("profile", image_content, content_type="image/jpeg")
-        data = self.valid_data.copy()
-        data["profile_picture"] = image
-        serializer = UserSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("profile_picture", serializer.errors)
-
-    def test_serializer_profile_picture_empty(self):
-        data = self.valid_data.copy()
-        data["profile_picture"] = None
-        serializer = UserSerializer(data=data)
-        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(user.email, self.valid_user_data['email'])
+        self.assertEqual(user.first_name, self.valid_user_data['first_name'])
+        self.assertEqual(user.last_name, self.valid_user_data['last_name'])
+        self.assertTrue(user.check_password(self.valid_user_data['password']))
+        self.assertEqual(user.gender, self.valid_user_data['gender'])
