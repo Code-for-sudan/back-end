@@ -51,6 +51,8 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def validate_profile_picture(self, image):
+        if image is None:
+            return image
         allowed_image_extensions = ['jpg', 'jpeg', 'png']
         allowed_image_size = 5 * 1024 * 1024  # 5MB
 
