@@ -270,6 +270,7 @@ LOGGING = {
             'propagate': False,
         },
     },
+    }
 }
 
 #### Rest Framework Configuration ####
