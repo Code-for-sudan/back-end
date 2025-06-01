@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 
 from accounts.models import User
 from .utils import generate_jwt_tokens
+from .serializers import ResetPasswordConfirmSerializer
 
 logger = logging.getLogger('authentication_views') # Create Logger
 
@@ -79,7 +80,7 @@ def login(request):
 @permission_classes([AllowAny])
 def reset_password_confirm(request):
     """
-    Handles password reset by verifying OTP and setting a new password.
+    Handles password reset by verifying OTP, validating new password, and setting the new password.
     Args:
         request (Request): The HTTP request object containing email, OTP, and new password.
     Returns:
@@ -89,8 +90,8 @@ def reset_password_confirm(request):
     Raises:
         KeyError: If 'email', 'otp', or 'new_password' is not present in the request data.
     Side Effects:
-        - Logs errors for missing fields, invalid OTP, or non-existent users.
-        - Updates the user's password if OTP verification is successful.
+        - Logs errors for missing fields, invalid OTP, invalid password, or non-existent users.
+        - Updates the user's password if OTP verification and password validation are successful.
     """
     try:
         email = request.data.get('email')
@@ -111,6 +112,13 @@ def reset_password_confirm(request):
     if not user.verify_otp(otp):
         logger.error(f"Invalid or expired OTP for user {email}.")
         return Response({'message': 'Invalid OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = ResetPasswordConfirmSerializer()
+    try:
+        serializer.validate_new_password(new_password)
+    except Exception as e:
+        logger.error(f"Password validation failed for user {email}: {e}")
+        return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     user.set_password(new_password)
     user.save()

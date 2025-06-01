@@ -70,11 +70,14 @@ class ResetPasswordConfirmAPITest(APITestCase):
             Tests that attempting to reset the password with an invalid OTP returns a 400 status code.
         test_reset_password_missing_fields(self):
             Tests that attempting to reset the password without providing all required fields returns a 400 status code.
+        test_reset_password_invalid_new_password(self):
+            Tests that attempting to reset the password with a new password that does not meet complexity requirements returns a 400 status code.
         test_reset_password_nonexistent_user(self):
             Tests that attempting to reset the password for a non-existent user returns a 400 status code.
     """
 
     def setUp(self):
+        self.reset_url = reverse('reset-password-confirm')
         self.user = User.objects.create_user(
             email="reset@example.com",
             password="oldpassword",
@@ -84,46 +87,52 @@ class ResetPasswordConfirmAPITest(APITestCase):
         self.otp = self.user.generate_otp()  # Generates and saves OTP
 
     def test_reset_password_success(self):
-        url = reverse('reset-password-confirm')
         data = {
             "email": "reset@example.com",
             "otp": self.otp,
-            "new_password": "newsecurepassword"
+            "new_password": "newpassword123"
         }
-        response = self.client.post(url, data)
+        response = self.client.post(self.reset_url, data)
         self.assertEqual(response.status_code, 200)
         self.assertIn("message", response.data)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("newsecurepassword"))
+        self.assertTrue(self.user.check_password("newpassword123"))
 
     def test_reset_password_invalid_otp(self):
-        url = reverse('reset-password-confirm')
         data = {
             "email": "reset@example.com",
             "otp": "wrongotp",
-            "new_password": "newsecurepassword"
+            "new_password": "newpassword123"
         }
-        response = self.client.post(url, data)
+        response = self.client.post(self.reset_url, data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_reset_password_missing_fields(self):
-        url = reverse('reset-password-confirm')
         data = {
             "email": "reset@example.com",
             # Missing otp and new_password
         }
-        response = self.client.post(url, data)
+        response = self.client.post(self.reset_url, data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("message", response.data)
+
+    def test_reset_password_invalid_new_password(self):
+        data = {
+            "email": "reset@example.com",
+            "otp": self.otp,
+            "new_password": "short"  # Invalid: too short, no digit, etc.
+        }
+        response = self.client.post(self.reset_url, data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_reset_password_nonexistent_user(self):
-        url = reverse('reset-password-confirm')
         data = {
             "email": "notfound@example.com",
             "otp": "123456",
-            "new_password": "newsecurepassword"
+            "new_password": "newpassword123"
         }
-        response = self.client.post(url, data)
+        response = self.client.post(self.reset_url, data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
