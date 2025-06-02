@@ -380,3 +380,7 @@ AUTH_USER_MODEL = 'accounts.User'
 GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
+
+##### Media Settings ####
+MEDIA_URL = "/media/"  # Public URL for accessing media files
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directory where uploaded files will be stored
