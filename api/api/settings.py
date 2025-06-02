@@ -285,6 +285,19 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'authentication_views': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'authentication_serializers': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'authentication_tests': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
         'accounts_views': {
             'handlers': ['file'],
             'level': 'ERROR',  # Set to DEBUG for detailed logs
@@ -293,6 +306,7 @@ LOGGING = {
         'accounts_tests': {
             'handlers': ['file', 'console'],
             'level': 'ERROR',  # Set to DEBUG for detailed logs
+
             'propagate': False,
         },
         'authentication_views': {
@@ -336,6 +350,7 @@ LOGGING = {
             'propagate': False,
         },
     },
+    }
 }
 
 #### Rest Framework Configuration ####
