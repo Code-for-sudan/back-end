@@ -57,3 +57,41 @@ class UserSignupTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['message'], 'User creation failed.')
         self.assertIn('errors', response.data)
+
+
+class BusinessOwnerSignupTests(APITestCase):
+    """
+    Test suite for business owner signup functionality.
+    """
+
+    def setUp(self):
+        self.signup_url = reverse('signup_bussiness_owner')
+        # Example of valid business owner data; adjust fields as per your BusinessOwner serializer
+        self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
+        with open(self.image_path, 'rb') as image_file:
+            self.user_data = {
+                'email': 'testuser@example.com',
+                'password': 'testpassword123',
+                'first_name': 'Test',
+                'gender': 'M',
+                'last_name': 'User',
+                'profile_picture': SimpleUploadedFile(name='test_1.png', content=image_file.read(), content_type='image/png'),
+                'store_name': 'Test Store',
+            }
+        self.invalid_data = {
+            'email': 'not-an-email',
+            'password': '',
+            'business_name': ''
+        }
+
+    def test_signup_success(self):
+        response = self.client.post(self.signup_url, self.user_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['message'], 'Business owner created successfully.')
+        self.assertIn('data', response.data)
+
+    def test_signup_invalid_data(self):
+        response = self.client.post(self.signup_url, self.invalid_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'Business owner creation failed.')
+        self.assertIn('errors', response.data)
