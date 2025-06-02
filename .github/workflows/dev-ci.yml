@@ -51,6 +51,7 @@ jobs:
 
       - name: Apply Migrations
         run: |
+         docker compose -f api/docker-compose.yml run --rm web python manage.py makemigrations
          docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
 
       - name: Run Tests

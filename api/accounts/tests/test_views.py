@@ -1,117 +1,97 @@
-from django.test import TestCase
+import os
 from django.urls import reverse
+from rest_framework.test import APITestCase # type: ignore
+from rest_framework import status # type: ignore
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
-from unittest.mock import patch
-import logging
-
+from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
+from ..models import User
 
 User = get_user_model()
-# logger = logging.getLogger('accounts_tests')
 
-
-
-class VerifyOTPTests(TestCase):
+class UserSignupTests(APITestCase):
     """
-    Test suite for the Verify OTP API endpoint.
-    This test class contains various test cases to ensure the functionality and robustness
-    of the OTP verification process. It covers scenarios such as missing fields, invalid
-    inputs, and successful OTP verification.
-    Test Cases:
-    - `test_missing_email_and_otp_returns_400`: Verifies that a 400 status code is returned
-        when both email and OTP are missing in the request.
-    - `test_missing_otp_returns_400`: Verifies that a 400 status code is returned when the
-        OTP is missing in the request.
-    - `test_missing_email_returns_400`: Verifies that a 400 status code is returned when
-        the email is missing in the request.
-    - `test_user_not_found_returns_404`: Verifies that a 404 status code is returned when
-        the user is not found in the database.
-    - `test_invalid_otp_returns_400`: Verifies that a 400 status code is returned when an
-        invalid OTP is provided.
-    - `test_valid_otp_returns_tokens_and_cookie`: Verifies that valid OTP returns a 200
-        status code, JWT tokens in the response, and sets the refresh token as a secure,
-        HTTP-only cookie.
-    - `test_email_case_insensitive`: Verifies that the email field is case-insensitive
-        during OTP verification.
-    - `test_email_with_whitespace`: Verifies that leading and trailing whitespaces in the
-        email field are ignored during OTP verification.
-    - `test_otp_with_leading_zeros`: Verifies that OTPs with leading zeros are handled
-        correctly.
-    - `test_logging_error_on_missing_fields`: Verifies that an error is logged when both
-        email and OTP are missing in the request.
+    Test suite for user signup functionality.
+    Classes:
+        UserSignupTests: Test cases for user signup API endpoint.
+    Methods:
+        setUp(self):
+            Sets up the test environment by defining the signup URL and user data.
+        test_signup_success(self):
+            Tests that a user can successfully sign up with valid data.
+        test_signup_user_already_exists(self):
+            Tests that attempting to sign up with an email that already exists returns a 400 status code.
+        test_signup_invalid_data(self):
+            Tests that attempting to sign up with invalid data returns a 400 status code and appropriate error message.
     """
 
     def setUp(self):
-        self.client = APIClient()
-        self.url = reverse('verify_otp')
-        self.user = User.objects.create_user(email='test@example.com', password='testpassword')
+        self.signup_url = reverse('signup_user')
+        self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
+        with open(self.image_path, 'rb') as image_file:
+            self.user_data = {
+                'email': 'testuser@example.com',
+                'password': 'testpassword123',
+                'first_name': 'Test',
+                'gender': 'M',
+                'last_name': 'User',
+                'profile_picture': SimpleUploadedFile(name='test_1.png', content=image_file.read(), content_type='image/png')
+            }
 
-    def test_missing_email_and_otp_returns_400(self):
-        response = self.client.post(self.url, data={})
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('message', response.data)
+    def test_signup_success(self):
+        response = self.client.post(self.signup_url, self.user_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['message'], 'User created successfully.')
+        self.assertIn('data', response.data)
 
-    def test_missing_otp_returns_400(self):
-        response = self.client.post(self.url, data={'email': 'test@example.com'})
-        self.assertEqual(response.status_code, 400)
+    def test_signup_user_already_exists(self):
+        User.objects.create_user(**self.user_data)
+        response = self.client.post(self.signup_url, self.user_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'User already exists.')
 
-    def test_missing_email_returns_400(self):
-        response = self.client.post(self.url, data={'otp_code': '123456'})
-        self.assertEqual(response.status_code, 400)
+    def test_signup_invalid_data(self):
+        invalid_data = self.user_data.copy()
+        invalid_data['email'] = 'invalid-email'
+        response = self.client.post(self.signup_url, invalid_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'User creation failed.')
+        self.assertIn('errors', response.data)
 
-    def test_user_not_found_returns_404(self):
-        response = self.client.post(self.url, data={'email': 'nouser@example.com', 'otp_code': '123456'})
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.data['message'], 'User not found.')
 
-    @patch('accounts.utils.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    @patch.object(User, 'verify_otp', return_value=False)
-    def test_invalid_otp_returns_400(self, mock_verify_otp, mock_jwt):
-        response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': 'wrong'})
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data['message'], 'Invalid OTP code.')
+class BusinessOwnerSignupTests(APITestCase):
+    """
+    Test suite for business owner signup functionality.
+    """
 
-    @patch('accounts.utils.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    @patch.object(User, 'verify_otp', return_value=True)
-    def test_valid_otp_returns_tokens_and_cookie(self, mock_verify_otp, mock_jwt):
-        response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': '123456'})
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('access_token', response.data)
+    def setUp(self):
+        self.signup_url = reverse('signup_bussiness_owner')
+        # Example of valid business owner data; adjust fields as per your BusinessOwner serializer
+        self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
+        with open(self.image_path, 'rb') as image_file:
+            self.user_data = {
+                'email': 'testuser@example.com',
+                'password': 'testpassword123',
+                'first_name': 'Test',
+                'gender': 'M',
+                'last_name': 'User',
+                'profile_picture': SimpleUploadedFile(name='test_1.png', content=image_file.read(), content_type='image/png'),
+                'store_name': 'Test Store',
+            }
+        self.invalid_data = {
+            'email': 'not-an-email',
+            'password': '',
+            'business_name': ''
+        }
 
-        cookie = response.cookies.get('refresh_token')
-        self.assertIsNotNone(cookie)
-        self.assertTrue(cookie.value.startswith('eyJ'))  # JWT tokens typically start with 'eyJ'
-        self.assertTrue(cookie['httponly'])
-        self.assertTrue(cookie['secure'])
-        self.assertEqual(cookie['samesite'], 'Lax')
+    def test_signup_success(self):
+        response = self.client.post(self.signup_url, self.user_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['message'], 'Business owner created successfully.')
+        self.assertIn('data', response.data)
 
-        response.set_cookie(
-            'refresh_token',
-            'refresh-token',
-            httponly=True,
-            secure=True,
-            samesite='Lax'
-        )
-
-    @patch('accounts.utils.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    @patch.object(User, 'verify_otp', return_value=True)
-    def test_email_case_insensitive(self, mock_verify_otp, mock_jwt):
-        response = self.client.post(self.url, data={'email': 'TEST@EXAMPLE.COM', 'otp_code': '123456'})
-        self.assertEqual(response.status_code, 200)
-
-    @patch('accounts.utils.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    @patch.object(User, 'verify_otp', return_value=True)
-    def test_email_with_whitespace(self, mock_verify_otp, mock_jwt):
-        response = self.client.post(self.url, data={'email': '  test@example.com  ', 'otp_code': '123456'})
-        self.assertEqual(response.status_code, 200)
-
-    @patch('accounts.utils.generate_jwt_tokens', return_value=('access-token', 'refresh-token'))
-    @patch.object(User, 'verify_otp', return_value=True)
-    def test_otp_with_leading_zeros(self, mock_verify_otp, mock_jwt):
-        response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': '001234'})
-        self.assertEqual(response.status_code, 200)
-
-    def test_logging_error_on_missing_fields(self):
-        with self.assertLogs('accounts_views', level='ERROR') as cm:
-            self.client.post(self.url, data={})
-        self.assertTrue(any('Missing email or OTP in request:' in message for message in cm.output))
+    def test_signup_invalid_data(self):
+        response = self.client.post(self.signup_url, self.invalid_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'Business owner creation failed.')
+        self.assertIn('errors', response.data)
