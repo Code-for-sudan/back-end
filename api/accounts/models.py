@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
 from django.utils.timezone import now
 from accounts.userManager import UserManager
+from stores.models import Store
 from phonenumber_field.modelfields import PhoneNumberField
 
 # Create a models
@@ -143,7 +144,7 @@ class BusinessOwner(models.Model):
     """
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
-    # store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
+    store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
 
     def __str__(self):
         return f"{self.company_name} ({self.user.email})"
