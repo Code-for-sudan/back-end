@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, permission_classes # type: ignor
 from rest_framework.response import Response # type: ignore
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from drf_spectacular.utils import extend_schema
-from .serializers import UserSerializer # type: ignore
+from .serializers import UserSerializer, BusinessOwner # type: ignore
 from rest_framework import status # type: ignore
 from .models import User # type: ignore
 
@@ -53,6 +53,40 @@ def sign_up_user(request):
         return Response(
             {
                 'message': 'User creation failed.',
+                'errors': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def sign_in_bussiness(request):
+    """
+    Handles business owner sign-in.
+    This view function receives a request containing business owner data, validates it using the BusinessOwner serializer,
+    and returns a response indicating whether the sign-in was successful or not.
+    Args:
+        request (Request): The HTTP request object containing business owner sign-in data.
+    Returns:
+        Response: A DRF Response object with a message and status code indicating the result of the operation.
+    """
+    
+    serializer = BusinessOwner(data=request.data)
+    if serializer.is_valid():
+        return Response(
+            {
+                'message': 'Business owner signed in successfully.',
+                'data': serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+    else:
+        # Log the error message
+        logger.error('Business owner sign-in failed: {}.'.format(serializer.errors))
+        return Response(
+            {
+                'message': 'Business owner sign-in failed.',
                 'errors': serializer.errors
             },
             status=status.HTTP_400_BAD_REQUEST
