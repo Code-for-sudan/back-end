@@ -2,6 +2,9 @@ import hashlib
 from django.test import TestCase
 from django.utils import timezone
 from ..models import User
+from django.core.exceptions import ValidationError
+from ..models import User, BusinessOwner
+from stores.models import Store
 
 
 
@@ -75,3 +78,48 @@ class UserModelOTPTests(TestCase):
         self.assertIn(self.user.first_name, s)
         self.assertIn(self.user.last_name, s)
         self.assertIn(self.user.gender, s)
+
+
+class BusinessOwnerModelTests(TestCase):
+    """
+    Test suite for the BusinessOwner model.
+    Covers:
+    - Creation of BusinessOwner with valid user and store.
+    - __str__ method returns expected string (requires company_name on store).
+    - Enforces one-to-one relationship constraints.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create(
+            email="owner@example.com",
+            first_name="Owner",
+            last_name="Test"
+        )
+        self.store = Store.objects.create(
+            name="Test Store",
+            # Add any required fields for Store here
+        )
+
+    def test_create_business_owner(self):
+        owner = BusinessOwner.objects.create(user=self.user, store=self.store)
+        self.assertEqual(owner.user, self.user)
+        self.assertEqual(owner.store, self.store)
+
+    def test_str_method_includes_company_name_and_email(self):
+        # Ensure the store has a company_name attribute for __str__ to work
+        self.store.company_name = "Acme Inc"
+        self.store.save()
+        owner = BusinessOwner.objects.create(user=self.user, store=self.store)
+        expected_str = f"{self.store.company_name} ({self.user.email})"
+        self.assertEqual(str(owner), expected_str)
+
+    def test_one_to_one_user_constraint(self):
+        owner1 = BusinessOwner.objects.create(user=self.user, store=self.store)
+        user2 = User.objects.create(email="other@example.com", first_name="Other", last_name="User")
+        store2 = Store.objects.create(name="Other Store")
+        # Cannot assign same user to another BusinessOwner
+        with self.assertRaises(Exception):
+            BusinessOwner.objects.create(user=self.user, store=store2)
+        # Cannot assign same store to another BusinessOwner
+        with self.assertRaises(Exception):
+            BusinessOwner.objects.create(user=user2, store=self.store)
