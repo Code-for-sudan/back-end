@@ -76,6 +76,29 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class BusinessOwnerSignupSerializer(serializers.Serializer):
+    """
+    Serializer for handling business owner sign-up.
+    Fields:
+        email (EmailField): The email address of the user (required).
+        first_name (CharField): The first name of the user (required).
+        last_name (CharField): The last name of the user (required).
+        profile_picture (ImageField): Optional profile picture for the user.
+        phone_number (CharField): Optional phone number of the user.
+        whatsapp_number (CharField): Optional WhatsApp number of the user.
+        otp (CharField): One-time password for verification (write-only, optional).
+        password (CharField): Password for the user account (write-only, required, min_length=6).
+        gender (CharField): Gender of the user.
+        store_name (CharField): Name of the store to be created (write-only, required).
+    Methods:
+        validate_profile_picture(image):
+            Validates the uploaded profile picture for allowed extensions (jpg, jpeg, png)
+            and maximum file size (5MB).
+        create(validated_data):
+            Creates a new Store, User, and BusinessOwner instance based on the validated data.
+    Raises:
+        serializers.ValidationError: If the profile picture does not meet extension or size requirements.
+    """
+
     email = serializers.EmailField(source='user.email', required=True)
     first_name = serializers.CharField(source='user.first_name', required=True)
     last_name = serializers.CharField(source='user.last_name', required=True)
