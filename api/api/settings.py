@@ -314,6 +314,26 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'stores_models': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 
