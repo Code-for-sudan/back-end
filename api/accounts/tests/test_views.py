@@ -26,7 +26,7 @@ class UserSignupTests(APITestCase):
     """
 
     def setUp(self):
-        self.signup_url = reverse('signup')
+        self.signup_url = reverse('signup_user')
         self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
         with open(self.image_path, 'rb') as image_file:
             self.user_data = {

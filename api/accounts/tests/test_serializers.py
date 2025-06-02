@@ -3,6 +3,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError # type: ignore
 from ..serializers import UserSerializer
+from unittest import mock
+from ..serializers import BusinessOwnerSignupSerializer
+from ..models import BusinessOwner, User
+from stores.models import Store
 
 
 class UserSerializerTest(TestCase):
@@ -83,3 +87,83 @@ class UserSerializerTest(TestCase):
         self.assertEqual(user.last_name, self.valid_user_data['last_name'])
         self.assertTrue(user.check_password(self.valid_user_data['password']))
         self.assertEqual(user.gender, self.valid_user_data['gender'])
+
+
+class BusinessOwnerSignupSerializerTest(TestCase):
+    """
+    Test suite for the BusinessOwnerSignupSerializer.
+    """
+
+    def setUp(self):
+        self.valid_data = {
+            'email': 'owner@example.com',
+            'first_name': 'Alice',
+            'last_name': 'Smith',
+            'password': 'securepass',
+            'gender': 'F',
+            'store_name': 'Test Store'
+        }
+
+    def test_valid_business_owner_signup_serializer(self):
+        serializer = BusinessOwnerSignupSerializer(data=self.valid_data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_missing_required_fields(self):
+        data = self.valid_data.copy()
+        data.pop('email')
+        serializer = BusinessOwnerSignupSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('email', serializer.errors)
+
+    def test_short_password(self):
+        data = self.valid_data.copy()
+        data['password'] = '123'
+        serializer = BusinessOwnerSignupSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('password', serializer.errors)
+
+    def test_validate_profile_picture_valid_image(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile('test_1.png', image_file.read(), content_type='image/png')
+            data = self.valid_data.copy()
+            data['profile_picture'] = image
+            serializer = BusinessOwnerSignupSerializer(data=data)
+            self.assertTrue(serializer.is_valid())
+
+    def test_validate_profile_picture_invalid_extension(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_2.webp')
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile('test_2.webp', image_file.read(), content_type='image/webp')
+            data = self.valid_data.copy()
+            data['profile_picture'] = image
+            serializer = BusinessOwnerSignupSerializer(data=data)
+            with self.assertRaises(ValidationError):
+                serializer.is_valid(raise_exception=True)
+
+    def test_validate_profile_picture_large_image(self):
+        image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_3.jpg')
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile('test_3.jpg', image_file.read(), content_type='image/jpg')
+            data = self.valid_data.copy()
+            data['profile_picture'] = image
+            serializer = BusinessOwnerSignupSerializer(data=data)
+            with self.assertRaises(ValidationError):
+                serializer.is_valid(raise_exception=True)
+
+    @mock.patch('accounts.models.User.objects.create_user')
+    def test_create_business_owner_and_store(self, mock_create_user):
+        # Create a real Store instance
+        store = Store.objects.create(name=self.valid_data['store_name'])
+        # Create a real User instance for assignment
+        user = User(email='owner@example.com', first_name='Alice', last_name='Smith', gender='F')
+        user.set_password('securepass')
+        user.save()  # Save the user to the test database
+        mock_create_user.return_value = user
+
+        serializer = BusinessOwnerSignupSerializer(data=self.valid_data)
+        self.assertTrue(serializer.is_valid())
+        owner = serializer.save()
+        mock_create_user.assert_called_once()
+        self.assertEqual(owner.user, user)
+        self.assertEqual(owner.store.name, self.valid_data['store_name'])
