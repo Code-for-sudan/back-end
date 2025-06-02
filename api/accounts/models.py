@@ -149,4 +149,4 @@ class BusinessOwner(models.Model):
     store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
 
     def __str__(self):
-        return f"{self.company_name} ({self.user.email})"
+        return f"{self.user.first_name} ({self.user.email})"

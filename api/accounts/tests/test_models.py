@@ -105,12 +105,12 @@ class BusinessOwnerModelTests(TestCase):
         self.assertEqual(owner.user, self.user)
         self.assertEqual(owner.store, self.store)
 
-    def test_str_method_includes_company_name_and_email(self):
+    def test_str_method_includes_name_and_email(self):
         # Ensure the store has a company_name attribute for __str__ to work
         self.store.company_name = "Acme Inc"
         self.store.save()
         owner = BusinessOwner.objects.create(user=self.user, store=self.store)
-        expected_str = f"{self.store.company_name} ({self.user.email})"
+        expected_str = f"{self.user.first_name} ({self.user.email})"
         self.assertEqual(str(owner), expected_str)
 
     def test_one_to_one_user_constraint(self):

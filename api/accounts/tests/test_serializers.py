@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError # type: ignore
 from ..serializers import UserSerializer
 from unittest import mock
 from ..serializers import BusinessOwnerSignupSerializer
-from ..models import BusinessOwner
+from ..models import BusinessOwner, User
 from stores.models import Store
 
 
@@ -151,18 +151,19 @@ class BusinessOwnerSignupSerializerTest(TestCase):
             with self.assertRaises(ValidationError):
                 serializer.is_valid(raise_exception=True)
 
-    @mock.patch('stores.models.Store.objects.create')
-    @mock.patch('..models.BusinessOwner.objects.create_user')
-    def test_create_business_owner_and_store(self, mock_create_user, mock_store_create):
-        # Mock the Store and BusinessOwner creation
-        mock_store = mock.Mock(spec=Store)
-        mock_store_create.return_value = mock_store
-        mock_owner = mock.Mock(spec=BusinessOwner)
-        mock_create_user.return_value = mock_owner
+    @mock.patch('accounts.models.User.objects.create_user')
+    def test_create_business_owner_and_store(self, mock_create_user):
+        # Create a real Store instance
+        store = Store.objects.create(name=self.valid_data['store_name'])
+        # Create a real User instance for assignment
+        user = User(email='owner@example.com', first_name='Alice', last_name='Smith', gender='F')
+        user.set_password('securepass')
+        user.save()  # Save the user to the test database
+        mock_create_user.return_value = user
 
         serializer = BusinessOwnerSignupSerializer(data=self.valid_data)
         self.assertTrue(serializer.is_valid())
         owner = serializer.save()
-        mock_store_create.assert_called_once_with(name=self.valid_data['store_name'])
         mock_create_user.assert_called_once()
-        self.assertEqual(owner, mock_owner)
+        self.assertEqual(owner.user, user)
+        self.assertEqual(owner.store.name, self.valid_data['store_name'])

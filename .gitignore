@@ -194,3 +194,4 @@ celerybeat-schedule
 media/
 log/
 .vscode/
+profile_pics

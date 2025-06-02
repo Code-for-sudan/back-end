@@ -75,49 +75,17 @@ class UserSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 
-class BusinessOwnerSignupSerializer(serializers.ModelSerializer):
-    """
-    Serializer for registering a new BusinessOwner along with their associated Store.
-    Fields:
-        - email: Email address of the business owner.
-        - first_name: First name of the business owner.
-        - last_name: Last name of the business owner.
-        - profile_picture: Optional profile image, validated for file type and size.
-        - phone_number: Contact phone number.
-        - whatsapp_number: WhatsApp contact number.
-        - otp: One-time password for verification (write-only).
-        - password: Account password (write-only, minimum 6 characters).
-        - gender: Gender of the business owner.
-        - store_name: Name of the store to be created (required).
-    Validation:
-        - Ensures profile_picture is a jpg, jpeg, or png file and does not exceed 5MB.
-    Creation:
-        - Creates a Store instance with the provided store_name.
-        - Creates a BusinessOwner user associated with the new Store.
-    Raises:
-        - serializers.ValidationError: If profile_picture is invalid.
-    """
-
-    store_name = serializers.CharField(required=True)
-
-    class Meta:
-        model = BusinessOwner
-        fields = [
-            'email',
-            'first_name',
-            'last_name',
-            'profile_picture',
-            'phone_number',
-            'whatsapp_number',
-            'otp',
-            'password',
-            'gender',
-            'store_name'
-        ]
-        extra_kwargs = {
-            'password': {'write_only': True, 'min_length': 6},
-            'otp': {'write_only': True},
-        }
+class BusinessOwnerSignupSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
+    phone_number = serializers.CharField(required=False, allow_null=True)
+    whatsapp_number = serializers.CharField(required=False, allow_null=True)
+    otp = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(write_only=True, min_length=6)
+    gender = serializers.CharField()
+    store_name = serializers.CharField()
 
     def validate_profile_picture(self, image):
         if image is None:
@@ -142,10 +110,6 @@ class BusinessOwnerSignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         store_name = validated_data.pop('store_name')
         store = Store.objects.create(name=store_name)
-
-        # Create the BusinessOwner instance
-        business_owner = BusinessOwner.objects.create_user(
-            store=store,
-            **validated_data
-        )
+        user = User.objects.create_user(**validated_data)
+        business_owner = BusinessOwner.objects.create(user=user, store=store)
         return business_owner

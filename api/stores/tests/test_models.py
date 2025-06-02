@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.utils import timezone
-from stores.models import Store
+from ..models import Store
 
 
 class StoreModelTests(TestCase):
