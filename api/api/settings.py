@@ -26,6 +26,9 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, []),
     REDAIS_DATABASE_URL=(str, ''),
     CELERY_BROKER_URL=(str, ''),
+    GOOGLE_REDIRECT_URI=(str, ''),
+    GOOGLE_CLIENT_ID=(str, ''),
+    GOOGLE_CLIENT_SECRET=(str, ''),
 )
 
 
@@ -52,14 +55,17 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'authentication.apps.AuthenticationConfig',
     'registration.apps.RegistrationConfig',
+    'stores.apps.StoresConfig',
     'rest_framework',
     'django_celery_beat',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',  # For token blacklisting
     'drf_spectacular',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Must be high in the list
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -173,6 +179,40 @@ CELERY_BEAT_SCHEDULE = {
 # (Optional) Track started tasks
 CELERY_TRACK_STARTED = True
 
+#### CORS Configuration ####
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",    # React development server
+    ###TODO: Add your frontend domain here
+    # "https://your-frontend-domain.com",  # Replace with your actual frontend domain
+]
+
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies (for refresh tokens)
+
+# Without this, Django might reject POST/PUT/DELETE requests
+# from your React app, even if CORS allows them.
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    ###TODO: Add your frontend domain here
+    # "https://your-frontend-domain.com",  # Replace with your actual frontend domain
+]
+
+# Allow specific headers if needed (optional)
+CORS_ALLOW_HEADERS = [
+    'authorization',
+    'content-type',
+    'x-csrftoken',
+    'accept',
+    'origin',
+    'user-agent',
+    'x-requested-with',
+]
+
+# Add this for local development (optional, only for testing)
+CORS_ALLOW_ALL_ORIGINS = False
+
+
 ####  Logging Configuration ####
 # Create a 'logs' directory in your project root
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
@@ -269,6 +309,46 @@ LOGGING = {
 
             'propagate': False,
         },
+        'authentication_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'authentication_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'accounts_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'accounts_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_models': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'stores_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
     }
 }
@@ -289,6 +369,14 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',  # Browsable API for dev only
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/minute',         # 10 requests per minute for anonymous users
+        'user': '100/hour',          # 100 requests per hour for authenticated users
+    },
 }
 
 # Simple JWT settings
@@ -302,3 +390,12 @@ SIMPLE_JWT = {
 
 # The custom user model that will handel the outh
 AUTH_USER_MODEL = 'accounts.User'
+
+# Google OAuth2 settings
+GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
+
+##### Media Settings ####
+MEDIA_URL = "/media/"  # Public URL for accessing media files
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directory where uploaded files will be stored
