@@ -132,3 +132,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"Email: {self.email}, First Name: {self.first_name}, Last Name: {self.last_name}, Gender: {self.gender}"
 
+
+class BusinessOwner(models.Model):
+    """
+    Represents a business owner profile associated with a user account.
+    Attributes:
+        user (User): A one-to-one relationship linking the business owner to a user account.
+    Methods:
+        __str__(): Returns a string representation of the business owner, including the company name and user email.
+    """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
+    # store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
+
+    def __str__(self):
+        return f"{self.company_name} ({self.user.email})"
