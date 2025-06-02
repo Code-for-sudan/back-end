@@ -62,6 +62,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     otp_expires_at = models.DateTimeField(blank=True, null=True, db_index=True)  # Expiration time
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)  # Required for admin access
+    is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
     gender = models.CharField( # Only one option can be selected here
         max_length=1,
         choices=GENDER_CHOICES,
@@ -142,7 +143,8 @@ class BusinessOwner(models.Model):
     Methods:
         __str__(): Returns a string representation of the business owner, including the company name and user email.
     """
-
+    # Extend the user model to create a business owner profile
+    # TODO: Add more fields to the business owner profile
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
     store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
 
