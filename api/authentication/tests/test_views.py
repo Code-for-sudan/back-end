@@ -48,12 +48,12 @@ class UserSigninTests(APITestCase):
     def test_signin_invalid_credentials(self):
         response = self.client.post(self.signin_url, self.invalid_credentials, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], 'Invalid credentials.')
+        self.assertEqual(response.data['message'], 'Invalid email or password.')
 
     def test_signin_missing_credentials(self):
         response = self.client.post(self.signin_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], 'Email and password are required.')
+        self.assertEqual(response.data['message'], 'Invalid email or password.')
 
 
 class ResetPasswordConfirmAPITest(APITestCase):
@@ -77,7 +77,7 @@ class ResetPasswordConfirmAPITest(APITestCase):
     """
 
     def setUp(self):
-        self.reset_url = reverse('reset-password-confirm')
+        self.reset_url = reverse('reset_password_confirm')
         self.user = User.objects.create_user(
             email="reset@example.com",
             password="oldpassword",

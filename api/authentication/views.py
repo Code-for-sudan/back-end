@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
+from .serializers import LoginSerializer, ResetPasswordConfirmSerializer
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 
@@ -19,6 +20,55 @@ logger = logging.getLogger('authentication_views')
 
 # Get the user model
 User = get_user_model()
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
+def login(request):
+    """
+    Handles user login by validating email and password.
+    This function authenticates the user and returns a JWT token if successful.
+    Args:
+        request (HttpRequest): The HTTP request object containing the user's email and password.
+    Returns:
+        Response: A DRF Response object containing the login status, user data, and access token.
+                  If authentication fails, an error message is returned.
+    """
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.validated_data['user']
+        access_token, refresh_token = generate_jwt_tokens(user)
+
+        response = Response(
+            {
+                'message': 'Login successful.',
+                'user': {
+                    'id': str(user.id),
+                    'email': user.email,
+                    'first_name': user.first_name,
+                },
+                'access_token': access_token,
+            },
+            status=status.HTTP_200_OK
+        )
+
+        # Set refresh token as an HTTP-only cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=str(refresh_token),
+            httponly=True,  # Security feature
+            secure=True,  # Use only in HTTPS
+            samesite="Lax",  # Protect against CSRF
+        )
+
+        return response
+
+    logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
+    return Response(
+        {'message': 'Invalid email or password.'},
+        status=status.HTTP_400_BAD_REQUEST
+    )
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
