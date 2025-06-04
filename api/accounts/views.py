@@ -1,89 +1,105 @@
+
 import logging
-from django.shortcuts import render
 from rest_framework.decorators import api_view, permission_classes # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
-from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
+from drf_spectacular.utils import extend_schema
+from .serializers import UserSerializer, BusinessOwnerSignupSerializer # type: ignore
 from rest_framework import status # type: ignore
-from .models import User
-from .utils import generate_jwt_tokens
+from .models import User # type: ignore
 
-# Crete the view logger
+
+# Create a logger for this module
 logger = logging.getLogger('accounts_views')
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def verify_otp(request):
+def sign_up_user(request):
     """
-    Handles OTP verification for user login.
-    This function verifies the OTP (One-Time Password) provided by the user
-    and returns a response indicating the success or failure of the verification.
-    If successful, it generates JWT tokens for the user and sets a refresh token
-    as an HTTP-only cookie.
+    Handles user registration.
+    This view function receives a request containing user data, validates it using the UserSerializer,
+    and creates a new user if the email does not already exist in the database. If the email is already
+    registered, it returns a 400 Bad Request response. On successful creation, it returns a 201 Created
+    response with the user data. If validation fails, it returns a 400 Bad Request response with error details.
     Args:
-        request (Request): The HTTP request object containing the user's email
-                           and OTP code in the request data.
+        request (Request): The HTTP request object containing user registration data.
     Returns:
-        Response: A Django REST framework Response object with the following:
-            - HTTP 200 OK: If the OTP verification is successful, returns a success
-              message, access token, and user details.
-            - HTTP 400 Bad Request: If the email or OTP code is missing, or if the
-              OTP code is invalid.
-            - HTTP 404 Not Found: If no user is found with the provided email.
-    Side Effects:
-        - Sets a secure, HTTP-only cookie for the refresh token with a 1-day expiration.
-    Raises:
-        None
+        Response: A DRF Response object with a message and status code indicating the result of the operation.
     """
 
-    user_email = request.data.get('email', '').strip().lower()
-    otp_code = request.data.get('otp_code')
-
-    if not user_email or not otp_code:
-        logger.error(f"Missing email or OTP in request: {request.data}")
+    serializer = UserSerializer(data=request.data)
+    if User.objects.filter(email=request.data['email']).exists():
+        # Log the error message
+        logger.error('User already exists.')
         return Response(
-            {'message': 'Email and OTP code are required.'},
+            {
+                'message': 'User already exists.'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {
+                'message': 'User created successfully.',
+                'data': serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+    else:
+        # Log the error message
+        logger.error('User creation failed: {}.'.format(serializer.errors))
+        return Response(
+            {
+                'message': 'User creation failed.',
+                'errors': serializer.errors
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    user = User.objects.filter(email=user_email).first()
-    if not user:
-        logger.warning(f"User with email {user_email} not found.")
-        return Response(
-            {'message': 'User not found.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
 
-    if not user.verify_otp(otp_code):
-        logger.warning(f"Invalid OTP for user {user_email}")
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def signup_bussiness_owner(request):
+    """
+    Handles business owner registration.
+    This view function receives a request containing business owner data, validates it using the BusinessOwner serializer,
+    and creates a new business owner if the email does not already exist in the database. If the email is already
+    registered, it returns a 400 Bad Request response. On successful creation, it returns a 201 Created
+    response with the business owner data. If validation fails, it returns a 400 Bad Request response with error details.
+    Args:
+        request (Request): The HTTP request object containing business owner registration data.
+    Returns:
+        Response: A DRF Response object with a message and status code indicating the result of the operation.
+    """
+
+    serializer = BusinessOwnerSignupSerializer(data=request.data)
+    if User.objects.filter(email=request.data['email']).exists():
+        # Log the error message
+        logger.error('Business owner already exists.')
         return Response(
-            {'message': 'Invalid OTP code.'},
+            {
+                'message': 'Business owner already exists.'
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
-
-    access_token, refresh_token = generate_jwt_tokens(user)
-    response = Response(
-        {
-            'message': 'Login successful.',
-            'access_token': access_token,
-            'user': {
-                'id': str(user.id),
-                'email': user.email,
-                'first name': user.first_name,
-            }
-        },
-        status=status.HTTP_200_OK
-    )
-
-    response.set_cookie(
-        key="refresh_token",
-        value=str(refresh_token),
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        max_age=1 * 24 * 60 * 60,  # 7 days
-        path='/api/auth/'
-    )
-
-    return response
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {
+                'message': 'Business owner created successfully.',
+                'data': serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+    else:
+        # Log the error message
+        logger.error('Business owner creation failed: {}.'.format(serializer.errors))
+        return Response(
+            {
+                'message': 'Business owner creation failed.',
+                'errors': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )

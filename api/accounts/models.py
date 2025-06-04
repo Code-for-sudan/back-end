@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
 from django.utils.timezone import now
 from accounts.userManager import UserManager
+from stores.models import Store
 from phonenumber_field.modelfields import PhoneNumberField
 
 # Create a models
@@ -61,6 +62,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     otp_expires_at = models.DateTimeField(blank=True, null=True, db_index=True)  # Expiration time
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)  # Required for admin access
+    is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
     gender = models.CharField( # Only one option can be selected here
         max_length=1,
         choices=GENDER_CHOICES,
@@ -137,3 +139,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"Email: {self.email}, First Name: {self.first_name}, Last Name: {self.last_name}, Gender: {self.gender}"
 
+
+class BusinessOwner(models.Model):
+    """
+    Represents a business owner profile associated with a user account.
+    Attributes:
+        user (User): A one-to-one relationship linking the business owner to a user account.
+    Methods:
+        __str__(): Returns a string representation of the business owner, including the company name and user email.
+    """
+    # Extend the user model to create a business owner profile
+    # TODO: Add more fields to the business owner profile
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
+    store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
+
+    def __str__(self):
+        return f"{self.user.first_name} ({self.user.email})"
