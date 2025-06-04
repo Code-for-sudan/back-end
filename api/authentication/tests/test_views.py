@@ -387,6 +387,7 @@ class ResendOtpAPITest(APITestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.resend_url = reverse('resend_otp')
         self.user = User.objects.create_user(
             email="resend@example.com",
@@ -414,7 +415,7 @@ class ResendOtpAPITest(APITestCase):
 
     def test_resend_otp_throttling(self):
         data = {"email": "resend@example.com"}
-        # Exceed the throttle rate (default is 3/min for AnonRateThrottle)
-        for _ in range(5):
+        # Exceed the throttle rate (global is 10/min for anonymous)
+        for _ in range(13):
             response = self.client.post(self.resend_url, data)
         self.assertEqual(response.status_code, 429)
