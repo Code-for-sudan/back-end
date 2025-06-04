@@ -13,6 +13,7 @@ from django.shortcuts import redirect
 from .serializers import LoginSerializer, ResetPasswordConfirmSerializer
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
+from accounts.tasks import send_email_task
 
 
 # Create a logger for this module
@@ -303,6 +304,7 @@ def verify_otp(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
 def reset_password_confirm(request):
     """
     Handles password reset by verifying OTP, validating new password, and setting the new password.
@@ -349,3 +351,39 @@ def reset_password_confirm(request):
     user.save()
     logger.info(f"Password reset successful for user {email}.")
     return Response({'message': 'Password reset successful.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
+def resend_otp(request):
+    """
+    Handles resending OTP to a user's email.
+    Args:
+        request (Request): The HTTP request object containing the user's email.
+    Returns:
+        Response: 200 OK if OTP is resent, 400 BAD REQUEST if email is missing or user does not exist.
+    Side Effects:
+        - Generates and sends a new OTP via email.
+        - Logs all actions and errors.
+    """
+    email = request.data.get('email', '').strip().lower()
+    if not email:
+        logger.error("No email provided for OTP resend.")
+        return Response({'message': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        logger.error(f"User with email {email} does not exist for OTP resend.")
+        return Response({'message': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    otp = user.generate_otp()
+    subject = "Your OTP Code"
+    body = f"Your OTP code is: {otp}"
+
+    # Send OTP via email using Celery task
+    send_email_task.delay([email], subject, body)
+
+    logger.info(f"OTP resent to user {email}.")
+    return Response({'message': 'OTP has been resent to your email.'}, status=status.HTTP_200_OK)
