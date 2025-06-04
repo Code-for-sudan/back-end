@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
+from .serializers import LoginSerializer, ResetPasswordConfirmSerializer
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 
@@ -19,6 +20,55 @@ logger = logging.getLogger('authentication_views')
 
 # Get the user model
 User = get_user_model()
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AnonRateThrottle])
+def login(request):
+    """
+    Handles user login by validating email and password.
+    This function authenticates the user and returns a JWT token if successful.
+    Args:
+        request (HttpRequest): The HTTP request object containing the user's email and password.
+    Returns:
+        Response: A DRF Response object containing the login status, user data, and access token.
+                  If authentication fails, an error message is returned.
+    """
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.validated_data['user']
+        access_token, refresh_token = generate_jwt_tokens(user)
+
+        response = Response(
+            {
+                'message': 'Login successful.',
+                'user': {
+                    'id': str(user.id),
+                    'email': user.email,
+                    'first_name': user.first_name,
+                },
+                'access_token': access_token,
+            },
+            status=status.HTTP_200_OK
+        )
+
+        # Set refresh token as an HTTP-only cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=str(refresh_token),
+            httponly=True,  # Security feature
+            secure=True,  # Use only in HTTPS
+            samesite="Lax",  # Protect against CSRF
+        )
+
+        return response
+
+    logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
+    return Response(
+        {'message': 'Invalid email or password.'},
+        status=status.HTTP_400_BAD_REQUEST
+    )
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -249,3 +299,53 @@ def verify_otp(request):
     )
 
     return response
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password_confirm(request):
+    """
+    Handles password reset by verifying OTP, validating new password, and setting the new password.
+    Args:
+        request (Request): The HTTP request object containing email, OTP, and new password.
+    Returns:
+        Response:
+            - 200 OK with a success message if OTP is valid and password is reset.
+            - 400 BAD REQUEST with an error message if any field is missing, the user does not exist, or OTP is invalid.
+    Raises:
+        KeyError: If 'email', 'otp', or 'new_password' is not present in the request data.
+    Side Effects:
+        - Logs errors for missing fields, invalid OTP, invalid password, or non-existent users.
+        - Updates the user's password if OTP verification and password validation are successful.
+    """
+    try:
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('new_password')
+    except KeyError:
+        logger.error('Email, OTP, and new password are required.')
+        return Response({'message': 'Email, OTP, and new password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    logger.info(f"Password reset attempt for email: {email}")
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        logger.error(f"User with email {email} does not exist.")
+        return Response({'message': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not user.verify_otp(otp):
+        logger.error(f"Invalid or expired OTP for user {email}.")
+        return Response({'message': 'Invalid OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = ResetPasswordConfirmSerializer()
+    try:
+        serializer.validate_new_password(new_password)
+    except Exception as e:
+        logger.error(f"Password validation failed for user {email}: {e}")
+        return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save()
+    logger.info(f"Password reset successful for user {email}.")
+    return Response({'message': 'Password reset successful.'}, status=status.HTTP_200_OK)

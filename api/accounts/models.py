@@ -107,6 +107,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         Returns:
             bool: True if the OTP is verified successfully, False otherwise.
         Logs:
+            - "OTP input is empty." if the provided OTP input is empty.
             - "OTP has expired." if the OTP has expired.
             - "Invalid OTP." if the provided OTP does not match the stored OTP.
             - "OTP verified successfully." if the OTP is verified successfully.
@@ -115,6 +116,10 @@ class User(AbstractBaseUser, PermissionsMixin):
             - Saves the changes to the database.
         """
 
+        if not otp_input:
+            logger.info("OTP input is empty.")
+            return False
+        
         # Chech the opt code time
         if not self.otp_expires_at or now() > self.otp_expires_at:
             logger.info("OTP has expired.")
