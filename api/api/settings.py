@@ -280,11 +280,6 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'accounts_models': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
-        },
         'authentication_views': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
@@ -299,24 +294,9 @@ LOGGING = {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
         },
-        'accounts_views': {
-            'handlers': ['file'],
-            'level': 'ERROR',  # Set to DEBUG for detailed logs
-            'propagate': False,
-        },
         'accounts_tests': {
             'handlers': ['file', 'console'],
             'level': 'ERROR',  # Set to DEBUG for detailed logs
-            'propagate': False,
-        },
-        'authentication_views': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
-        },
-        'authentication_tests': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_views': {
@@ -391,6 +371,8 @@ SIMPLE_JWT = {
 
 # The custom user model that will handel the outh
 AUTH_USER_MODEL = 'accounts.User'
+
+DEFAULT_FROM_EMAIL = 'noreply@example.com' # Should be changed
 
 # Google OAuth2 settings
 GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')
