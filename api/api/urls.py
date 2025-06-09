@@ -35,7 +35,6 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/docs/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    path('api/v1/', include('authentication.urls')),
-    path('api/v1/', include('accounts.urls')),
-    path('api/v1/', include('authentication.urls')),
+    path('api/v1/auth/', include('authentication.urls')),
+    path('api/v1/accounts/', include('accounts.urls')),
 ]
