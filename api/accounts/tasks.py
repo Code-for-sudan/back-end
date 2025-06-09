@@ -3,7 +3,7 @@ from celery import shared_task
 from django.core.mail import EmailMessage
 from django.conf import settings
 
-logger = logging.getLogger('email_tasks')
+logger = logging.getLogger('celery')
 
 @shared_task(queue='email')
 def send_email_task(recipients, subject, body, attachments=None):

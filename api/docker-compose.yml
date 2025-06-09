@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: builds/dev/Dockerfile # Web app Dockerfile
-    command: DJANGO_ENV=dev python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
@@ -13,6 +13,8 @@ services:
     env_file:
       - .env
       - .env.dev
+    environment:
+      - DJANGO_ENV=dev
     depends_on:
       - redis
 
