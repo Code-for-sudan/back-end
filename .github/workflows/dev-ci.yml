@@ -1,61 +1,47 @@
-name: Django CI/CD - Dev
+name: CI
 
 on:
   push:
-    branches:
-      - main
-      - development
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
-      - development
+    branches: [ main ]
 
 jobs:
-  development:
+  build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-      - name: Create .env files
-        run: |
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
-          echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
-          echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
-          echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
-          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-          echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
-          echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
+    - name: Build and start services
+      run: |
+        docker compose -f api/docker-compose.yml up -d --build
 
-      - name: Build Docker containers
-        run: docker compose -f api/docker-compose.yml build
+    - name: Wait for web to become healthy
+      run: |
+        for i in {1..20}; do
+          if docker logs api-web-1 2>&1 | grep -q "Starting development server at"; then
+            echo "Web is ready!"
+            break
+          fi
+          echo "Waiting for web to start..."
+          sleep 5
+        done
 
-      - name: Start containers in background
-        run: docker compose -f api/docker-compose.yml up -d
-
-      - name: Wait for Redis
-        run: |
-          echo "Waiting for Redis to be ready..."
-          for i in {1..10}; do
-            docker exec $(docker ps -qf "name=redis") redis-cli ping && break
-            sleep 2
-          done
-
-      - name: Apply Migrations
-        run: |
-          docker compose -f api/docker-compose.yml exec web python manage.py makemigrations
-          docker compose -f api/docker-compose.yml exec web python manage.py migrate
-
-      - name: Run Tests
-        run: docker compose -f api/docker-compose.yml exec web python manage.py test
-
-      - name: Tear Down
-        run: docker compose -f api/docker-compose.yml down -v
+    - name: Run Django tests
+      run: docker exec api-web-1 python manage.py test
