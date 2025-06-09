@@ -31,6 +31,7 @@ jobs:
           echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
           echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
 
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
