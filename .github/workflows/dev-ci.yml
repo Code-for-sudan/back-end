@@ -10,27 +10,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6380:6379
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+
     - name: Create .env files
       run: |
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
-          echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
-          echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
-          echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
-          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
+        echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
+        echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
+        echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
+        echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
 
-          echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
-          echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
-
+        echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
+        echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -41,8 +35,7 @@ jobs:
         python-version: '3.11'
 
     - name: Build and start services
-      run: |
-        docker compose -f api/docker-compose.yml up -d --build
+      run: docker compose -f api/docker-compose.yml up -d --build
 
     - name: Wait for web to become healthy
       run: |
@@ -54,12 +47,11 @@ jobs:
           echo "Waiting for web to start..."
           sleep 5
         done
-  
+
     - name: Apply Migrations
       run: |
-         docker compose -f api/docker-compose.yml run --rm web python manage.py makemigrations
-         docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
+        docker compose -f api/docker-compose.yml run --rm web python manage.py makemigrations
+        docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
 
     - name: Run Django tests
-      run: docker exec api-web-1 python manage.py test
-  
+      run: docker compose -f api/docker-compose.yml exec web python manage.py test
