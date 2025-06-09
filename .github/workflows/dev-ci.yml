@@ -19,8 +19,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-     - name: Create .env files
-        run: |
+    - name: Create .env files
+      run: |
           echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
           echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
