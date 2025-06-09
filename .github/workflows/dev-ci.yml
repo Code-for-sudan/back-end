@@ -17,47 +17,45 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-    
-      - name: Create .env file
+
+      - name: Create .env files
         run: |
           echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
           echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
           echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
-          echo "REDAIS_DATABASE_URL=${{ secrets.REDAIS_DATABASE_URL }}" >> api/.env
+          echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
           echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
 
-      - name: Create .env.dev file
-        run: |
-           echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
-           echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
-           
+          echo "DEBUG=${{ secrets.DEBUG }}" >> api/.env.dev
+          echo "DJANGO_ENV=${{ secrets.DJANGO_ENV }}" >> api/.env.dev
+
       - name: Build Docker containers
         run: docker compose -f api/docker-compose.yml build
 
-      - name: Wait for DB to be ready
+      - name: Start containers in background
+        run: docker compose -f api/docker-compose.yml up -d
+
+      - name: Wait for Redis
         run: |
-          docker compose -f api/docker-compose.yml build
-          sleep 10  # Optional: Replace with proper wait-for-it script
-    
-      - name: Debug - List files
-        run: |
-          pwd
-          ls -R
+          echo "Waiting for Redis to be ready..."
+          for i in {1..10}; do
+            docker exec $(docker ps -qf "name=redis") redis-cli ping && break
+            sleep 2
+          done
 
       - name: Apply Migrations
         run: |
-         docker compose -f api/docker-compose.yml run --rm web python manage.py makemigrations
-         docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
+          docker compose -f api/docker-compose.yml exec web python manage.py makemigrations
+          docker compose -f api/docker-compose.yml exec web python manage.py migrate
 
       - name: Run Tests
-        run: |
-          docker compose -f api/docker-compose.yml run --rm web python manage.py test
+        run: docker compose -f api/docker-compose.yml exec web python manage.py test
 
       - name: Tear Down
-        run: |
-          docker compose -f api/docker-compose.yml down -v
+        run: docker compose -f api/docker-compose.yml down -v
