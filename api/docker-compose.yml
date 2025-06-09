@@ -4,7 +4,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: builds/dev/Dockerfile # Web app Dockerfile
+      dockerfile: builds/dev/Dockerfile  # Web app Dockerfil
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -18,6 +18,7 @@ services:
     depends_on:
       - redis
 
+  # Uncomment this block to use MySQL
   # db:
   #   image: mysql:8
   #   container_name: mysql
@@ -57,7 +58,7 @@ services:
   celery_beat:
     build:
       context: .
-      dockerfile: builds/dev/Dockerfile.celery # Same Dockerfile as Celery worker
+      dockerfile: builds/dev/Dockerfile.celery
     container_name: celery_beat
     command: celery -A api beat --loglevel=info
     volumes:
