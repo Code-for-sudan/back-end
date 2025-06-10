@@ -30,8 +30,7 @@ class GoogleLoginTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("https://accounts.google.com/o/oauth2/auth"))
 
-
-class GoogleOAuthViewsTestCase(TestCase):
+class GoogleOAuthViewsTests(TestCase):
     """
     Test case for testing Google OAuth views.
     This test case includes tests for the following scenarios:
@@ -116,9 +115,9 @@ class GoogleOAuthViewsTestCase(TestCase):
         self.assertEqual(response.data['message'], "No code provided")
 
 @override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_RATES': {'anon': '1000/minute'}})
-class VerifyOTPTests(TestCase):
+class ResetPasswordVerifyAPITests(APITestCase):
     """
-    Test suite for the Verify OTP API endpoint.
+    Test suite for the Reset Password Verify API endpoint.
     This test class contains various test cases to ensure the functionality and robustness
     of the OTP verification process. It covers scenarios such as missing fields, invalid
     inputs, and successful OTP verification.
@@ -149,7 +148,7 @@ class VerifyOTPTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.url = reverse('verify_otp')
+        self.url = reverse('reset_password_verify')
         self.user = User.objects.create_user(email='test@example.com', password='testpassword')
 
     def test_missing_email_and_otp_returns_400(self):
@@ -234,11 +233,11 @@ class VerifyOTPTests(TestCase):
         response = self.client.post(self.url, data={'email': self.user.email, 'otp_code': '123456'})
         self.assertEqual(response.status_code, 429)  # Too Many Requests
 
-class UserSigninTests(APITestCase):
+class UserLoginAPITests(APITestCase):
     """
-    Test suite for user signin functionality.
+    Test suite for user login functionality.
     Classes:
-        UserSigninTests: Test cases for user signin API endpoint.
+        UserLoginTests: Test cases for user login API endpoint.
     Methods:
         setUp(self):
             Sets up the test environment by defining the signin URL and creating a test user.
@@ -285,8 +284,7 @@ class UserSigninTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['message'], 'Invalid email or password.')
 
-
-class ResetPasswordConfirmAPITest(APITestCase):
+class ResetPasswordConfirmAPITests(APITestCase):
     """
     Test suite for password reset confirmation functionality.
     Classes:
@@ -368,27 +366,26 @@ class ResetPasswordConfirmAPITest(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
-
-class ResendOtpAPITest(APITestCase):
+class ResetPasswordRequestAPITests(APITestCase):
     """
-    Test suite for the resend_otp endpoint.
+    Test suite for the Reset Password Request endpoint.
 
     Methods:
         setUp(self):
             Sets up the test environment by defining the resend OTP URL and creating a test user.
-        test_resend_otp_success(self):
+        test_reset_password_request_success(self):
             Tests that a user can successfully request a new OTP.
-        test_resend_otp_missing_email(self):
+        test_reset_password_request_missing_email(self):
             Tests that missing email returns a 400 status code.
-        test_resend_otp_nonexistent_user(self):
+        test_reset_password_request_nonexistent_user(self):
             Tests that a non-existent user returns a 400 status code.
-        test_resend_otp_throttling(self):
+        test_reset_password_request_throttling(self):
             Tests that too many requests are throttled.
     """
 
     def setUp(self):
         cache.clear()
-        self.resend_url = reverse('resend_otp')
+        self.resend_url = reverse('reset_password_request')
         self.user = User.objects.create_user(
             email="resend@example.com",
             password="testpassword123",
@@ -396,24 +393,24 @@ class ResendOtpAPITest(APITestCase):
             last_name="User"
         )
 
-    def test_resend_otp_success(self):
+    def test_reset_password_request_success(self):
         data = {"email": "resend@example.com"}
         response = self.client.post(self.resend_url, data)
         self.assertEqual(response.status_code, 200)
         self.assertIn("message", response.data)
 
-    def test_resend_otp_missing_email(self):
+    def test_reset_password_request_missing_email(self):
         response = self.client.post(self.resend_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
-    def test_resend_otp_nonexistent_user(self):
+    def test_reset_password_request_nonexistent_user(self):
         data = {"email": "notfound@example.com"}
         response = self.client.post(self.resend_url, data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
-    def test_resend_otp_throttling(self):
+    def test_reset_password_request_throttling(self):
         data = {"email": "resend@example.com"}
         # Exceed the throttle rate (global is 10/min for anonymous)
         for _ in range(13):
