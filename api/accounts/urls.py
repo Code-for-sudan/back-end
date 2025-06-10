@@ -3,6 +3,6 @@ from django.urls import path
 
 
 urlpatterns = [
-    path('signup_user/', views.sign_up_user, name='signup_user'),
-    path('signup_bussiness_owner/', views.signup_bussiness_owner, name='signup_bussiness_owner'),
+    path('signup/user/', views.SignupUserView.as_view(), name='signup_user'),
+    path('signup/bussiness/', views.SignupBusinessOwnerView.as_view(), name='signup_bussiness_owner'),
 ]
