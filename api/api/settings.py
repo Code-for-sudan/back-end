@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts.apps.AccountsConfig',
     'authentication.apps.AuthenticationConfig',
-    'registration.apps.RegistrationConfig',
     'stores.apps.StoresConfig',
     'rest_framework',
     'django_celery_beat',
