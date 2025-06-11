@@ -64,3 +64,23 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
     """
 
     code = serializers.CharField(help_text="Authorization code returned by Google after login")
+
+
+class ResetPasswordVerifyRequestSerializer(serializers.Serializer):
+    """
+    Serializer for verifying a password reset request using an email and a one-time password (OTP) code.
+    Fields:
+        email (EmailField): The user's email address.
+        otp_code (CharField): The 6-digit OTP code sent to the user.
+    Validation:
+        - Ensures that the OTP code consists of exactly 6 digits.
+        - Raises a ValidationError if the OTP code is not a 6-digit number.
+    """
+
+    email = serializers.EmailField(help_text="User's email address")
+    otp_code = serializers.CharField(help_text="One-Time Password code sent to user")
+    def validate_otp_code(self, value):
+        if not value.isdigit() or len(value) != 6:
+            logger.error("[ResetPasswordVerifyRequestSerializer] OTP code validation failed: must be a 6-digit number.")
+            raise serializers.ValidationError("OTP code must be a 6-digit number.")
+        return value

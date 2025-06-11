@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
-from .serializers import LoginSerializer, ResetPasswordConfirmSerializer
+from .serializers import LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from accounts.tasks import send_email_task
@@ -293,6 +293,7 @@ class GoogleCallbackView(APIView):
         )
 
         return response
+
 
 class ResetPasswordVerifyView(APIView):
     permission_classes = [AllowAny]
