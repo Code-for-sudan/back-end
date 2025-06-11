@@ -2,6 +2,7 @@
 import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response # type: ignore
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from drf_spectacular.utils import extend_schema
 from .serializers import UserSerializer, BusinessOwnerSignupSerializer # type: ignore
@@ -12,7 +13,20 @@ from .models import User # type: ignore
 # Create a logger for this module
 logger = logging.getLogger('accounts_views')
 
-
+@extend_schema(
+    request=UserSerializer,
+    responses={
+        201: OpenApiResponse(
+            response=UserSerializer,
+            description='User created successfully.'
+        ),
+        400: OpenApiResponse(
+            description='User already exists or validation failed.'
+        ),
+    },
+    description="Register a new user account.",
+    summary="User Signup"
+)
 class SignupUserView(APIView):
     permission_classes = [AllowAny]
 
@@ -56,7 +70,20 @@ class SignupUserView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-
+@extend_schema(
+    request=BusinessOwnerSignupSerializer,
+    responses={
+        201: OpenApiResponse(
+            response=BusinessOwnerSignupSerializer,
+            description='Business owner created successfully.'
+        ),
+        400: OpenApiResponse(
+            description='Business owner already exists or validation failed.'
+        ),
+    },
+    description="Register a new business owner with a store.",
+    summary="Business Owner Signup"
+)
 class SignupBusinessOwnerView(APIView):
     permission_classes = [AllowAny]
 

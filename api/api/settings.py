@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts.apps.AccountsConfig',
     'authentication.apps.AuthenticationConfig',
-    'registration.apps.RegistrationConfig',
     'stores.apps.StoresConfig',
     'rest_framework',
     'django_celery_beat',
@@ -358,6 +357,17 @@ REST_FRAMEWORK = {
         'anon': '10/minute',         # 10 requests per minute for anonymous users
         'user': '100/hour',          # 100 requests per hour for authenticated users
     },
+}
+
+#### Spectacular Configuration ####
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Documentation',
+    'DESCRIPTION': 'API documentation for the Django project.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # Disable schema serving in production
+    'SCHEMA_PATH_PREFIX': '/api/v1',  # Adjust as needed
+    'COMPONENT_SPLIT_REQUEST': True,  # Split request body into components
+    # 'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_schema'],
 }
 
 # Simple JWT settings

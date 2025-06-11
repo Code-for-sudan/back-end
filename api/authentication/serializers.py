@@ -55,3 +55,55 @@ class ResetPasswordConfirmSerializer(serializers.Serializer):
                 "Password must be at least 8 characters long, contain both letters and numbers, and have only letters and digits."
             )
         return value
+
+class GoogleAuthCodeSerializer(serializers.Serializer):
+    """
+    Serializer for handling Google OAuth2 authorization codes.
+    Fields:
+        code (CharField): The authorization code returned by Google after a successful login.
+    """
+
+    code = serializers.CharField(help_text="Authorization code returned by Google after login")
+
+
+class ResetPasswordVerifyRequestSerializer(serializers.Serializer):
+    """
+    Serializer for verifying a password reset request using an email and a one-time password (OTP) code.
+    Fields:
+        email (EmailField): The user's email address.
+        otp_code (CharField): The 6-digit OTP code sent to the user.
+    Validation:
+        - Ensures that the OTP code consists of exactly 6 digits.
+        - Raises a ValidationError if the OTP code is not a 6-digit number.
+    """
+
+    email = serializers.EmailField(help_text="User's email address")
+    otp_code = serializers.CharField(help_text="One-Time Password code sent to user")
+    def validate_otp_code(self, value):
+        if not value.isdigit() or len(value) != 6:
+            logger.error("[ResetPasswordVerifyRequestSerializer] OTP code validation failed: must be a 6-digit number.")
+            raise serializers.ValidationError("OTP code must be a 6-digit number.")
+        return value
+
+
+class ResetPasswordConfirmRequestSerializer(serializers.Serializer):
+    """
+    Serializer for confirming a password reset request.
+    Fields:
+        email (EmailField): User's email address.
+        otp (CharField): One-Time Password code sent to the user.
+        new_password (CharField): New password to set for the user.
+    """
+
+    email = serializers.EmailField(help_text="User's email address")
+    otp = serializers.CharField(help_text="One-Time Password code")
+    new_password = serializers.CharField(help_text="New password for the user")
+
+class ResetPasswordRequestSerializer(serializers.Serializer):
+    """
+    Serializer for handling password reset requests.
+    Fields:
+        email (EmailField): User's email address to send the password reset instructions.
+    """
+
+    email = serializers.EmailField(help_text="User's email address")
