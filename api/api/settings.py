@@ -360,6 +360,17 @@ REST_FRAMEWORK = {
     },
 }
 
+#### Spectacular Configuration ####
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Documentation',
+    'DESCRIPTION': 'API documentation for the Django project.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # Disable schema serving in production
+    'SCHEMA_PATH_PREFIX': '/api/v1',  # Adjust as needed
+    'COMPONENT_SPLIT_REQUEST': True,  # Split request body into components
+    'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_schema'],
+}
+
 # Simple JWT settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Adjust as needed
