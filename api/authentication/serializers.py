@@ -84,3 +84,26 @@ class ResetPasswordVerifyRequestSerializer(serializers.Serializer):
             logger.error("[ResetPasswordVerifyRequestSerializer] OTP code validation failed: must be a 6-digit number.")
             raise serializers.ValidationError("OTP code must be a 6-digit number.")
         return value
+
+
+class ResetPasswordConfirmRequestSerializer(serializers.Serializer):
+    """
+    Serializer for confirming a password reset request.
+    Fields:
+        email (EmailField): User's email address.
+        otp (CharField): One-Time Password code sent to the user.
+        new_password (CharField): New password to set for the user.
+    """
+
+    email = serializers.EmailField(help_text="User's email address")
+    otp = serializers.CharField(help_text="One-Time Password code")
+    new_password = serializers.CharField(help_text="New password for the user")
+
+class ResetPasswordRequestSerializer(serializers.Serializer):
+    """
+    Serializer for handling password reset requests.
+    Fields:
+        email (EmailField): User's email address to send the password reset instructions.
+    """
+
+    email = serializers.EmailField(help_text="User's email address")
