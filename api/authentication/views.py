@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
-from .serializers import LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer
+from .serializers import LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer, ResetPasswordVerifyRequestSerializer
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from accounts.tasks import send_email_task
@@ -295,6 +295,32 @@ class GoogleCallbackView(APIView):
         return response
 
 
+@extend_schema(
+    summary="Verify OTP for password reset login",
+    description="Verifies the OTP code sent to the user’s email and returns JWT tokens upon success.",
+    request=ResetPasswordVerifyRequestSerializer,
+    responses={
+        200: OpenApiResponse(
+            description="OTP verified successfully. Returns user details and access token.",
+            examples=[
+                OpenApiExample(
+                    "Success Response",
+                    value={
+                        "message": "Login successful.",
+                        "access_token": "eyJ0eXAiOiJKV1QiLCJh...",
+                        "user": {
+                            "id": "123",
+                            "email": "user@example.com",
+                            "first name": "John"
+                        }
+                    }
+                )
+            ]
+        ),
+        400: OpenApiResponse(description="Missing email or OTP code, or invalid OTP."),
+        404: OpenApiResponse(description="User with given email not found."),
+    }
+)
 class ResetPasswordVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
