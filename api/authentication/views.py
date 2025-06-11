@@ -9,11 +9,13 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
-from .serializers import LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer, ResetPasswordVerifyRequestSerializer
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from accounts.tasks import send_email_task
-
+from .serializers import (LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer,
+                          ResetPasswordVerifyRequestSerializer, ResetPasswordConfirmRequestSerializer,
+                          ResetPasswordRequestSerializer
+                        )
 
 # Create a logger for this module
 logger = logging.getLogger('authentication_views')
@@ -398,6 +400,16 @@ class ResetPasswordVerifyView(APIView):
 
         return response
 
+
+@extend_schema(
+    summary="Confirm password reset by verifying OTP and setting new password",
+    description="Verifies OTP and resets the user's password if the OTP is valid and the new password passes validation.",
+    request=ResetPasswordConfirmRequestSerializer,
+    responses={
+        200: OpenApiResponse(description="Password reset successful."),
+        400: OpenApiResponse(description="Invalid request, missing fields, invalid OTP, or password validation failed."),
+    }
+)
 class ResetPasswordConfirmView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
@@ -449,6 +461,16 @@ class ResetPasswordConfirmView(APIView):
         logger.info(f"Password reset successful for user {email}.")
         return Response({'message': 'Password reset successful.'}, status=status.HTTP_200_OK)
 
+
+@extend_schema(
+    summary="Request password reset OTP resend",
+    description="Sends a new OTP code to the user's email to allow password reset.",
+    request=ResetPasswordRequestSerializer,
+    responses={
+        200: OpenApiResponse(description="OTP has been resent to the user's email."),
+        400: OpenApiResponse(description="Missing email or user does not exist."),
+    }
+)
 class ResetPasswordRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
