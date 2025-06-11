@@ -55,3 +55,12 @@ class ResetPasswordConfirmSerializer(serializers.Serializer):
                 "Password must be at least 8 characters long, contain both letters and numbers, and have only letters and digits."
             )
         return value
+
+class GoogleAuthCodeSerializer(serializers.Serializer):
+    """
+    Serializer for handling Google OAuth2 authorization codes.
+    Fields:
+        code (CharField): The authorization code returned by Google after a successful login.
+    """
+
+    code = serializers.CharField(help_text="Authorization code returned by Google after login")
