@@ -5,6 +5,7 @@ from rest_framework.response import Response # type: ignore
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
@@ -20,6 +21,41 @@ logger = logging.getLogger('authentication_views')
 # Get the user model
 User = get_user_model()
 
+@extend_schema(
+    request=LoginSerializer,
+    responses={
+        200: OpenApiResponse(
+            description='Login successful. Returns user data and access token.'
+        ),
+        400: OpenApiResponse(
+            description='Invalid email or password.'
+        ),
+    },
+    summary="User Login",
+    description="Authenticates user using email and password. Returns JWT access token and sets refresh token as HttpOnly cookie.",
+    examples=[
+        OpenApiExample(
+            name="Login example",
+            value={"email": "user@example.com", "password": "your_password"},
+            request_only=True,
+            response_only=False
+        ),
+        OpenApiExample(
+            name="Successful login response",
+            value={
+                "message": "Login successful.",
+                "user": {
+                    "id": "1234",
+                    "email": "user@example.com",
+                    "first_name": "John"
+                },
+                "access_token": "eyJ0eXAiOiJKV1QiLCJh..."
+            },
+            request_only=False,
+            response_only=True
+        ),
+    ]
+)
 class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
@@ -67,6 +103,13 @@ class LoginView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+@extend_schema(
+    summary="Initiate Google OAuth2 login",
+    description="Redirects the user to Google OAuth2 consent screen for authentication.",
+    responses={
+        302: OpenApiResponse(description="Redirects to Google OAuth2 login page"),
+    },
+)
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
@@ -84,6 +127,37 @@ class GoogleLoginView(APIView):
         )
         return redirect(google_url)
 
+
+@extend_schema(
+    request=GoogleAuthCodeSerializer,
+    responses={
+        200: OpenApiResponse(description="Google login successful. Returns user data and JWT access token."),
+        400: OpenApiResponse(description="Error during authentication process (e.g., missing code or failed token exchange)."),
+    },
+    summary="Google OAuth2 Callback",
+    description="Handles the Google OAuth2 callback. Exchanges code for tokens, retrieves user info, logs in or creates user, and sets JWT tokens.",
+    examples=[
+        OpenApiExample(
+            name="Authorization Code Request",
+            value={"code": "4/0AY0e-g7a_example_code"},
+            request_only=True
+        ),
+        OpenApiExample(
+            name="Successful Response",
+            value={
+                "message": "Login successful.",
+                "user": {
+                    "id": 1,
+                    "email": "user@example.com",
+                    "first_name": "Jane",
+                    "last_name": "Doe"
+                },
+                "access_token": "eyJ0eXAiOiJKV1QiLCJh..."
+            },
+            response_only=True
+        )
+    ]
+)
 class GoogleCallbackView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
