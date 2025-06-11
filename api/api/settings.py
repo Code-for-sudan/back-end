@@ -368,7 +368,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,  # Disable schema serving in production
     'SCHEMA_PATH_PREFIX': '/api/v1',  # Adjust as needed
     'COMPONENT_SPLIT_REQUEST': True,  # Split request body into components
-    'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_schema'],
+    # 'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_schema'],
 }
 
 # Simple JWT settings
