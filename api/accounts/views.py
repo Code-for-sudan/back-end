@@ -70,7 +70,20 @@ class SignupUserView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-
+@extend_schema(
+    request=BusinessOwnerSignupSerializer,
+    responses={
+        201: OpenApiResponse(
+            response=BusinessOwnerSignupSerializer,
+            description='Business owner created successfully.'
+        ),
+        400: OpenApiResponse(
+            description='Business owner already exists or validation failed.'
+        ),
+    },
+    description="Register a new business owner with a store.",
+    summary="Business Owner Signup"
+)
 class SignupBusinessOwnerView(APIView):
     permission_classes = [AllowAny]
 
