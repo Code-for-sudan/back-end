@@ -47,7 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name': {'required': True},
             'last_name': {'required': True},
             'password': {'required': True},
-            'gender': {'required': True}
+            'gender': {'required': False}
         }
 
     def validate_profile_picture(self, image):
