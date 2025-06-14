@@ -55,8 +55,8 @@ A robust Django backend for the StoreBridge platform, providing secure user and 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/sudamall-backend.git
-   cd sudamall-backend/api
+   git clone [git@github.com:Code-for-sudan/back-end.git](https://github.com/Code-for-sudan/back-end.git)
+   cd Code-for-sudan/back-end
    ```
 
 2. **Create and activate a virtual environment**
@@ -71,16 +71,17 @@ A robust Django backend for the StoreBridge platform, providing secure user and 
    ```
 
 4. **Configure environment variables**
-   - Copy `.env.example` to `.env` and fill in your settings.
+   - Make sure all the env files in the app dir.
 
 5. **Apply migrations**
    ```bash
+   python manage.py makemigrations 
    python manage.py migrate
    ```
 
 6. **Run the development server**
    ```bash
-   python manage.py runserver
+   DJANGO_ENV=dev python manage.py runserver
    ```
 
 7. **Start Celery worker (in a separate terminal)**
@@ -88,7 +89,12 @@ A robust Django backend for the StoreBridge platform, providing secure user and 
    celery -A api worker --loglevel=info
    ```
 
-8. **Access API docs**
+8. **Start Celery beat (in a separate terminal)**
+   ```bash
+   celery -A api beat --loglevel=info
+   ```
+
+9. **Access API docs**
    - Visit [http://localhost:8000/api/schema/swagger-ui/](http://localhost:8000/api/schema/swagger-ui/)
 
 ---
