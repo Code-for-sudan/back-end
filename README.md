@@ -116,13 +116,13 @@ python manage.py test
 
 ## 🤝 Contributing
 
-Please read [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on issues and pull requests.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on issues and pull requests.
 
 ---
 
 ## 📄 License
 
-See [LICENSE](../LICENSE) for details.
+See [LICENSE](./LICENSE) for details.
 
 ---
 
