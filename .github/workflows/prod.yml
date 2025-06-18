@@ -79,4 +79,4 @@ jobs:
 
     - name: Tear down Docker services
       if: always()
-      run: docker compose down --volumes
+      run: docker compose -f api/docker-compose.prod.yml down --volumes
