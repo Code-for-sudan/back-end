@@ -13,7 +13,7 @@ WORKDIR /api
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libmysqlclient-dev \
+    libmariadb-dev \
     libjpeg-dev \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
