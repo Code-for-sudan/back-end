@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: builds/prod/Dockerfile
+    command: gunicorn api.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/api/static
+      - media_volume:/api/media
+    expose:
+      - "8000"
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    image: mysql:8
+    container_name: mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    env_file:
+      - .env.prod
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./config/mysql.cnf:/etc/mysql/conf.d/custom.cnf
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  celery:
+    build:
+      context: .
+      dockerfile: builds/prod/Dockerfile.celery
+    container_name: celery_worker
+    command: celery -A api worker --loglevel=info
+    volumes:
+      - static_volume:/api/static
+      - media_volume:/api/media
+    env_file:
+      - .env.prod
+    depends_on:
+      - redis
+      - web
+    restart: unless-stopped
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: builds/prod/Dockerfile.celery
+    container_name: celery_beat
+    command: celery -A api beat --loglevel=info
+    volumes:
+      - static_volume:/api/static
+      - media_volume:/api/media
+    env_file:
+      - .env.prod
+    depends_on:
+      - redis
+      - web
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - static_volume:/api/static
+      - media_volume:/api/media
+      - ./builds/prod/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+
+volumes:
+  static_volume:
+  media_volume:
+  redis_data:
+  db_data:
