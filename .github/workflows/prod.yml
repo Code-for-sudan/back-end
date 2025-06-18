@@ -54,7 +54,7 @@ jobs:
 
     - name: Build and start Docker services
       run: |
-        docker compose -f docker-compose.yml --env-file .env up -d --build
+        docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 
     - name: Wait for Django to be ready
       run: |
