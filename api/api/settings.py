@@ -29,6 +29,11 @@ env = environ.Env(
     GOOGLE_REDIRECT_URI=(str, ''),
     GOOGLE_CLIENT_ID=(str, ''),
     GOOGLE_CLIENT_SECRET=(str, ''),
+    USER=(str, ''),
+    PASSWORD=(str, ''),
+    HOST=(str, 'db'),
+    PORT=(str, '3306'),
+    NAME=(str, ''),
 )
 
 
