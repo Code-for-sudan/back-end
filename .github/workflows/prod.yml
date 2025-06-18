@@ -1,0 +1,82 @@
+name: Production CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.DB_NAME }}
+          MYSQL_USER: ${{ secrets.DB_USER }}
+          MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Create environment files
+      run: |
+        touch .env
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+        echo "DEBUG=False" >> .env
+        echo "DJANGO_ENV=prod" >> .env
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+        echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> .env
+        echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> .env
+        echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
+        echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+        echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+        echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+        echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+        echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+        cp .env .env.prod
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build and start Docker services
+      run: |
+        docker compose -f docker-compose.yml --env-file .env up -d --build
+
+    - name: Wait for Django to be ready
+      run: |
+        echo "Waiting for Django service to be ready..."
+        for i in {1..20}; do
+          if docker compose logs web | grep -q "Booting worker with pid"; then
+            echo "Django is ready!"
+            break
+          fi
+          sleep 5
+        done
+
+    - name: Apply Migrations
+      run: |
+        docker compose exec web python manage.py migrate --noinput
+
+    - name: Collect Static Files
+      run: docker compose exec web python manage.py collectstatic --noinput
+
+    - name: Run Django Tests
+      run: docker compose exec web python manage.py test
+
+    - name: Tear down Docker services
+      if: always()
+      run: docker compose down --volumes
