@@ -63,21 +63,21 @@ jobs:
       run: |
        echo "Waiting for Django to be ready..."
        for i in {1..20}; do
-         docker compose -f api/docker-compose.yml run --rm web python manage.py check --deploy --fail-level ERROR && break
+         docker compose -f api/docker-compose.prod.yml run --rm web python manage.py check --deploy --fail-level ERROR && break
          echo "Still waiting..."
          sleep 5
        done
 
     - name: Apply Migrations
       run: |
-        docker compose -f api/docker-compose.yml run --rm web python manage.py makemigrations
-        docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
+        docker compose -f api/docker-compose.prod.yml run --rm web python manage.py makemigrations
+        docker compose -f api/docker-compose.prod.yml run --rm web python manage.py migrate
 
     - name: Collect Static Files
-      run: docker compose exec web python manage.py collectstatic --noinput
+      run: docker compose -f api/docker-compose.prod.yml run --rm web python manage.py collectstatic --noinput
 
     - name: Run Django Tests
-      run: docker compose exec web python manage.py test
+      run: docker compose -f api/docker-compose.prod.yml run --rm web python manage.py test
 
     - name: Tear down Docker services
       if: always()
