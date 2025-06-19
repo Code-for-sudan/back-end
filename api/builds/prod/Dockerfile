@@ -36,6 +36,7 @@ COPY . .
 
 # Collect static files (will be served by nginx)
 RUN python manage.py collectstatic --noinput
-
+# Copy collected static files to a separate location in image
+RUN cp -r /api/static /static_baked
 # Set default command to use Gunicorn WSGI server
 CMD ["gunicorn", "api.wsgi:application", "--bind", "0.0.0.0:8000"]
