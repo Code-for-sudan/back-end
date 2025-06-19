@@ -63,14 +63,15 @@ jobs:
       run: |
        echo "Waiting for Django to be ready..."
        for i in {1..20}; do
-         docker compose exec web python manage.py check --deploy --fail-level ERROR && break
+         docker compose -f api/docker-compose.yml run --rm web python manage.py check --deploy --fail-level ERROR && break
          echo "Still waiting..."
          sleep 5
        done
 
     - name: Apply Migrations
       run: |
-        docker compose exec web python manage.py migrate --noinput
+        docker compose -f api/docker-compose.yml run --rm web python manage.py makemigrations
+        docker compose -f api/docker-compose.yml run --rm web python manage.py migrate
 
     - name: Collect Static Files
       run: docker compose exec web python manage.py collectstatic --noinput
