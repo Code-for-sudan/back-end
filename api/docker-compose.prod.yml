@@ -23,7 +23,7 @@ services:
     container_name: mysql
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "3307:3306"
     env_file:
       - .env.prod
     volumes:
