@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements/ /api/requirements/
 COPY .env /api/.env
 COPY .env.prod /api/.env.prod
+COPY wait-for-it.sh /api/wait-for-it.sh
+RUN chmod +x /api/wait-for-it.sh
 RUN pip install --upgrade pip
 RUN pip install -r requirements/prod.txt
 
