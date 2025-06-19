@@ -1,11 +1,13 @@
 version: "3.9"
 
 services:
+  services:
   web:
     build:
       context: .
       dockerfile: builds/prod/Dockerfile
-    command: gunicorn api.wsgi:application --bind 0.0.0.0:8000
+    command: >
+      sh -c "./wait-for-it.sh db:3306 -- gunicorn api.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - static_volume:/api/static
       - media_volume:/api/media
@@ -14,8 +16,10 @@ services:
     env_file:
       - .env.prod
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
 
   db:
@@ -29,6 +33,11 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./config/mysql.cnf:/etc/mysql/conf.d/custom.cnf
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
