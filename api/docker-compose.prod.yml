@@ -6,7 +6,10 @@ services:
       context: .
       dockerfile: builds/prod/Dockerfile
     command: >
-      sh -c "./wait-for-it.sh db:3306 -- gunicorn api.wsgi:application --bind 0.0.0.0:8000"
+      sh -c "if [ -z \"$(ls -A /api/static)\" ]; then
+              cp -r /static_baked/. /api/static/;
+            fi &&
+            ./wait-for-it.sh db:3306 -- gunicorn api.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - static_volume:/api/static
       - media_volume:/api/media
