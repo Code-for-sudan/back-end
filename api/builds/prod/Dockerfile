@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY requirements/ /api/requirements/
+COPY .env /api/.env
+COPY .env.prod /api/.env.prod
 RUN pip install --upgrade pip
 RUN pip install -r requirements/prod.txt
 
