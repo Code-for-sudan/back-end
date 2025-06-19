@@ -35,18 +35,18 @@ jobs:
     - name: Create environment files
       run: |
         touch api/.env
-        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
-        echo "DEBUG=False" >> .env
-        echo "DJANGO_ENV=prod" >> .env
-        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-        echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> .env
-        echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> .env
-        echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
-        echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
-        echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-        echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-        echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
-        echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
+        echo "DEBUG=False" >> api/.env
+        echo "DJANGO_ENV=prod" >> api/.env
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
+        echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
+        echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
+        echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
+        echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env
+        echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env
+        echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env
+        echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env
+        echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env
         cp api/.env api/.env.prod
   
     - name: Check the env files
