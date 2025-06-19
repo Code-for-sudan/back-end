@@ -9,7 +9,13 @@ WORKDIR /api
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
+    python3-dev \
     default-libmysqlclient-dev \
+    pkg-config \
+    libjpeg-dev \
+    zlib1g-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements/ /api/requirements/
