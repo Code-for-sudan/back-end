@@ -397,3 +397,7 @@ GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
 ##### Media Settings ####
 MEDIA_URL = "/media/"  # Public URL for accessing media files
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directory where uploaded files will be stored
+
+#### Static Files Settings ####
+STATIC_URL = '/static/'  # URL to access static files
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Directory where static files
