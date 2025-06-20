@@ -123,11 +123,6 @@ jobs:
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
 
-      - name: Copy .env and .env.prod to server
-        run: |
-          scp -o StrictHostKeyChecking=no api/.env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/app/.env
-          scp -o StrictHostKeyChecking=no api/.env.prod ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/app/.env.prod
-
       - name: Deploy App
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.HOST }} << 'EOF'
