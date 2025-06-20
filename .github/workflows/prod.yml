@@ -126,7 +126,7 @@ jobs:
       - name: Deploy App
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            cd /home/${{ secrets.SSH_USER }}/app
+            cd /home/${{ secrets.SSH_USER }}/back-end/api
             git pull origin main
             docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml up -d --no-deps web nginx celery celery_beat
