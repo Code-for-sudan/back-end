@@ -72,9 +72,8 @@ jobs:
       - name: Run Tests
         run: |
           cd api
-          find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
-          find . -path "*/migrations/*.pyc"  -delete
-          python manage.py migrate
+          python manage.py makemigrations accounts
+          python manage.py makemigrations stores authentication
           python manage.py collectstatic
           python manage.py test
 
