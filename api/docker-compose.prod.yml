@@ -6,7 +6,10 @@ services:
       context: .
       dockerfile: builds/prod/Dockerfile
     command: >
-      sh -c "./wait-for-it.sh db:3306 -- gunicorn api.wsgi:application --bind 0.0.0.0:8000"
+      sh -c "
+      python manage.py makemigrations &&
+      python manage.py migrate &&
+      ./wait-for-it.sh db:3306 -- gunicorn api.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - static_volume:/api/staticfiles
       - media_volume:/api/media
