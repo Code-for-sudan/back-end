@@ -70,12 +70,26 @@ jobs:
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
 
+      - name: Grant privileges to test user
+        run: |
+          mysql -uroot -${{ secrets.MYSQL_ROOT_PASSWORD }} -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS sudamall_db;
+
+          CREATE DATABASE IF NOT EXISTS test_myproject;
+
+          CREATE USER IF NOT EXISTS 'api'@'%' IDENTIFIED BY 'sudamall_password';
+
+          GRANT ALL PRIVILEGES ON sudamall_db.* TO 'api'@'%';
+
+          GRANT ALL PRIVILEGES ON test_myproject.* TO 'api'@'%';
+
+          FLUSH PRIVILEGES;"
+
       - name: Run Tests
         run: |
           cd api
-          python manage.py makemigrations accounts
-          python manage.py makemigrations stores authentication
-          python manage.py collectstatic
+          python manage.py makemigrations accounts --noinput
+          python manage.py makemigrations stores authentication --noinput
+          python manage.py collectstatic --noinput
           python manage.py test
 
   deploy:

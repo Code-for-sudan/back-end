@@ -113,10 +113,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '3306'),
         'TEST': {
             'NAME': os.getenv('MYSQL_TEST_DB', 'test_myproject'),
-            'USER': os.getenv('DB_USER', 'myuser'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'mypassword'),
-            'HOST': os.getenv('DB_HOST', 'db'),
-            'PORT': os.getenv('DB_PORT', '3306'),
         },
     }
 }
