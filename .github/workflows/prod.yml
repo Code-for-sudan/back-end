@@ -65,19 +65,9 @@ jobs:
           echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env.prod
           echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env.prod
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
-          echo "DB_HOST=${{ secrets.DB_HOST_TEST }}" >> api/.env.prod
+          echo "DB_HOST=mysql" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
-
-      - name: Debug .env.prod
-        run: cat api/.env.prod
-
-      - name: List Docker containers
-        run: docker ps -a
-
-      - name: Check MySQL DNS resolution
-        run: |
-          getent hosts mysql
 
       - name: Run Tests
         run: |
