@@ -14,6 +14,7 @@ class Store(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
