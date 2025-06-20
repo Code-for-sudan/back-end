@@ -81,17 +81,6 @@ jobs:
 
           FLUSH PRIVILEGES;"
 
-      - name: Wait for Redis
-        run: |
-          for i in {1..10}; do
-            if redis-cli -h redis ping; then
-              echo "Redis is ready"
-              break
-            fi
-            echo "Waiting for Redis..."
-            sleep 5
-          done
-
       - name: Run Tests
         run: |
           cd api
