@@ -68,7 +68,10 @@ jobs:
           echo "DB_HOST=${{ secrets.DB_HOST_TEST }}" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
-  
+
+      - name: Debug .env.prod
+        run: cat api/.env.prod
+
       - name: Run Tests
         run: |
           cd api
