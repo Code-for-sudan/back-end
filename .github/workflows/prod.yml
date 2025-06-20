@@ -72,6 +72,15 @@ jobs:
       - name: Debug .env.prod
         run: cat api/.env.prod
 
+      - name: Wait for MySQL
+        run: |
+          for i in {1..10}; do
+            nc -z mysql 3306 && echo "MySQL is up" && exit 0
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+          echo "MySQL did not start in time" && exit 1
+
       - name: Run Tests
         run: |
           cd api
