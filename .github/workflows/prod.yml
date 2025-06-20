@@ -125,7 +125,7 @@ jobs:
 
       - name: Deploy App
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd /home/${{ secrets.SSH_USER }}/app
             git pull origin main
             docker-compose -f docker-compose.prod.yml down
