@@ -77,6 +77,8 @@ jobs:
 
           GRANT ALL PRIVILEGES ON sudamall_db.* TO 'api'@'%';
 
+          GRANT ALL PRIVILEGES ON test_myproject.* TO 'api'@'%';
+
           FLUSH PRIVILEGES;"
 
       - name: Run Tests
