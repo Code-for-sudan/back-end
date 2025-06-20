@@ -71,7 +71,7 @@ jobs:
 
       - name: Grant privileges to test user
         run: |
-          mysql -uroot -${{ secrets.MYSQL_ROOT_PASSWORD }} -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS sudamall_db;
+          mysql -uroot -p${{ secrets.MYSQL_ROOT_PASSWORD }} -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS sudamall_db;
 
           CREATE DATABASE IF NOT EXISTS test_myproject;
 
