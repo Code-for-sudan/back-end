@@ -29,7 +29,7 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-          --volume=${{ github.workspace }}/init.sql:/docker-entrypoint-initdb.d/init.sql
+          --volume=${{ github.workspace }}/init1.sql:/docker-entrypoint-initdb.d/init1.sql
 
       redis:
         image: redis:7-alpine
