@@ -125,8 +125,8 @@ jobs:
 
       - name: Copy .env and .env.prod to server
         run: |
-          scp -o StrictHostKeyChecking=no api/.env ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/home/${{ secrets.SSH_USER }}/app/.env
-          scp -o StrictHostKeyChecking=no api/.env.prod ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/home/${{ secrets.SSH_USER }}/app/.env.prod
+          scp -o StrictHostKeyChecking=no api/.env ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/app/.env
+          scp -o StrictHostKeyChecking=no api/.env.prod ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/app/.env.prod
 
       - name: Deploy App
         run: |
