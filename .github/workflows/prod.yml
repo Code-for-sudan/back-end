@@ -1,84 +1,122 @@
-name: Production CI/CD
+name: Deploy to Production
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DOCKER_COMPOSE: docker-compose -f docker-compose.prod.yml
 
 jobs:
-  build-and-deploy:
+  test:
+    name: Run Django Tests
     runs-on: ubuntu-latest
 
     services:
       mysql:
         image: mysql:8
         env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
           MYSQL_DATABASE: ${{ secrets.DB_NAME }}
           MYSQL_USER: ${{ secrets.DB_USER }}
           MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
 
-      redis:
+        redis:
         image: redis:7-alpine
         ports:
           - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Create environment files
-      run: |
-        touch api/.env
-        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
-        echo "DEBUG=False" >> api/.env
-        echo "DJANGO_ENV=prod" >> api/.env
-        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> api/.env
-        echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
-        echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
-        echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
-        echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env
-        echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env
-        echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env
-        echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env
-        echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env
-        cp api/.env api/.env.prod
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements/test.txt
+
+      - name: Set up .env for test
+        run: |
+          touch api/.env
+          touch api/.env.prod
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
+          echo "DEBUG=True" >> api/.env
+          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
+          echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
+          echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
+          echo "DJANGO_ENV=dev" >> api/.env
+          echo "DEBUG=True" >> api/.env.prod
+          echo "DJANGO_ENV=prod" >> api/.env.prod
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env.prod
+          echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env.prod
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env.prod
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
   
-    - name: Check the env files
-      run: ls -lR
+          
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Run Tests
+        run: |
+          python manage.py test
 
-    - name: Build and start Docker services
-      run: |
-        docker compose -f api/docker-compose.prod.yml up -d --build
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
 
-    - name: Wait for Django to be ready
-      run: |
-       echo "Waiting for Django to be ready..."
-       for i in {1..20}; do
-         docker compose -f api/docker-compose.prod.yml run --rm web python manage.py check --deploy --fail-level ERROR && break
-         echo "Still waiting..."
-         sleep 5
-       done
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Apply Migrations
-      run: |
-        docker compose -f api/docker-compose.prod.yml run --rm web python manage.py makemigrations
-        docker compose -f api/docker-compose.prod.yml run --rm web python manage.py migrate
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Collect Static Files
-      run: docker compose -f api/docker-compose.prod.yml run --rm web python manage.py collectstatic --noinput
+      - name: Set up .env files for deploy
+        run: |
+          mkdir -p api
+          touch api/.env
+          touch api/.env.prod
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
+          echo "DEBUG=True" >> api/.env
+          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
+          echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
+          echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
+          echo "DJANGO_ENV=dev" >> api/.env
+          echo "DEBUG=True" >> api/.env.prod
+          echo "DJANGO_ENV=prod" >> api/.env.prod
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env.prod
+          echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env.prod
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env.prod
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
 
-    - name: Run Django Tests
-      run: docker compose -f api/docker-compose.prod.yml run --rm web python manage.py test
+      - name: Copy .env and .env.prod to server
+        run: |
+          scp -o StrictHostKeyChecking=no api/.env ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/home/${{ secrets.SSH_USER }}/app/.env
+          scp -o StrictHostKeyChecking=no api/.env.prod ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/home/${{ secrets.SSH_USER }}/app/.env.prod
 
-    - name: Tear down Docker services
-      if: always()
-      run: docker compose -f api/docker-compose.prod.yml down --volumes
+      - name: Deploy App
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.HOST }} << 'EOF'
+            cd /home/${{ secrets.SSH_USER }}/app
+            git pull origin main
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml up -d --no-deps web nginx celery celery_beat
+          EOF
