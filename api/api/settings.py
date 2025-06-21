@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
     'products.apps.ProductsConfig',
+    'notifications.apps.NotificationsConfig',
     'rest_framework',
     'django_celery_beat',
     'rest_framework_simplejwt',
