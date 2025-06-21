@@ -181,7 +181,6 @@ cython_debug/
 .env.dev
 .env.prod
 .env.test
-migrations/
 
 db.sqlite3
 media/*
