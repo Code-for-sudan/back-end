@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import environ, json, os
 from pathlib import Path
 from datetime import timedelta
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -179,7 +180,7 @@ CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')
 
 # Import task modules for the django project app
-CELERY_IMPORTS = ()
+CELERY_IMPORTS = ("authentication.tasks",)
 
 # Set Celery to use the same time zone as Django
 CELERY_TIMEZONE = 'UTC'
@@ -193,9 +194,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 # Enable events (for Flower monitoring, optional)
 CELERY_SEND_EVENTS = True
 
-# Schedule the Celery task to delete expired tokens every hour
+# Schedule the Celery task to delete expired tokens every minute
 CELERY_BEAT_SCHEDULE = {
-    
+    'clean_expired_blacklisted_tokens_every_minute': {
+        'task': 'users.celery_tasks.clean_expired_blacklisted_tokens',
+        'schedule': crontab(minute='*',),  # Runs at the start of every hour
+    },
 }
 
 # (Optional) Track started tasks
