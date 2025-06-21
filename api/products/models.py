@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from accounts.models import User
 from stores.models import Store
@@ -31,7 +32,7 @@ class Product(models.Model):
     color = models.CharField(max_length=50, blank=True, null=True)
     size = models.CharField(max_length=50, blank=True, null=True)
     quantity = models.PositiveIntegerField()
-    owner_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products')
+    owner_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='products')
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='products')
     created_at = models.DateTimeField(auto_now_add=True)
 
