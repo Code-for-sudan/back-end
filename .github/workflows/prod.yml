@@ -129,5 +129,5 @@ jobs:
             cd /home/${{ secrets.SSH_USER }}/back-end/api
             git pull origin main
             docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up -d --no-deps web nginx celery celery_beat
+            docker-compose -f docker-compose.prod.yml up --build -d
           EOF
