@@ -1,6 +1,6 @@
-import os
+import os, logging
 from rest_framework import serializers
-from models import EmailAttachment, EmailImage, EmailStyle, EmailTemplate
+from .models import EmailAttachment, EmailImage, EmailStyle, EmailTemplate
 
 # Create the logger instance for the serializers
 logger = logging.getLogger('notifications_serializers')

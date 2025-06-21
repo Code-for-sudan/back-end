@@ -204,15 +204,15 @@ CELERY_TRACK_STARTED = True
 #### Email Configuration ####
 # Email settings for sending notifications
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.env('EMAIL_HOST')
-EMAIL_PORT = env.int('EMAIL_PORT')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
-EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL')
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_PORT = env('EMAIL_PORT')
+EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+EMAIL_USE_SSL = env('EMAIL_USE_SSL')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 EMAIL_SUBJECT_PREFIX = env('EMAIL_SUBJECT_PREFIX')
-EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT')
+EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
 
 
 #### CORS Configuration ####
