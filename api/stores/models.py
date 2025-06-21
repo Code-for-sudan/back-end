@@ -7,6 +7,7 @@ class Store(models.Model):
     Attributes:
         name (CharField): The name of the store (max length 255).
         description (TextField): Optional detailed description of the store.
+        location (CharField): Optional location of the store (max length 255).
         created_at (DateTimeField): Timestamp when the store was created (auto-set on creation).
     Methods:
         __str__(): Returns the store's name as its string representation.
@@ -14,6 +15,7 @@ class Store(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
