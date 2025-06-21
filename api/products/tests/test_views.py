@@ -89,7 +89,7 @@ class ProductViewSetTests(APITestCase):
         response = self.client.patch(url, update_data, format='json')
         logger.info(f"Update Product Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['product_name'], "Updated Product")
+        self.assertEqual(response.data['product']['product_name'], "Updated Product")
 
     def test_delete_product(self):
         product = Product.objects.create(

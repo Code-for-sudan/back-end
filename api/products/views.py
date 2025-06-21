@@ -9,17 +9,7 @@ from stores.models import Store
 logger = logging.getLogger('products_views')
 
 @extend_schema(
-    request=ProductSerializer,
-    responses={
-        201: OpenApiResponse(
-            response=ProductSerializer,
-            description='Product created successfully.'
-        ),
-        400: OpenApiResponse(
-            description='Product creation failed or validation error.'
-        ),
-    },
-    description="Create, retrieve, update, or delete products. POST creates a new product associated with the authenticated user and their store.",
+    description="Product CRUD operations. Supports listing, creating, retrieving, updating, and deleting products.",
     summary="Product CRUD"
 )
 class ProductViewSet(viewsets.ModelViewSet):
@@ -54,6 +44,19 @@ class ProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(category=category)
         return queryset
 
+    @extend_schema(
+        request=ProductSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=ProductSerializer,
+                description='Product created successfully.'
+            ),
+            400: OpenApiResponse(
+                description='Product creation failed or validation error.'
+            ),
+        },
+        summary="Create Product"
+    )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -90,3 +93,91 @@ class ProductViewSet(viewsets.ModelViewSet):
         else:
             logger.error(f"Product creation failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=ProductSerializer,
+                description='Product retrieved successfully.'
+            ),
+            404: OpenApiResponse(
+                description='Product not found.'
+            ),
+        },
+        summary="Retrieve Product"
+    )
+    def retrieve(self, request, *args, **kwargs):
+        product = self.get_object()
+        response_data = {
+            "product_id": product.id,
+            "product_name": product.product_name,
+            "product_description": product.product_description,
+            "price": product.price,
+            "category": product.category,
+            "picture": product.picture,
+            "color": product.color,
+            "size": product.size,
+            "quantity": product.quantity,
+            "store_name": product.store_name,
+            "owner_id": str(product.owner_id.id),
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        request=ProductSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=ProductSerializer,
+                description='Product updated successfully.'
+            ),
+            400: OpenApiResponse(
+                description='Product update failed or validation error.'
+            ),
+            404: OpenApiResponse(
+                description='Product not found.'
+            ),
+        },
+        summary="Update Product"
+    )
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            product = serializer.save()
+            response_data = {
+                "message": "Product updated successfully",
+                "product": {
+                    "product_id": product.id,
+                    "product_name": product.product_name,
+                    "product_description": product.product_description,
+                    "price": product.price,
+                    "category": product.category,
+                    "quantity": product.quantity,
+                    "picture": product.picture,
+                    "color": product.color,
+                    "size": product.size,
+                    "owner_id": str(product.owner_id.id),
+                    "store_name": product.store_name,
+                }
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            logger.error(f"Product update failed: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        responses={
+            204: OpenApiResponse(
+                description='Product deleted successfully.'
+            ),
+            404: OpenApiResponse(
+                description='Product not found.'
+            ),
+        },
+        summary="Delete Product"
+    )
+    def destroy(self, request, *args, **kwargs):
+        product = self.get_object()
+        product.delete()
+        return Response({"message": "Product deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
