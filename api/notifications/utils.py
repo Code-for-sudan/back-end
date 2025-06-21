@@ -8,8 +8,23 @@ logger = logging.getLogger("email")
 
 def send_email_with_attachments(subject, template_name, context, recipient_list, attachments=None):
     """
-    Sends an email using plain text and HTML templates with optional file attachments.
+    Sends an email with both plain text and HTML content, and optional file attachments.
+    Args:
+        subject (str): The subject line of the email.
+        template_name (str): The base name of the email template (without extension).
+        context (dict): Context variables to render in the email templates.
+        recipient_list (list): List of recipient email addresses.
+        attachments (list, optional): List of file paths to attach to the email. Defaults to None.
+    Returns:
+        str: "Email sent" if the email was sent successfully, or an error message if sending failed.
+    Logs:
+        - Info log on successful email sending.
+        - Warning log if an attachment file is not found.
+        - Error log if email sending fails.
+    Raises:
+        Exception: Any exception encountered during email preparation or sending is caught and logged.
     """
+
     try:
         base_dir = os.path.join(settings.BASE_DIR, "notifications", "emails")
 

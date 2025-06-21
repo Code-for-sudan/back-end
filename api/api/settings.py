@@ -320,6 +320,11 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed email logs
             'propagate': False,
         },
+        'signals': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed signal logs
+            'propagate': False,
+        },
         'authentication_views': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
