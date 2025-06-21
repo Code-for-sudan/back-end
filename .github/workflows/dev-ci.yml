@@ -92,8 +92,6 @@ jobs:
         run: |
           cd api
           python manage.py makemigrations accounts --noinput
-          python manage.py migrate accounts --noinput
           python manage.py makemigrations stores authentication --noinput
-          python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           python manage.py test
