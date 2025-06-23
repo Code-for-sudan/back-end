@@ -197,3 +197,4 @@ class PasswordResetFlowTests(APITestCase):
         response = self.client.post(self.update_password_url, data)
         self.assertEqual(response.status_code, 404)
         self.assertIn("message", response.data)
+        User = get_user_model()
