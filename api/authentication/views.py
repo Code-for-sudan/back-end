@@ -1,10 +1,10 @@
 import requests, logging
-from time import timezone
+from django.utils import timezone
 from rest_framework import status # type: ignore
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny # type: ignore
+from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
@@ -311,13 +311,16 @@ class GoogleCallbackView(APIView):
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_reset'
+    throttle_scope = 'password_resert'
 
     def post(self, request):
         serializer = ResetPasswordRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
-                serializer.errors,
+                {
+                    'message': 'Invalid data provided.',
+                    'errors': serializer.errors
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -341,7 +344,7 @@ class PasswordResetRequestView(APIView):
                 {
                     'message': 'If this email is registered, an OTP has been sent to it.'
                 },
-                status=status.HttP_200_OK
+                status=status.HTTP_200_OK
             )
         # Create the email context
         subject = "[Attention] Password Reset OTP"
@@ -435,7 +438,10 @@ class ResetPasswordrequestVerifyView(APIView):
         if not serializer.is_valid():
             logger.error(f"Invalid data for password reset verification: {serializer.errors}")
             return Response(
-                serializer.errors,
+                {
+                    'message': 'Invalid data provided.',
+                    'errors': serializer.errors
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -456,7 +462,9 @@ class ResetPasswordrequestVerifyView(APIView):
         if not user:
             logger.warning("No user found with this email.")
             return Response(
-                {'message': f'User for email: "{user_email}" not found.'},
+                {
+                    'message': f'User for email: "{user_email}" not found.'
+                },
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -544,13 +552,16 @@ class RequestUpdatePasswordView(APIView):
         post(request): Handles POST requests to update the user's password.
     """
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_reset'
-
+    throttle_scope = 'password_resert'
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         serializer = RequestUpdatePasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
-                serializer.errors,
+                {
+                    'message': 'Invalid data provided.',
+                    'errors': serializer.errors
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -593,10 +604,11 @@ class RequestUpdatePasswordView(APIView):
         template_name = "update_password"
         recipient_list = [user.email]
         attachments = None  # No attachments needed for OTP
-        time_now = timezone.now().strftime("%Y-%m-%d %H:%M:%S")  # Get current time in a readable format
+        now = timezone.now()
+        formated_time_now = now.strftime("%Y-%m-%d %H:%M:%S")  # Get current time in a readable format
         context = {
             'user': user.first_name,
-            'time_now': time_now,
+            'time_now': formated_time_now,
         }
 
         # Send Notification email

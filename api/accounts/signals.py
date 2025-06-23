@@ -60,7 +60,7 @@ def business_owner_created_handler(sender, instance, created, **kwargs):
             subject="Welcome, Business Partner!",
             template_name="welcome-business-owner",
             context={
-               "first_name": instance.first_name,
+               "first_name": instance.user.first_name,
             },
             recipient_list=[instance.user.email]
         )

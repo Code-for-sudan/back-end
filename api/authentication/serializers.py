@@ -67,19 +67,7 @@ class ResetPasswordrequestVerifySerializer(serializers.Serializer):
         max_length=6,
         min_length=6,
         write_only=True,
-        validators=[serializers.RegexValidator(
-            regex=r'^\d{6}$',
-            message="OTP must be a 6-digit number.",
-            code='invalid_otp'
-        )],
         help_text="One-Time Password code"
-    )
-    new_password = serializers.CharField(
-        required=True,
-        write_only=True,
-        min_length=8,
-        max_length=128,
-        help_text="New password for the user"
     )
     
 

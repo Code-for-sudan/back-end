@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-import environ, json, os
+import environ, json, os, sys
 from pathlib import Path
 from datetime import timedelta
 from celery.schedules import crontab
@@ -116,19 +116,22 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-   'default': {
+    'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': os.getenv('DB_NAME', 'myproject'),
         'USER': os.getenv('DB_USER', 'myuser'),
         'PASSWORD': os.getenv('DB_PASSWORD', 'mypassword'),
         'HOST': os.getenv('DB_HOST', 'db'),
         'PORT': os.getenv('DB_PORT', '3306'),
-        'TEST': {
-            'NAME': os.getenv('MYSQL_TEST_DB', 'test_myproject'),
-        },
     }
 }
 
+# Use SQLite for tests
+if 'test' in sys.argv or 'test_coverage' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
