@@ -30,32 +30,6 @@ class LoginSerializer(serializers.Serializer):
         return data
 
 
-class ResetPasswordConfirmSerializer(serializers.Serializer):
-    """
-    Serializer for confirming password reset via OTP.
-    Fields:
-        email: User's email address.
-        otp: One-time password sent to the user.
-        new_password: The new password to set (must meet complexity requirements).
-    Methods:
-        validate_new_password: Validates the new password using a regex rule.
-    Side Effects:
-        - Logs validation errors.
-    """
-    email = serializers.EmailField()
-    otp = serializers.CharField()
-    new_password = serializers.CharField(write_only=True)
-
-    def validate_new_password(self, value):
-        # Regex: at least one letter, one digit, only letters/digits, min 8 chars
-        pattern = r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]{8,}$'
-        if not re.match(pattern, value):
-            logger.error("[ResetPasswordConfirmSerializer] Password validation failed: does not meet complexity requirements.")
-            raise serializers.ValidationError(
-                "Password must be at least 8 characters long, contain both letters and numbers, and have only letters and digits."
-            )
-        return value
-
 class GoogleAuthCodeSerializer(serializers.Serializer):
     """
     Serializer for handling Google OAuth2 authorization codes.
@@ -64,6 +38,33 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
     """
 
     code = serializers.CharField(help_text="Authorization code returned by Google after login")
+
+# class ResetPasswordConfirmSerializer(serializers.Serializer):
+#     """
+#     Serializer for confirming password reset via OTP.
+#     Fields:
+#         email: User's email address.
+#         otp: One-time password sent to the user.
+#         new_password: The new password to set (must meet complexity requirements).
+#     Methods:
+#         validate_new_password: Validates the new password using a regex rule.
+#     Side Effects:
+#         - Logs validation errors.
+#     """
+#     email = serializers.EmailField()
+#     otp = serializers.CharField()
+#     new_password = serializers.CharField(write_only=True)
+
+#     def validate_new_password(self, value):
+#         # Regex: at least one letter, one digit, only letters/digits, min 8 chars
+#         pattern = r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]{8,}$'
+#         if not re.match(pattern, value):
+#             logger.error("[ResetPasswordConfirmSerializer] Password validation failed: does not meet complexity requirements.")
+#             raise serializers.ValidationError(
+#                 "Password must be at least 8 characters long, contain both letters and numbers, and have only letters and digits."
+#             )
+#         return value
+
 
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
@@ -81,18 +82,32 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
 
 
 
-class ResetPasswordConfirmRequestSerializer(serializers.Serializer):
-    """
-    Serializer for confirming a password reset request.
-    Fields:
-        email (EmailField): User's email address.
-        otp (CharField): One-Time Password code sent to the user.
-        new_password (CharField): New password to set for the user.
-    """
-
-    email = serializers.EmailField(help_text="User's email address")
-    otp = serializers.CharField(help_text="One-Time Password code")
-    new_password = serializers.CharField(help_text="New password for the user")
+class ResetPasswordrequestVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        help_text="User's email address"
+    )
+    otp = serializers.CharField(
+        required=True,
+        max_length=6,
+        min_length=6,
+        write_only=True,
+        validators=[serializers.RegexValidator(
+            regex=r'^\d{6}$',
+            message="OTP must be a 6-digit number.",
+            code='invalid_otp'
+        )],
+        help_text="One-Time Password code"
+    )
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        min_length=8,
+        max_length=128,
+        help_text="New password for the user"
+    )
+    
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
     """

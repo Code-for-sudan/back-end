@@ -12,9 +12,8 @@ from django.shortcuts import redirect
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from notifications.utils import send_email_with_attachments
-from .serializers import (LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer,
-                          ResetPasswordVerifyRequestSerializer, ResetPasswordConfirmRequestSerializer,
-                          ResetPasswordRequestSerializer
+from .serializers import (LoginSerializer, GoogleAuthCodeSerializer,
+                          ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
                         )
 
 # Create a logger for this module
@@ -370,56 +369,101 @@ class PasswordResetRequestView(APIView):
 
 
 @extend_schema(
+    summary="Verify Password Reset Request",
+    description="Verifies a password reset request using an OTP code sent to the user's email.",
+    request=ResetPasswordrequestVerifySerializer,
+    responses={
+        200: OpenApiResponse(
+            description="Password reset request verified successfully. Returns JWT tokens and user info."
+        ),
+        400: OpenApiResponse(
+            description="Invalid data, missing fields, or invalid OTP code."
+        ),
+        404: OpenApiResponse(
+            description="User not found for the provided email."
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            name="Verify Password Reset Request",
+            value={
+                "email": "exmple@test.com",
+                "otp": "123456"
+            },
+            request_only=True
+        ),
+        OpenApiExample(
+            name="Successful Verification Response",
+            value={
+                "message": "Login successful.",
+                "access_token": "eyJ0eXAiOiJKV1QiLCJh...",
+                "user": {
+                    "id": "1234",
+                    "email": "exmple@test.com",
+                }
+            },
+            response_only=True
+        ),
+    ]
    
 )
 class ResetPasswordrequestVerifyView(APIView):
+    """
+    APIView for verifying a password reset request using an OTP code.
+    This view handles POST requests to verify a user's password reset request by validating
+    the provided email and OTP code. If the credentials are valid, it generates JWT access
+    and refresh tokens, sets the refresh token as an HTTP-only cookie, and returns the access
+    token along with basic user information.
+    Methods:
+        post(request):
+            Validates the provided email and OTP code. If valid, authenticates the user and
+            returns JWT tokens. Handles error responses for invalid data, missing fields,
+            non-existent users, and invalid OTP codes.
+    Permissions:
+        - AllowAny: No authentication required.
+    Throttling:
+        - AnonRateThrottle: Applies rate limiting to anonymous requests.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
-    def post(self, request):
-        """
-        Handles OTP verification for user login.
-        This function verifies the OTP (One-Time Password) provided by the user
-        and returns a response indicating the success or failure of the verification.
-        If successful, it generates JWT tokens for the user and sets a refresh token
-        as an HTTP-only cookie.
-        Args:
-            request (Request): The HTTP request object containing the user's email
-                               and OTP code in the request data.
-        Returns:
-            Response: A Django REST framework Response object with the following:
-                - HTTP 200 OK: If the OTP verification is successful, returns a success
-                  message, access token, and user details.
-                - HTTP 400 Bad Request: If the email or OTP code is missing, or if the
-                  OTP code is invalid.
-                - HTTP 404 Not Found: If no user is found with the provided email.
-        Side Effects:
-            - Sets a secure, HTTP-only cookie for the refresh token with a 1-day expiration.
-        Raises:
-            None
-        """
 
-        user_email = request.data.get('email', '').strip().lower()
-        otp_code = request.data.get('otp_code')
-        if not user_email or not otp_code:
-            logger.error(f"Missing email or OTP in request: {request.data}")
+    def post(self, request):
+        serializer = ResetPasswordrequestVerifySerializer(data=request.data)
+        if not serializer.is_valid():
+            logger.error(f"Invalid data for password reset verification: {serializer.errors}")
             return Response(
-                {'message': 'Email and OTP code are required.'},
+                serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Extract email and OTP code from the validated data
+        user_email = serializer.validated_data.get('email').strip().lower()
+        otp_code = serializer.validated_data.get('otp').strip()
+        if not user_email or not otp_code:
+            logger.error(f"Missing email or OTP in request: {request.data}")
+            return Response(
+                {
+                    'message': 'Email and OTP code are required.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Fetch the user by email
         user = User.objects.filter(email=user_email).first()
         if not user:
-            logger.warning("Un email was sent to the user.")
+            logger.warning("No user found with this email.")
             return Response(
                 {'message': f'User for email: "{user_email}" not found.'},
-                status=status.HTTP_200_OK
+                status=status.HTTP_404_NOT_FOUND
             )
 
         if not user.verify_otp(otp_code):
             logger.warning(f"Invalid OTP for user {user_email}")
             return Response(
-                {'message': 'Invalid OTP code.'},
+                {
+                    'message': 'Invalid OTP code.'
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -448,3 +492,5 @@ class ResetPasswordrequestVerifyView(APIView):
         )
 
         return response
+
+
