@@ -1,10 +1,11 @@
 import requests, logging
+from time import timezone
 from rest_framework import status # type: ignore
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
-from rest_framework.throttling import UserRateThrottle, AnonRateThrottle, ScopedRateThrottle
+from rest_framework.permissions import AllowAny # type: ignore
+from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -12,9 +13,10 @@ from django.shortcuts import redirect
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from notifications.utils import send_email_with_attachments
-from .serializers import (LoginSerializer, GoogleAuthCodeSerializer,
-                          ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
-                        )
+from .serializers import LoginSerializer, GoogleAuthCodeSerializer
+from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
+from .serializers import RequestUpdatePasswordSerializer                   
+                
 
 # Create a logger for this module
 logger = logging.getLogger('authentication_views')
@@ -494,3 +496,124 @@ class ResetPasswordrequestVerifyView(APIView):
         return response
 
 
+@extend_schema(
+    summary="Update User Password",
+    description="Allows users to securely update their password by providing their registered email and a new password.",
+    request=RequestUpdatePasswordSerializer,
+    responses={
+        200: OpenApiResponse(description="Password updated successfully. A confirmation email has been sent."),
+        400: OpenApiResponse(description="Invalid input data or missing required fields."),
+        404: OpenApiResponse(description="Email is not registered or does not exist."),
+    },
+    examples=[
+        OpenApiExample(
+            name="Update Password Request",
+            value={
+                "email": "example@teat.com",
+                "password": "new_secure_password"
+            },
+            request_only=True
+        ),
+        OpenApiExample(
+            name="Successful Update Response",
+            value={
+                "message": "Password updated successfully. A confirmation email has been sent."
+            },
+            response_only=True
+        )
+    ]
+)
+class RequestUpdatePasswordView(APIView):
+    """
+    APIView for handling password update requests.
+    This view allows users to securely update their password by providing their registered email and a new password.
+    It performs the following steps:
+    - Validates the input data using `RequestUpdatePasswordSerializer`.
+    - Checks if the provided email exists in the system.
+    - Updates the user's password securely using Django's `set_password` method.
+    - Sends a confirmation email asynchronously to the user upon successful password update.
+    - Implements rate limiting using `ScopedRateThrottle` with the scope 'password_reset'.
+    Responses:
+    - 200 OK: Password updated successfully and confirmation email sent.
+    - 400 Bad Request: Invalid input data or missing required fields.
+    - 404 Not Found: Email is not registered or does not exist.
+    Attributes:
+        throttle_classes (list): List of throttle classes applied to this view.
+        throttle_scope (str): Scope name for rate throttling.
+    Methods:
+        post(request): Handles POST requests to update the user's password.
+    """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        serializer = RequestUpdatePasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = serializer.validated_data['email'].strip().lower()
+        if not email:
+            logger.error("No email provided for password update request.")
+            return Response(
+                {
+                    'message': 'Email is required.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            logger.warning(f"User with email {email} does not exist.")
+            return Response(
+                {
+                    'message': 'Email is not registered or does not exist.'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        # Set the new password securely
+        new_password = serializer.validated_data['new_password']
+        if not new_password:
+            logger.error("No new password provided for password update.")
+            return Response(
+                {
+                    'message': 'New password is required.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
+    
+        # Create the email context
+        subject = "[Attention] Password Update"
+        template_name = "update_password"
+        recipient_list = [user.email]
+        attachments = None  # No attachments needed for OTP
+        time_now = timezone.now().strftime("%Y-%m-%d %H:%M:%S")  # Get current time in a readable format
+        context = {
+            'user': user.first_name,
+            'time_now': time_now,
+        }
+
+        # Send Notification email
+        # This task is asynchronous and will run in the background
+        # It allows the user to continue using the application without waiting for the email to be sent
+        send_email_with_attachments.delay(
+            subject=subject,
+            template_name=template_name,
+            context=context,
+            recipient_list=recipient_list,
+            attachments=attachments
+        )
+
+        logger.info(f"Password updated successfully for user {email}.")
+        return Response(
+            {
+                'message': 'Password updated successfully. A confirmation email has been sent.',
+            },
+            status=status.HTTP_200_OK
+        )

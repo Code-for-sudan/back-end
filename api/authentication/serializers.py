@@ -39,32 +39,6 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
 
     code = serializers.CharField(help_text="Authorization code returned by Google after login")
 
-# class ResetPasswordConfirmSerializer(serializers.Serializer):
-#     """
-#     Serializer for confirming password reset via OTP.
-#     Fields:
-#         email: User's email address.
-#         otp: One-time password sent to the user.
-#         new_password: The new password to set (must meet complexity requirements).
-#     Methods:
-#         validate_new_password: Validates the new password using a regex rule.
-#     Side Effects:
-#         - Logs validation errors.
-#     """
-#     email = serializers.EmailField()
-#     otp = serializers.CharField()
-#     new_password = serializers.CharField(write_only=True)
-
-#     def validate_new_password(self, value):
-#         # Regex: at least one letter, one digit, only letters/digits, min 8 chars
-#         pattern = r'^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]{8,}$'
-#         if not re.match(pattern, value):
-#             logger.error("[ResetPasswordConfirmSerializer] Password validation failed: does not meet complexity requirements.")
-#             raise serializers.ValidationError(
-#                 "Password must be at least 8 characters long, contain both letters and numbers, and have only letters and digits."
-#             )
-#         return value
-
 
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
@@ -109,11 +83,22 @@ class ResetPasswordrequestVerifySerializer(serializers.Serializer):
     )
     
 
-class ResetPasswordRequestSerializer(serializers.Serializer):
+class RequestUpdatePasswordSerializer(serializers.Serializer):
     """
-    Serializer for handling password reset requests.
+    Serializer for handling user password update requests.
     Fields:
-        email (EmailField): User's email address to send the password reset instructions.
+        email (EmailField): The user's email address. Required, maximum length 254 characters.
+        new_password (CharField): The new password for the user. Required, write-only, minimum length 8, maximum length 128 characters.
     """
-
-    email = serializers.EmailField(help_text="User's email address")
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        help_text="User's email address"
+    )
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        min_length=8,
+        max_length=128,
+        help_text="New password for the user"
+    )
