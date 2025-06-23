@@ -370,6 +370,16 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'search_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'search_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        }
     },
 }
 
