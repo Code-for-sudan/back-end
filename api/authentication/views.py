@@ -4,7 +4,7 @@ from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
-from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle, ScopedRateThrottle
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -309,7 +309,8 @@ class GoogleCallbackView(APIView):
 )
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         serializer = ResetPasswordRequestSerializer(data=request.data)
@@ -347,7 +348,7 @@ class PasswordResetRequestView(APIView):
         recipient_list = [user.email]
         attachments = None  # No attachments needed for OTP resend
         context = {
-            'user': user,
+            'user': user.first_name,
             'otp_code': user.generate_otp()
         }
         # Send the email with OTP

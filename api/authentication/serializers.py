@@ -71,10 +71,6 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
     Serializer for handling password reset requests via OTP.
     Fields:
         email (EmailField): The email address associated with the user account. Required, max length 254.
-        otp_code (CharField): The One-Time Password (OTP) code sent to the user's email. Required, must be a 6-digit number.
-    Validation:
-        - Ensures that the OTP code is exactly 6 digits and numeric.
-        - Raises a ValidationError if the OTP code is invalid.
     """
 
     email = serializers.EmailField(
@@ -82,18 +78,7 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
         max_length=254,
         help_text="The email address associated with the user account."
     )
-    otp_code = serializers.CharField(
-        required=True,
-        max_length=6,
-        min_length=6,
-        help_text="The One-Time Password (OTP) code sent to the user's email."
-    )
 
-    def validate_otp_code(self, value):
-        if not value.isdigit() or len(value) != 6:
-            logger.error("[ResetPasswordVerifyRequestSerializer] OTP code validation failed: must be a 6-digit number.")
-            raise serializers.ValidationError("OTP code must be a 6-digit number.")
-        return value
 
 
 class ResetPasswordConfirmRequestSerializer(serializers.Serializer):
