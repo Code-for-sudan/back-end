@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
-from accounts.tasks import send_email_task
+from notifications.utils import send_email_with_attachments
 from .serializers import (LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer,
                           ResetPasswordVerifyRequestSerializer, ResetPasswordConfirmRequestSerializer,
                           ResetPasswordRequestSerializer
@@ -297,33 +297,81 @@ class GoogleCallbackView(APIView):
         return response
 
 
+
 @extend_schema(
-    summary="Verify OTP for password reset login",
-    description="Verifies the OTP code sent to the user’s email and returns JWT tokens upon success.",
-    request=ResetPasswordVerifyRequestSerializer,
+    summary="Request password reset OTP resend",
+    description="Sends a new OTP code to the user's email to allow password reset.",
+    request=ResetPasswordRequestSerializer,
     responses={
-        200: OpenApiResponse(
-            description="OTP verified successfully. Returns user details and access token.",
-            examples=[
-                OpenApiExample(
-                    "Success Response",
-                    value={
-                        "message": "Login successful.",
-                        "access_token": "eyJ0eXAiOiJKV1QiLCJh...",
-                        "user": {
-                            "id": "123",
-                            "email": "user@example.com",
-                            "first name": "John"
-                        }
-                    }
-                )
-            ]
-        ),
-        400: OpenApiResponse(description="Missing email or OTP code, or invalid OTP."),
-        404: OpenApiResponse(description="User with given email not found."),
+        200: OpenApiResponse(description="OTP has been resent to the user's email."),
+        400: OpenApiResponse(description="Missing email or user does not exist."),
     }
 )
-class ResetPasswordVerifyView(APIView):
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request):
+        serializer = ResetPasswordRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = serializer.validated_data['email'].strip().lower()
+        if not email:
+            logger.error("No email provided for OTP resend.")
+            return Response(
+                {
+                    'message': 'Email is required.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # If the user does not exist, we still return a success message to prevent email enumeration
+            # This is a security measure to avoid revealing whether an email is registered or not.
+            logger.warning(f"User with email {email} does not exist.")
+            return Response(
+                {
+                    'message': 'If this email is registered, an OTP has been sent to it.'
+                },
+                status=status.HttP_200_OK
+            )
+        # Create the email context
+        subject = "[Attention] Password Reset OTP"
+        template_name = "reset_password_otp"
+        recipient_list = [user.email]
+        attachments = None  # No attachments needed for OTP resend
+        context = {
+            'user': user,
+            'otp_code': user.generate_otp()
+        }
+        # Send the email with OTP
+        send_email_with_attachments.delay(
+            subject=subject,
+            template_name=template_name,
+            context=context,
+            recipient_list=recipient_list,
+            attachments=attachments
+        )
+
+        logger.info(f"OTP sent to user {email}.")
+        return Response(
+            {
+                'message': 'OTP has been sent to your email.'
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+@extend_schema(
+   
+)
+class ResetPasswordrequestVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
@@ -361,10 +409,10 @@ class ResetPasswordVerifyView(APIView):
 
         user = User.objects.filter(email=user_email).first()
         if not user:
-            logger.warning(f"User with email {user_email} not found.")
+            logger.warning("Un email was sent to the user.")
             return Response(
-                {'message': 'User not found.'},
-                status=status.HTTP_404_NOT_FOUND
+                {'message': f'User for email: "{user_email}" not found.'},
+                status=status.HTTP_200_OK
             )
 
         if not user.verify_otp(otp_code):
@@ -399,110 +447,3 @@ class ResetPasswordVerifyView(APIView):
         )
 
         return response
-
-
-@extend_schema(
-    summary="Confirm password reset by verifying OTP and setting new password",
-    description="Verifies OTP and resets the user's password if the OTP is valid and the new password passes validation.",
-    request=ResetPasswordConfirmRequestSerializer,
-    responses={
-        200: OpenApiResponse(description="Password reset successful."),
-        400: OpenApiResponse(description="Invalid request, missing fields, invalid OTP, or password validation failed."),
-    }
-)
-class ResetPasswordConfirmView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
-
-    def post(self, request):
-        """
-        Handles password reset by verifying OTP, validating new password, and setting the new password.
-        Args:
-            request (Request): The HTTP request object containing email, OTP, and new password.
-        Returns:
-            Response:
-                - 200 OK with a success message if OTP is valid and password is reset.
-                - 400 BAD REQUEST with an error message if any field is missing, the user does not exist, or OTP is invalid.
-        Raises:
-            KeyError: If 'email', 'otp', or 'new_password' is not present in the request data.
-        Side Effects:
-            - Logs errors for missing fields, invalid OTP, invalid password, or non-existent users.
-            - Updates the user's password if OTP verification and password validation are successful.
-        """
-        try:
-            email = request.data.get('email')
-            otp = request.data.get('otp')
-            new_password = request.data.get('new_password')
-        except KeyError:
-            logger.error('Email, OTP, and new password are required.')
-            return Response({'message': 'Email, OTP, and new password are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        logger.info(f"Password reset attempt for email: {email}")
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.error(f"User with email {email} does not exist.")
-            return Response({'message': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not user.verify_otp(otp):
-            logger.error(f"Invalid or expired OTP for user {email}.")
-            return Response({'message': 'Invalid OTP.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        serializer = ResetPasswordConfirmSerializer()
-        try:
-            serializer.validate_new_password(new_password)
-        except Exception as e:
-            logger.error(f"Password validation failed for user {email}: {e}")
-            return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.set_password(new_password)
-        user.save()
-        logger.info(f"Password reset successful for user {email}.")
-        return Response({'message': 'Password reset successful.'}, status=status.HTTP_200_OK)
-
-
-@extend_schema(
-    summary="Request password reset OTP resend",
-    description="Sends a new OTP code to the user's email to allow password reset.",
-    request=ResetPasswordRequestSerializer,
-    responses={
-        200: OpenApiResponse(description="OTP has been resent to the user's email."),
-        400: OpenApiResponse(description="Missing email or user does not exist."),
-    }
-)
-class ResetPasswordRequestView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
-
-    def post(self, request):
-        """
-        Handles resending OTP to a user's email.
-        Args:
-            request (Request): The HTTP request object containing the user's email.
-        Returns:
-            Response: 200 OK if OTP is resent, 400 BAD REQUEST if email is missing or user does not exist.
-        Side Effects:
-            - Generates and sends a new OTP via email.
-            - Logs all actions and errors.
-        """
-        email = request.data.get('email', '').strip().lower()
-        if not email:
-            logger.error("No email provided for OTP resend.")
-            return Response({'message': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.error(f"User with email {email} does not exist for OTP resend.")
-            return Response({'message': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        otp = user.generate_otp()
-        subject = "Your OTP Code"
-        body = f"Your OTP code is: {otp}"
-
-        # Send OTP via email using Celery task
-        send_email_task.delay([email], subject, body)
-
-        logger.info(f"OTP resent to user {email}.")
-        return Response({'message': 'OTP has been resent to your email.'}, status=status.HTTP_200_OK)

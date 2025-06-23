@@ -3,9 +3,11 @@ import logging
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from celery import shared_task
 
 logger = logging.getLogger("email")
 
+@shared_task
 def send_email_with_attachments(subject, template_name, context, recipient_list, attachments=None):
     """
     Sends an email with both plain text and HTML content, and optional file attachments.
