@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
     'products.apps.ProductsConfig',
+    'search.apps.SearchConfig',
+    'django_elasticsearch_dsl',
     'rest_framework',
     'django_celery_beat',
     'rest_framework_simplejwt',
@@ -116,6 +118,13 @@ DATABASES = {
             'NAME': os.getenv('MYSQL_TEST_DB', 'test_myproject'),
         },
     }
+}
+
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200'
+    },
 }
 
 

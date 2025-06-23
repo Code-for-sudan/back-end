@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
-from accounts.tasks import send_email_task
+from notifications.tasks import send_email_task
 from .serializers import (LoginSerializer, ResetPasswordConfirmSerializer, GoogleAuthCodeSerializer,
                           ResetPasswordVerifyRequestSerializer, ResetPasswordConfirmRequestSerializer,
                           ResetPasswordRequestSerializer
@@ -502,7 +502,7 @@ class ResetPasswordRequestView(APIView):
         body = f"Your OTP code is: {otp}"
 
         # Send OTP via email using Celery task
-        send_email_task.delay([email], subject, body)
+        send_email_task.delay(subject, 'template_name', {"":""}, [email])
 
         logger.info(f"OTP resent to user {email}.")
         return Response({'message': 'OTP has been resent to your email.'}, status=status.HTTP_200_OK)
