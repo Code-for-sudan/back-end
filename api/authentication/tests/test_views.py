@@ -366,15 +366,6 @@ class ResetPasswordConfirmAPITests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
-# @override_settings(
-#     CACHES={
-#         "default": {
-#             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-#             "LOCATION": "unique-snowflake",
-#         }
-#     },
-#     CELERY_BROKER_URL='memory://',
-# )
 class ResetPasswordRequestAPITests(APITestCase):
     """
     Test suite for the Reset Password Request endpoint.
