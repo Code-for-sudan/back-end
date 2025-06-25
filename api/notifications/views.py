@@ -25,7 +25,11 @@ class EmailTemplateViewSet(ModelViewSet):
         parser_classes (tuple): Parsers to handle multipart and form-data requests.
         permission_classes (list): Permissions required to access this viewset (admin users only).
     """
-    queryset = EmailTemplate.objects.all()
+    queryset = EmailTemplate.objects.all().order_by('id')
     serializer_class = EmailTemplateSerializer
     parser_classes = (MultiPartParser, FormParser)  # Accept form-data (file uploads)
     permission_classes = [IsAdminUser]  # Only allow admin users to access this view
+
+
+
+# class 
