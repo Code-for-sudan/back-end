@@ -94,7 +94,7 @@ services:
       - static_volume:/api/staticfiles
       - media_volume:/api/media
       - ./builds/prod/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt/live/sudamall.ddns.net/:/etc/letsencrypt/live/sudamall.ddns.net/:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - web
 
