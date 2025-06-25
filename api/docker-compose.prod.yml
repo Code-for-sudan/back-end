@@ -97,6 +97,8 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - web
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
 
 volumes:
   static_volume:
