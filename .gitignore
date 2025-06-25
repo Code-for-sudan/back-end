@@ -194,4 +194,4 @@ media/
 log/
 .vscode/
 profile_pics
-migrations/
+staticfiles/
