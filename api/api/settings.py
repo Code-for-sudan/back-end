@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
+    'channels_redis',
     'accounts.apps.AccountsConfig',
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
@@ -101,6 +103,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'api.wsgi.application'
+
+ASGI_APPLICATION = 'api.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379")],
+        },
+    },
+}
 
 
 # Database
@@ -376,6 +388,11 @@ LOGGING = {
             'propagate': False,
         },
         'search_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'search_consumers': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
