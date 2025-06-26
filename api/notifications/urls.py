@@ -2,13 +2,19 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import EmailTemplateViewSet
+from .views import (
+    EmailTemplateViewSet,
+    EmailAttachmentViewSet,
+    EmailImageViewSet,
+    EmailStyleViewSet,
+)
 
 router = DefaultRouter()
-router.register(r'emails', EmailTemplateViewSet, basename='emails')
+router.register('templates', EmailTemplateViewSet)
+router.register('attachments', EmailAttachmentViewSet)
+router.register('images', EmailImageViewSet)
+router.register('styles', EmailStyleViewSet)
 
 urlpatterns = [
-    
+    path('', include(router.urls)),
 ]
-
-urlpatterns += router.urls

@@ -36,7 +36,11 @@ class EmailAttachment(models.Model):
     """
     template = models.ForeignKey(EmailTemplate, on_delete=models.CASCADE, related_name='attachments')
     file = models.FileField(upload_to='email_templates/attachments/')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return "Attachment for template: {}, file name: {}".format(self.template.name, self.file.name)
   
 class EmailImage(models.Model):
     """
@@ -47,7 +51,11 @@ class EmailImage(models.Model):
     """
     template = models.ForeignKey(EmailTemplate, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='email_templates/images/')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return "Image for template: {}, image name: {}".format(self.template.name, self.image.name)
 
 class EmailStyle(models.Model):
     """
@@ -58,3 +66,8 @@ class EmailStyle(models.Model):
     """
     template = models.ForeignKey(EmailTemplate, on_delete=models.CASCADE, related_name='styles')
     style_file = models.FileField(upload_to='email_templates/styles/')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "Style for template: {}, style file name: {}".format(self.template.name, self.style_file.name)

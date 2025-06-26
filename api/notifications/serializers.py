@@ -16,8 +16,8 @@ class EmailAttachmentSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = EmailAttachment
-        fields = ['file']
-        extra_kwargs = {'file': {'required': True}}
+        fields = ['id', 'template', 'file']
+        extra_kwargs = {'file': {'required': True,}}
 
     def validate_file(self, file):
         if file is None:
@@ -48,7 +48,7 @@ class EmailImageSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = EmailImage
-        fields = ['image']
+        fields = ['id', 'template', 'image']
         extra_kwargs = {'image': {'required': True}}
 
     def validate_image(self, image):
@@ -71,6 +71,7 @@ class EmailImageSerializer(serializers.ModelSerializer):
             )
         return image
 
+
 class EmailStyleSerializer(serializers.ModelSerializer):
     """
     Serializer for the EmailStyle model, handling the serialization and deserialization
@@ -81,10 +82,10 @@ class EmailStyleSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = EmailStyle
-        fields = ['style_file']
+        fields = ['id', 'template', 'style_file']
         extra_kwargs = {'style_file': {'required': True}}
 
-    def validate_file(self, file):
+    def validate_style_file(self, file):
         if file is None:
             return file
         allowed_file_extensions = ['css']
@@ -104,87 +105,32 @@ class EmailStyleSerializer(serializers.ModelSerializer):
             )
         return file
 
+
 class EmailTemplateSerializer(serializers.ModelSerializer):
     """
-    Serializer for the EmailTemplate model, handling nested relationships for attachments, images, and styles.
-
+    Serializer for the EmailTemplate model.
+    This serializer handles the serialization and deserialization of EmailTemplate instances,
+    enforcing that the following fields are required:
+        - name: The name of the email template.
+        - subject: The subject line for the email.
+        - html_file: The HTML content file for the email template.
+        - plain_text_file: The plain text content file for the email template.
     Fields:
-        - id: Integer, unique identifier of the email template.
-        - name: String, name of the email template.
-        - subject: String, subject line for the email template.
-        - html_file: File, HTML content of the email template.
-        - plain_text_file: File, plain text content of the email template.
-        - attachments: List of EmailAttachmentSerializer objects, optional.
-        - images: List of EmailImageSerializer objects, optional.
-        - styles: List of EmailStyleSerializer objects, optional.
-
-    Methods:
-        - create(validated_data): Creates an EmailTemplate instance along with its related attachments, images, and styles.
-        - update(instance, validated_data): Updates an EmailTemplate instance and its related attachments, images, and styles. Existing related objects are deleted and recreated if new data is provided.
-
-    Notes:
-        - Nested data for attachments, images, and styles are handled explicitly in create and update methods to ensure proper creation and association with the EmailTemplate instance.
+        - id (int): Unique identifier for the email template.
+        - name (str): Name of the template (required).
+        - subject (str): Subject of the email (required).
+        - html_file (File): HTML file for the email content (required).
+        - plain_text_file (File): Plain text file for the email content (required).
     """
-    attachments = EmailAttachmentSerializer(many=True, required=False)
-    images = EmailImageSerializer(many=True, required=False)
-    styles = EmailStyleSerializer(many=True, required=False)
-
     class Meta:
         model = EmailTemplate
         fields = [
             'id', 'name', 'subject', 'html_file',
-            'plain_text_file','attachments',
-            'images', 'styles'
+            'plain_text_file'
         ]
-        read_only_fields = ['id']
-
     extra_kwargs = {
         'name': {'required': True},
         'subject': {'required': True},
         'html_file': {'required': True},
         'plain_text_file': {'required': True}
     }
-
-    def create(self, validated_data):
-        # Delete nested data from validated_data for the EmailTemplate creation
-        # This is necessary to avoid conflicts with the EmailTemplate model fields.
-        attachments_data = validated_data.pop('attachments', [])
-        images_data = validated_data.pop('images', [])
-        styles_data = validated_data.pop('styles', [])
-
-        template = EmailTemplate.objects.create(**validated_data)
-
-        for attachment in attachments_data:
-            EmailAttachment.objects.create(template=template, **attachment)
-        for image in images_data:
-            EmailImage.objects.create(template=template, **image)
-        for style in styles_data:
-            EmailStyle.objects.create(template=template, **style)
-
-        return template
-
-    def update(self, instance, validated_data):
-        attachments_data = validated_data.pop('attachments', None)
-        images_data = validated_data.pop('images', None)
-        styles_data = validated_data.pop('styles', None)
-
-        # Update simple fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        # Optionally: clear and recreate related objects
-        if attachments_data is not None:
-            instance.attachments.all().delete()
-            for attachment in attachments_data:
-                EmailAttachment.objects.create(template=instance, **attachment)
-        if images_data is not None:
-            instance.images.all().delete()
-            for image in images_data:
-                EmailImage.objects.create(template=instance, **image)
-        if styles_data is not None:
-            instance.styles.all().delete()
-            for style in styles_data:
-                EmailStyle.objects.create(template=instance, **style)
-
-        return instance
