@@ -3,16 +3,16 @@ from django.db import models
 
 class EmailTemplate(models.Model):
     """
-    Model representing an email template with both HTML and plain text versions.
+    Represents an email template used for notifications.
     Fields:
-        name (CharField): Unique name for the email template (max length 100).
-        subject (CharField): Subject line for the email (max length 255).
-        html_file (FileField): File containing the HTML version of the email template, uploaded to 'email_templates/html/'.
-        plain_text_file (FileField): File containing the plain text version of the email template, uploaded to 'email_templates/plain/'.
-        created_at (DateTimeField): Timestamp when the template was created (auto-set on creation).
-        updated_at (DateTimeField): Timestamp when the template was last updated (auto-updated on save).
+        name (CharField): The unique name of the email template.
+        subject (CharField): The subject line for the email.
+        html_file (FileField): The HTML file associated with the email template, uploaded to 'email_templates/html/'.
+        plain_text_file (FileField): The plain text file for the email template, uploaded to 'email_templates/plain/'.
+        created_at (DateTimeField): Timestamp when the template was created.
+        updated_at (DateTimeField): Timestamp when the template was last updated.
     Methods:
-        __str__(): Returns the name of the email template.
+        __str__(): Returns a string representation of the email template, including its name and subject.
     """
     name = models.CharField(max_length=100, unique=True)
     subject = models.CharField(max_length=255)
@@ -29,10 +29,14 @@ class EmailTemplate(models.Model):
 
 class EmailAttachment(models.Model):
     """
-    Model representing an attachment associated with an email template.
-    Attributes:
-        template (ForeignKey): Reference to the related EmailTemplate. Deleting the template will also delete its attachments.
-        file (FileField): The file to be attached, uploaded to 'email_templates/attachments/' directory.
+    Represents an attachment file associated with an email template.
+    Fields:
+        template (ForeignKey): Reference to the related EmailTemplate.
+        file (FileField): The file attached to the email template, uploaded to 'email_templates/attachments/'.
+        created_at (DateTimeField): Timestamp when the attachment was created.
+        updated_at (DateTimeField): Timestamp when the attachment was last updated.
+    Methods:
+        __str__(): Returns a string representation showing the template name and file name.
     """
     template = models.ForeignKey(EmailTemplate, on_delete=models.CASCADE, related_name='attachments')
     file = models.FileField(upload_to='email_templates/attachments/')
@@ -42,12 +46,17 @@ class EmailAttachment(models.Model):
     def __str__(self):
         return "Attachment for template: {}, file name: {}".format(self.template.name, self.file.name)
   
+  
 class EmailImage(models.Model):
     """
-    Model representing an image associated with an email template.
-    Attributes:
-        template (ForeignKey): Reference to the related EmailTemplate. Deleting the template will also delete associated images.
-        image (ImageField): The image file to be used in the email template, uploaded to 'email_templates/images/'.
+    Represents an image associated with an email template.
+    Fields:
+        template (ForeignKey): Reference to the related EmailTemplate.
+        image (ImageField): The image file to be used in the email template.
+        created_at (DateTimeField): Timestamp when the image was created.
+        updated_at (DateTimeField): Timestamp when the image was last updated.
+    Methods:
+        __str__(): Returns a string representation showing the template name and image name.
     """
     template = models.ForeignKey(EmailTemplate, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='email_templates/images/')
@@ -57,12 +66,17 @@ class EmailImage(models.Model):
     def __str__(self):
         return "Image for template: {}, image name: {}".format(self.template.name, self.image.name)
 
+
 class EmailStyle(models.Model):
     """
     Represents a style file associated with an email template.
     Attributes:
-        template (ForeignKey): Reference to the related EmailTemplate instance.
-        style_file (FileField): File field for uploading the style file, stored in 'email_templates/styles/'.
+        template (ForeignKey): Reference to the related EmailTemplate.
+        style_file (FileField): The file containing the style (e.g., CSS) for the email template.
+        created_at (DateTimeField): Timestamp when the style was created.
+        updated_at (DateTimeField): Timestamp when the style was last updated.
+    Methods:
+        __str__(): Returns a human-readable string representation of the EmailStyle instance.
     """
     template = models.ForeignKey(EmailTemplate, on_delete=models.CASCADE, related_name='styles')
     style_file = models.FileField(upload_to='email_templates/styles/')
