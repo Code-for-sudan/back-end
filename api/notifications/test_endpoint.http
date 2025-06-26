@@ -1,0 +1,13 @@
+### Upload email template with files
+POST http://127.0.0.1:8000/api/v1/notfications/emailtemplates/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUwODg1NDAyLCJpYXQiOjE3NTA4ODQ1MDIsImp0aSI6IjNjYmRjN2M5YzkwNzQxOWY5OGQ0N2Y2ZmI2OGNmMmU5IiwidXNlcl9pZCI6MX0.65DgQZVwM_3cje0QlMgprT1wZRHvrUw3yU2R20encXI
+Content-Type: multipart/form-data
+
+name=Test Template
+subject=Test Subject
+body=Test Body
+html_file=@/home/ibrahim-hanafi/Documents/Projects/back-end/email_test/template.html;type=text/html
+plain_text_file=@/home/ibrahim-hanafi/Documents/Projects/back-end/plain.txt;type=text/plain
+attachments[0][file]=@/home/ibrahim-hanafi/Documents/Projects/back-end/email_test/test_1.pdf;type=application/pdf
+images[0][image]=@/home/ibrahim-hanafi/Documents/Projects/back-end/email_test/test_1.png;type=image/png
+styles[0][style_file]=@/home/ibrahim-hanafi/Documents/Projects/back-end/email_test/style.css;type=text/css

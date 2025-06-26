@@ -136,6 +136,8 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
             'plain_text_file','attachments',
             'images', 'styles'
         ]
+        read_only_fields = ['id']
+
     extra_kwargs = {
         'name': {'required': True},
         'subject': {'required': True},
