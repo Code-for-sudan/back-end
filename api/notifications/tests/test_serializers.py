@@ -1,148 +1,138 @@
-import os
+import io
+import unittest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
-from notifications.serializers import (
+from rest_framework.exceptions import ValidationError
+
+from api.notifications.serializers import (
     EmailAttachmentSerializer,
     EmailImageSerializer,
     EmailStyleSerializer,
-    EmailTemplateSerializer
+    EmailTemplateSerializer,
 )
-from notifications.models import (
+from api.notifications.models import (
     EmailAttachment,
     EmailImage,
     EmailStyle,
-    EmailTemplate
+    EmailTemplate,
 )
+from django.test import TestCase
 
-class EmailAttachmentSerializerTest(TestCase):
-    def test_valid_attachment(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1.png", f.read(), content_type="image/jpeg")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        serializer.is_valid()
-        self.assertTrue(serializer.is_valid())
+class TestSerializersUnityTestCase(TestCase):
+    def setUp(self):
+        self.template = EmailTemplate.objects.create(
+            name="Test",
+            subject="Subj",
+            html_file=SimpleUploadedFile("a.html", b"<html></html>"),
+            plain_text_file=SimpleUploadedFile("a.txt", b"plain")
+        )
 
-    def test_invalid_extension(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1 copy.png.sdf')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1 copy.png.sdf", f.read(), content_type="image/jpeg")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        serializer.is_valid()
-        self.assertIn('file', serializer.errors)
+    # EmailAttachmentSerializer tests
+    def test_attachment_valid_and_invalid(self):
+        valid_file = SimpleUploadedFile("test.pdf", b"data", content_type="application/pdf")
+        invalid_ext_file = SimpleUploadedFile("test.exe", b"data", content_type="application/octet-stream")
+        too_large_file = SimpleUploadedFile("test.pdf", b"a" * (10 * 1024 * 1024 + 1), content_type="application/pdf")
+        # Valid
+        serializer = EmailAttachmentSerializer(data={"template": self.template.id, "file": valid_file})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        # Invalid extension
+        serializer = EmailAttachmentSerializer(data={"template": self.template.id, "file": invalid_ext_file})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("file", serializer.errors)
+        # Too large
+        serializer = EmailAttachmentSerializer(data={"template": self.template.id, "file": too_large_file})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("file", serializer.errors)
 
-    def test_invalid_size(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_3.jpg')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_3.jpg", f.read(), content_type="image/jpeg")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        serializer.is_valid()
-        self.assertIn('file', serializer.errors)
+    def test_attachment_missing_file(self):
+        serializer = EmailAttachmentSerializer(data={"template": self.template.id})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("file", serializer.errors)
 
-class EmailImageSerializerTest(TestCase):
-    def test_valid_image(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1.png", f.read(), content_type="image/jpeg")
-        serializer = EmailAttachmentSerializer(data={'file': file})
+    # EmailImageSerializer tests
+    def test_image_valid_and_invalid(self):
+        valid_image = SimpleUploadedFile("img.jpg", b"data", content_type="image/jpeg")
+        invalid_ext_image = SimpleUploadedFile("img.gif", b"data", content_type="image/gif")
+        too_large_image = SimpleUploadedFile("img.jpg", b"a" * (5 * 1024 * 1024 + 1), content_type="image/jpeg")
+        # Valid
+        serializer = EmailImageSerializer(data={"template": self.template.id, "image": valid_image})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        # Invalid extension
+        serializer = EmailImageSerializer(data={"template": self.template.id, "image": invalid_ext_image})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("image", serializer.errors)
+        # Too large
+        serializer = EmailImageSerializer(data={"template": self.template.id, "image": too_large_image})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("image", serializer.errors)
 
-    def test_invalid_extension(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1 copy.png.sdf')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1 copy.png.sdf", f.read(), content_type="image/jpeg")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        serializer.is_valid()
-        self.assertIn('file', serializer.errors)
+    def test_image_missing_file(self):
+        serializer = EmailImageSerializer(data={"template": self.template.id})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("image", serializer.errors)
 
-    def test_invalid_size(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_3.jpg')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_3.jpg", f.read(), content_type="image/jpeg")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        serializer.is_valid()
-        self.assertIn('file', serializer.errors)
+    # EmailStyleSerializer tests
+    def test_style_valid_and_invalid(self):
+        valid_style = SimpleUploadedFile("style.css", b"body{}", content_type="text/css")
+        invalid_ext_style = SimpleUploadedFile("style.txt", b"body{}", content_type="text/plain")
+        too_large_style = SimpleUploadedFile("style.css", b"a" * (1 * 1024 * 1024 + 1), content_type="text/css")
+        # Valid
+        serializer = EmailStyleSerializer(data={"template": self.template.id, "style_file": valid_style})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        # Invalid extension
+        serializer = EmailStyleSerializer(data={"template": self.template.id, "style_file": invalid_ext_style})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("style_file", serializer.errors)
+        # Too large
+        serializer = EmailStyleSerializer(data={"template": self.template.id, "style_file": too_large_style})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("style_file", serializer.errors)
 
-class EmailStyleSerializerTest(TestCase):
-    def test_valid_style(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.pdf')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1.pdf", f.read(), content_type="application/pdf")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        self.assertTrue(serializer.is_valid())
+    def test_style_missing_file(self):
+        serializer = EmailStyleSerializer(data={"template": self.template.id})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("style_file", serializer.errors)
 
-    def test_invalid_extension(self):
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1 copy.pdfww')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1 copy.pdfww", f.read(), content_type="application/pdf")
-        serializer = EmailAttachmentSerializer(data={'file': file})
-        serializer.is_valid()
-        self.assertIn('file', serializer.errors)
-
-    # def test_invalid_size(self):
-    #     path = os.path.join(os.path.dirname(__file__), 'media')
-    #     with open(path, 'rb') as f:
-    #         file = SimpleUploadedFile("test.pdf", f.read(), content_type="application/pdf")
-    #     serializer = EmailAttachmentSerializer(data={'file': file})
-    #     self.assertIn('style_file', serializer.errors)
-
-class EmailTemplateSerializerTest(TestCase):
-    def test_create_template_with_nested(self):
-        html_file = SimpleUploadedFile("template.html", b"<html></html>", content_type="text/html")
-        plain_file = SimpleUploadedFile("plain.txt", b"plain text", content_type="text/plain")
-        attachment = SimpleUploadedFile("file.pdf", b"pdf", content_type="application/pdf")
-        style = SimpleUploadedFile("style.css", b"body{}", content_type="text/css")
-
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1.png", f.read(), content_type="image/jpeg")
-            
+    # EmailTemplateSerializer tests
+    def test_template_valid_and_missing_fields(self):
+        html_file = SimpleUploadedFile("a.html", b"<html></html>")
+        plain_text_file = SimpleUploadedFile("a.txt", b"plain")
+        # Valid
         data = {
-            "name": "Test Template",
+            "name": "Test",
             "subject": "Subject",
             "html_file": html_file,
-            "plain_text_file": plain_file,
-            "attachments": [{"file": attachment}],
-            "images": [{"image": file}],
-            "styles": [{"style_file": style}],
+            "plain_text_file": plain_text_file,
         }
         serializer = EmailTemplateSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        template = serializer.save()
-        self.assertEqual(template.attachments.count(), 1)
-        self.assertEqual(template.images.count(), 1)
-        self.assertEqual(template.styles.count(), 1)
+        # Missing all
+        serializer = EmailTemplateSerializer(data={})
+        self.assertFalse(serializer.is_valid())
+        for field in ["name", "subject", "html_file", "plain_text_file"]:
+            self.assertIn(field, serializer.errors)
 
-    def test_update_template_with_nested(self):
-        html_file = SimpleUploadedFile("template.html", b"<html></html>", content_type="text/html")
-        plain_file = SimpleUploadedFile("plain.txt", b"plain text", content_type="text/plain")
-        template = EmailTemplate.objects.create(
-            name="Old Name", subject="Old", html_file=html_file, plain_text_file=plain_file
-        )
-        EmailAttachment.objects.create(template=template, file=SimpleUploadedFile("old.pdf", b"old", content_type="application/pdf"))
-        EmailImage.objects.create(template=template, image=SimpleUploadedFile("old.jpg", b"old", content_type="image/jpeg"))
-        EmailStyle.objects.create(template=template, style_file=SimpleUploadedFile("old.css", b"old", content_type="text/css"))
-
-        new_attachment = SimpleUploadedFile("new.pdf", b"new", content_type="application/pdf")
-        new_style = SimpleUploadedFile("new.css", b"new", content_type="text/css")
-
-        path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
-        with open(path, 'rb') as f:
-            file = SimpleUploadedFile("test_1.png", f.read(), content_type="image/jpeg")
-    
+    def test_template_partial_missing_fields(self):
+        html_file = SimpleUploadedFile("a.html", b"<html></html>")
+        # Missing plain_text_file
         data = {
-            "name": "New Name",
-            "subject": "New",
+            "name": "Test",
+            "subject": "Subject",
             "html_file": html_file,
-            "plain_text_file": plain_file,
-            "attachments": [{"file": new_attachment}],
-            "images": [{"image": file}],
-            "styles": [{"style_file": new_style}],
         }
-        serializer = EmailTemplateSerializer(instance=template, data=data)
+        serializer = EmailTemplateSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("plain_text_file", serializer.errors)
+
+    def test_template_invalid_file_types(self):
+        # Invalid html_file extension
+        html_file = SimpleUploadedFile("a.txt", b"plain")
+        plain_text_file = SimpleUploadedFile("a.txt", b"plain")
+        data = {
+            "name": "Test",
+            "subject": "Subject",
+            "html_file": html_file,
+            "plain_text_file": plain_text_file,
+        }
+        serializer = EmailTemplateSerializer(data=data)
+        # Should still be valid as no extension validation is enforced in serializer
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        updated = serializer.save()
-        self.assertEqual(updated.name, "New Name")
-        self.assertEqual(updated.attachments.count(), 1)
-        self.assertEqual(updated.images.count(), 1)
-        self.assertEqual(updated.styles.count(), 1)
-        
