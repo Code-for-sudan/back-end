@@ -100,7 +100,7 @@ class SignupBusinessOwnerView(APIView):
             Response: A DRF Response object with a message and status code indicating the result of the operation.
         """
         serializer = BusinessOwnerSignupSerializer(data=request.data)
-        if BusinessOwner.objects.filter(email=request.data.get('email')).exists():
+        if User.objects.filter(email=request.data.get('email')).exists():
             # Log the error message
             logger.error('Business owner already exists.')
             return Response(
