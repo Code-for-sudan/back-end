@@ -195,31 +195,41 @@ CELERY_TRACK_STARTED = True
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
-    "https://sudamall.ddns.net",    # React prod server
+    "https://sudamall.ddns.net",
     "http://localhost:5173",
 ]
 
-CORS_ALLOW_CREDENTIALS = True  # Allow cookies (for refresh tokens)
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://sudamall\.ddns\.net$",
+    r"^http://localhost:\d+$",
+]
 
-# Without this, Django might reject POST/PUT/DELETE requests
-# from your React app, even if CORS allows them.
+CORS_ALLOW_CREDENTIALS = True
+
+# Important for credentialed requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Ensure session and CSRF cookies work cross-origin
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+
 CSRF_TRUSTED_ORIGINS = [
     "https://sudamall.ddns.net",  # React prod server
     "http://localhost:5173",
 ]
 
-# Allow specific headers if needed (optional)
-CORS_ALLOW_HEADERS = [
-    'authorization',
-    'content-type',
-    'x-csrftoken',
-    'accept',
-    'origin',
-    'user-agent',
-    'x-requested-with',
-]
-
-# Add this for local development (optional, only for testing)
 CORS_ALLOW_ALL_ORIGINS = False
 
 
