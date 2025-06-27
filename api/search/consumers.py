@@ -64,7 +64,7 @@ class AutocompleteConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({'error': str(e)}))
 
     def product_autocomplete(self, query, size):
-        search = Search(registry.get_document(ProductDocument)).query(
+        search = ProductDocument.search().query(
             "bool",
             should=[
                 {"match": {"product_name": query}},
