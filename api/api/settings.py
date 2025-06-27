@@ -196,6 +196,7 @@ CELERY_TRACK_STARTED = True
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
     "https://sudamall.ddns.net",    # React prod server
+    "http://localhost:5173",
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Allow cookies (for refresh tokens)
@@ -204,6 +205,7 @@ CORS_ALLOW_CREDENTIALS = True  # Allow cookies (for refresh tokens)
 # from your React app, even if CORS allows them.
 CSRF_TRUSTED_ORIGINS = [
     "https://sudamall.ddns.net",  # React prod server
+    "http://localhost:5173",
 ]
 
 # Allow specific headers if needed (optional)
