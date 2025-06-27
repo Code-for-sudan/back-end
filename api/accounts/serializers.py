@@ -1,5 +1,7 @@
 import os, logging
 from rest_framework import serializers # type: ignore
+from django.db import transaction
+from phonenumber_field.serializerfields import PhoneNumberField
 from .models import User, BusinessOwner
 from stores.models import Store
 
@@ -30,6 +32,9 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
     # Set otp field as write-only to prevent it from being serialized
     otp = serializers.CharField(write_only=True, required=False)
+    # Set phone_number and whatsapp_number as optional fields
+    phone_number = PhoneNumberField(required=False, allow_null=True)
+    whatsapp_number = PhoneNumberField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -38,9 +43,6 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'profile_picture',
-            'phone_number',
-            'whatsapp_number',
-            'otp',
             'password',
             'gender'
         ]
@@ -135,7 +137,8 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     def create(self, validated_data):
         store_name = validated_data.pop('store_name')
         user_data = validated_data.pop('user')
-        store = Store.objects.create(name=store_name)
-        user = User.objects.create_user(**user_data)
-        business_owner = BusinessOwner.objects.create(user=user, store=store)
+        with transaction.atomic():
+            store = Store.objects.create(name=store_name)
+            user = User.objects.create_user(**user_data)
+            business_owner = BusinessOwner.objects.create(user=user, store=store)
         return business_owner
