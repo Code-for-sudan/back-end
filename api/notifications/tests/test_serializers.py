@@ -3,13 +3,13 @@ import unittest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.exceptions import ValidationError
 
-from api.notifications.serializers import (
+from ..serializers import (
     EmailAttachmentSerializer,
     EmailImageSerializer,
     EmailStyleSerializer,
     EmailTemplateSerializer,
 )
-from api.notifications.models import (
+from ..models import (
     EmailAttachment,
     EmailImage,
     EmailStyle,

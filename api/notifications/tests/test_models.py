@@ -1,7 +1,7 @@
 import unittest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
-from api.notifications.models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
+from ..models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
 
 from django.test import TestCase
 
