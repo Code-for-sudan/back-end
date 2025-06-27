@@ -437,3 +437,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directory where uploaded files w
 #### Static Files Settings ####
 STATIC_URL = '/static/'  # URL to access static files
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Directory where static files
+
+#### Phone Number Settings ####
+# Default region for phone numbers
+PHONENUMBER_DEFAULT_REGION = "SD"  # Sudan, change as needed
