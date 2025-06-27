@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from drf_spectacular.utils import extend_schema
 from .serializers import UserSerializer, BusinessOwnerSignupSerializer # type: ignore
 from rest_framework import status # type: ignore
-from .models import User # type: ignore
+from .models import User, BusinessOwner # type: ignore
 
 
 # Create a logger for this module
@@ -100,7 +100,7 @@ class SignupBusinessOwnerView(APIView):
             Response: A DRF Response object with a message and status code indicating the result of the operation.
         """
         serializer = BusinessOwnerSignupSerializer(data=request.data)
-        if User.objects.filter(email=request.data.get('email')).exists():
+        if BusinessOwner.objects.filter(email=request.data.get('email')).exists():
             # Log the error message
             logger.error('Business owner already exists.')
             return Response(
