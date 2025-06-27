@@ -1,8 +1,6 @@
 import io
-import unittest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.exceptions import ValidationError
-
 from ..serializers import (
     EmailAttachmentSerializer,
     EmailImageSerializer,
@@ -17,10 +15,20 @@ from ..models import (
 )
 from django.test import TestCase
 
+from io import BytesIO
+from PIL import Image
+
+def get_test_image():
+    image = BytesIO()
+    Image.new("RGB", (10, 10)).save(image, format="JPEG")
+    image.seek(0)
+    return SimpleUploadedFile("img.jpg", image.read(), content_type="image/jpeg")
+
 class TestSerializersUnityTestCase(TestCase):
     def setUp(self):
+        # Use a unique name for each test run
         self.template = EmailTemplate.objects.create(
-            name="Test",
+            name="TestBase",
             subject="Subj",
             html_file=SimpleUploadedFile("a.html", b"<html></html>"),
             plain_text_file=SimpleUploadedFile("a.txt", b"plain")
@@ -50,7 +58,7 @@ class TestSerializersUnityTestCase(TestCase):
 
     # EmailImageSerializer tests
     def test_image_valid_and_invalid(self):
-        valid_image = SimpleUploadedFile("img.jpg", b"data", content_type="image/jpeg")
+        valid_image = get_test_image()
         invalid_ext_image = SimpleUploadedFile("img.gif", b"data", content_type="image/gif")
         too_large_image = SimpleUploadedFile("img.jpg", b"a" * (5 * 1024 * 1024 + 1), content_type="image/jpeg")
         # Valid
@@ -96,9 +104,9 @@ class TestSerializersUnityTestCase(TestCase):
     def test_template_valid_and_missing_fields(self):
         html_file = SimpleUploadedFile("a.html", b"<html></html>")
         plain_text_file = SimpleUploadedFile("a.txt", b"plain")
-        # Valid
+        # Use a unique name to avoid unique constraint error
         data = {
-            "name": "Test",
+            "name": "Test1",
             "subject": "Subject",
             "html_file": html_file,
             "plain_text_file": plain_text_file,
@@ -113,9 +121,9 @@ class TestSerializersUnityTestCase(TestCase):
 
     def test_template_partial_missing_fields(self):
         html_file = SimpleUploadedFile("a.html", b"<html></html>")
-        # Missing plain_text_file
+        # Use a unique name to avoid unique constraint error
         data = {
-            "name": "Test",
+            "name": "Test2",
             "subject": "Subject",
             "html_file": html_file,
         }
@@ -124,11 +132,11 @@ class TestSerializersUnityTestCase(TestCase):
         self.assertIn("plain_text_file", serializer.errors)
 
     def test_template_invalid_file_types(self):
-        # Invalid html_file extension
+        # Invalid html_file extension, but serializer does not enforce extension validation
         html_file = SimpleUploadedFile("a.txt", b"plain")
         plain_text_file = SimpleUploadedFile("a.txt", b"plain")
         data = {
-            "name": "Test",
+            "name": "Test3",
             "subject": "Subject",
             "html_file": html_file,
             "plain_text_file": plain_text_file,
@@ -136,3 +144,4 @@ class TestSerializersUnityTestCase(TestCase):
         serializer = EmailTemplateSerializer(data=data)
         # Should still be valid as no extension validation is enforced in serializer
         self.assertTrue(serializer.is_valid(), serializer.errors)
+        

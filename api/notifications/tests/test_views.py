@@ -1,4 +1,5 @@
 import tempfile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -18,18 +19,20 @@ class EmailTemplateViewSetTestCase(APITestCase):
         self.template = EmailTemplate.objects.create(
             name="Welcome",
             subject="Welcome Email",
-            html_content="<h1>Welcome</h1>",
-            plain_text="Welcome",
+            html_file=SimpleUploadedFile("welcome.html", b"<h1>Welcome</h1>", content_type="text/html"),
+            plain_text_file=SimpleUploadedFile("welcome.txt", b"Welcome", content_type="text/plain"),
         )
-        self.url = reverse('emailtemplate-list')  # Make sure router is used in urls.py
+        self.url = reverse('emailtemplate-list')
         self.detail_url = reverse('emailtemplate-detail', kwargs={'pk': self.template.pk})
 
     def test_create_email_template(self):
+        html_file = SimpleUploadedFile("promo.html", b"<h1>50% OFF</h1>", content_type="text/html")
+        plain_file = SimpleUploadedFile("promo.txt", b"50% OFF!", content_type="text/plain")
         data = {
             "name": "Promotion",
             "subject": "Special Offer",
-            "html_content": "<h1>50% OFF</h1>",
-            "plain_text": "50% OFF!",
+            "html_file": html_file,
+            "plain_text_file": plain_file,
         }
         response = self.client.post(self.url, data, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -44,8 +47,12 @@ class EmailTemplateViewSetTestCase(APITestCase):
         self.assertIn("errors", response.data)
 
     def test_update_email_template(self):
+        html_file = SimpleUploadedFile("updated.html", b"<h1>Updated</h1>", content_type="text/html")
+        plain_file = SimpleUploadedFile("updated.txt", b"Updated", content_type="text/plain")
         data = {
-            "subject": "Updated Subject"
+            "subject": "Updated Subject",
+            "html_file": html_file,
+            "plain_text_file": plain_file,
         }
         response = self.client.patch(self.detail_url, data, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
