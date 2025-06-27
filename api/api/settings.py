@@ -220,7 +220,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Add this for local development (optional, only for testing)
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 ####  Logging Configuration ####
