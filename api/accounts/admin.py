@@ -34,7 +34,7 @@ class CustomUserAdmin(UserAdmin):
     )
 
 
-class BussinessUserAdmin(UserAdmin):
+class BussinessUserAdmin(admin.ModelAdmin):
     search_fields = ('user__email', 'store__name')
     list_display = ('user', 'store')
     search_fields = ('user__email', 'store__name')

@@ -49,16 +49,7 @@ class SignupUserView(APIView):
                 {'message': 'User already exists.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {
-                    'message': 'User created successfully.',
-                    'data': serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
-        else:
+        if not serializer.is_valid():
             # Log the error message
             logger.error('User creation failed: {}.'.format(serializer.errors))
             return Response(
@@ -67,6 +58,15 @@ class SignupUserView(APIView):
                     'errors': serializer.errors
                 },
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'message': 'User created successfully.',
+                    'data': serializer.data
+                },
+                status=status.HTTP_201_CREATED
             )
 
 @extend_schema(
@@ -106,16 +106,7 @@ class SignupBusinessOwnerView(APIView):
                 {'message': 'Business owner already exists.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {
-                    'message': 'Business owner created successfully.',
-                    'data': serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
-        else:
+        if not serializer.is_valid():
             # Log the error message
             logger.error('Business owner creation failed: {}.'.format(serializer.errors))
             return Response(
@@ -124,4 +115,13 @@ class SignupBusinessOwnerView(APIView):
                     'errors': serializer.errors
                 },
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            serializer.save()
+            return Response(
+                {
+                    'message': 'Business owner created successfully.',
+                    'data': serializer.data
+                },
+                status=status.HTTP_201_CREATED
             )

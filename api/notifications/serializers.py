@@ -134,3 +134,15 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
         'html_file': {'required': True},
         'plain_text_file': {'required': True}
     }
+
+
+class AdminSendEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(
+        required=True,
+        help_text="The email address to send the email to."
+    )
+    template_id = serializers.PrimaryKeyRelatedField(
+        queryset=EmailTemplate.objects.all(),
+        required=True,
+        help_text="The email template to use for sending the email."
+    )

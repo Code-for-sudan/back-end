@@ -7,6 +7,7 @@ from .views import (
     EmailAttachmentViewSet,
     EmailImageViewSet,
     EmailStyleViewSet,
+    AdminSendEmailView
 )
 
 router = DefaultRouter()
@@ -17,4 +18,6 @@ router.register('styles', EmailStyleViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('send-email/', AdminSendEmailView.as_view(), name='send-template-email'),
+
 ]

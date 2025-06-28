@@ -30,14 +30,17 @@ def user_created_handler(sender, instance, created, **kwargs):
     """
 
     if created:
-        send_email_task.delay(
-            subject="Welcome to Our Platform!",
-            template_name="welcome-user",
-            context={
-                "first_name": instance.first_name,   
-            },
-            recipient_list=[instance.email]
-        )
+        # Only send generic email if not a business owner
+        if not hasattr(instance, 'business_owner_profile'):
+            send_email_task.delay(
+                subject="Welcome to Our Platform!",
+                template_name="welcome-user",
+                context={
+                    "first_name": instance.first_name,   
+                },
+                recipient_list=[instance.email]
+            )
+
 
 
 @receiver(post_save, sender=BusinessOwner)

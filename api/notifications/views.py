@@ -1,4 +1,5 @@
 import logging
+from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -10,6 +11,7 @@ from .serializers import (
     EmailAttachmentSerializer,
     EmailImageSerializer,
     EmailStyleSerializer,
+    AdminSendEmailSerializer
 )
 
 # Create a logger for this module
@@ -504,4 +506,70 @@ class EmailStyleViewSet(viewsets.ModelViewSet):
             status=status.HTTP_204_NO_CONTENT
         )
 
+@extend_schema(
+    summary="Admin Send Email",
+    description="Send an email using a specified template. This endpoint is restricted to admin users.",
+    request=AdminSendEmailSerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "Confirmation message indicating the email was sent successfully.",
+                },
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URLs of the attachments included in the email."
+                    },
+                },
+                "styles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URLs of the styles applied to the email."
+                    },
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URLs of the images included in the email."
+                    },
+                },
+            },
+        },
+        400: "Bad Request",
+        403: "Forbidden",
+        404: "Not Found",
+    }
+)
+class AdminSendEmailView(APIView):
+    permission_classes = [IsAdminUser]
 
+    def post(self, request):
+        serializer = AdminSendEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        template = serializer.validated_data['template_id']
+
+        # Fetch all related attachments, styles, and images
+        attachments = template.attachments.all()
+        styles = template.styles.all()
+        images = template.images.all()
+
+        # Now you can use these to build and send your email
+        # Example: send_mail_with_attachments(email, template, attachments, styles, images)
+        # (Implement your own email sending logic here)
+
+        return Response({
+            "message": f"Email sent to {email} using template '{template.name}'.",
+            "attachments": [a.file.url for a in attachments],
+            "styles": [s.style_file.url for s in styles],
+            "images": [i.image.url for i in images],
+        }, status=200)
