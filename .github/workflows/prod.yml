@@ -73,6 +73,7 @@ jobs:
           echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
           echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
           echo "DJANGO_ENV=${{ secrets.DJANGO_ENV_PROD }}" >> api/.env
+          echo "ELASTICSEARCH_URL=http://elasticsearch:9200" >> api/.env.prod
 
           echo "DEBUG=${{ secrets.DJANGO_DEBUG_PROD }}" >> api/.env.prod
           echo "DJANGO_ENV=${{ secrets.DJANGO_ENV_PROD }}" >> api/.env.prod
@@ -82,6 +83,7 @@ jobs:
           echo "DB_HOST=127.0.0.1" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
+          echo "ELASTICSEARCH_URL=http://elasticsearch:9200" >> api/.env.prod
 
       - name: Grant privileges to test user
         run: |
