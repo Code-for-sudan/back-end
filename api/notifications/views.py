@@ -503,3 +503,5 @@ class EmailStyleViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_204_NO_CONTENT
         )
+
+

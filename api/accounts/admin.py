@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User
+from .models import User, BusinessOwner
 
 
 class CustomUserAdmin(UserAdmin):
@@ -33,5 +33,13 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
 
+
+class BussinessUserAdmin(UserAdmin):
+    search_fields = ('user__email', 'store__name')
+    list_display = ('user', 'store')
+    search_fields = ('user__email', 'store__name')
+
+
 # Register the custom user model with the custom admin class
 admin.site.register(User, CustomUserAdmin)
+admin.site.register(BusinessOwner, BussinessUserAdmin)

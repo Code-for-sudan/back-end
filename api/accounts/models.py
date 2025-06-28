@@ -142,12 +142,16 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class BusinessOwner(models.Model):
     """
-    Represents a business owner profile associated with a user account.
+    Represents a business owner profile that extends the User model.
+    This model creates a one-to-one relationship between a User and a Store,
+    allowing each user to have a unique business owner profile associated with a specific store.
     Attributes:
-        user (User): A one-to-one relationship linking the business owner to a user account.
+        user (OneToOneField): Reference to the User associated with this business owner profile.
+        store (OneToOneField): Reference to the Store owned by this business owner.
     Methods:
-        __str__(): Returns a string representation of the business owner, including the company name and user email.
+        __str__(): Returns a string representation of the business owner, displaying the user's first name and email.
     """
+
     # Extend the user model to create a business owner profile
     # TODO: Add more fields to the business owner profile
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
