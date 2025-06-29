@@ -1,6 +1,7 @@
 import os, logging
 from rest_framework import serializers
 from .models import EmailAttachment, EmailImage, EmailStyle, EmailTemplate
+from accounts.models import Cart
 
 # Create the logger instance for the serializers
 logger = logging.getLogger('notifications_serializers')
@@ -157,3 +158,64 @@ class AdminSendEmailSerializer(serializers.Serializer):
 # cart_status (active cart, abandoned cart)
 
 # total_spent (tiered spenders: low, mid, high)
+class CartSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Cart model.
+    This serializer automatically includes all fields from the Cart model.
+    It is used to convert Cart model instances to and from JSON representations,
+    facilitating the creation, retrieval, update, and deletion of cart data via API endpoints.
+    Attributes:
+        Meta (class): Configuration for the serializer, specifying the model and fields to include.
+    """
+    class Meta:
+        model = Cart
+        fields = '__all__'
+
+
+class GroupTargetingSerializer(serializers.Serializer):
+    """
+    Serializer for targeting user groups based on specified filters and grouping fields.
+    Attributes:
+        filters (DictField): Optional dictionary of filters to apply when grouping users.
+        group_by (ListField): Optional list of fields to group the results by.
+        VALID_FIELDS (list): List of valid fields that can be used for filtering and grouping.
+    Validation:
+        - Ensures that all fields specified in 'group_by' and keys in 'filters' are within VALID_FIELDS.
+        - Raises a ValidationError if any invalid field is provided.
+    Intended Use:
+        Use this serializer to validate and process input data for APIs that support dynamic user segmentation
+        based on account status, cart status, account creation date, last purchase date, location, and total spent.
+    """
+
+    filters = serializers.DictField(
+        required=False,
+        help_text="Filters to apply when grouping users."
+    )
+    group_by = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="Fields to group the results by."
+    )
+
+    VALID_FIELDS = [
+        'account_status', 'cart_status', 'account_date',
+        'last_purchase_date', 'location', 'total_spent'
+    ]
+
+    def validate(self, data):
+        group_by = data.get('group_by', [])
+        for field in group_by:
+            if field not in self.VALID_FIELDS:
+                logger.error(f"Invalid field '{field}' in group_by. Valid fields are: {', '.join(self.VALID_FIELDS)}.")
+                raise serializers.ValidationError(
+                    f"Invalid field '{field}' in group_by. Valid fields are: {', '.join(self.VALID_FIELDS)}."
+                )
+        filters = data.get('filters', {})
+        for key in filters:
+            if key not in self.VALID_FIELDS:
+                logger.error(f"Invalid filter '{key}'. Valid fields are: {', '.join(self.VALID_FIELDS)}.")
+                raise serializers.ValidationError(
+                    f"Invalid filter '{key}'. Valid fields are: {', '.join(self.VALID_FIELDS)}."
+                )
+
+        return data
