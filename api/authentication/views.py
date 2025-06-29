@@ -614,7 +614,7 @@ class RequestUpdatePasswordView(APIView):
         # Send Notification email
         # This task is asynchronous and will run in the background
         # It allows the user to continue using the application without waiting for the email to be sent
-        send_email_with_attachments.delay(
+        send_email_task.delay(
             subject=subject,
             template_name=template_name,
             context=context,
