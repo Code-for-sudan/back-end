@@ -6,14 +6,17 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAdminUser # type: ignore
 from drf_spectacular.utils import extend_schema
 from .models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
+from accounts.models import User
 from notifications.tasks import send_email_task, delete_email_task
 from .serializers import (
     EmailTemplateSerializer,
     EmailAttachmentSerializer,
     EmailImageSerializer,
     EmailStyleSerializer,
-    AdminSendEmailSerializer
+    AdminSendEmailSerializer,
+    GroupTargetingSerializer
 )
+from django.db.models import Count
 
 # Create a logger for this module
 logger = logging.getLogger('notifications_views')
@@ -607,3 +610,30 @@ class AdminSendEmailView(APIView):
             "images": [i.image.url for i in images],
         }, status=200)
 
+
+class GroupTargetingView(APIView):
+    """
+    APIView for handling group targeting based on user segmentation.
+    This view allows the admin to specify filters and grouping criteria to segment users.
+    It validates the input data, applies the specified filters, and groups the users accordingly.
+    Methods:
+        post(request):
+            Validates the request data, applies filters, groups users, and returns the segmented user data.
+    Permissions:
+        Only accessible to admin users (`IsAdminUser`).
+    """
+    permission_classes = [IsAdminUser]
+    
+    def post(self, request):
+        serializer = GroupTargetingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        filters = serializer.validated_data['filters']
+        group_by = serializer.validated_data['group_by']
+        
+        # Apply filters and group users
+        users = User.objects.filter(**filters).values(*group_by).annotate(count=Count('id'))
+
+        return Response({
+            "message": "Users grouped successfully.",
+            "data": list(users)
+        }, status=status.HTTP_200_OK)

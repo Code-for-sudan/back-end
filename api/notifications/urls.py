@@ -7,7 +7,8 @@ from .views import (
     EmailAttachmentViewSet,
     EmailImageViewSet,
     EmailStyleViewSet,
-    AdminSendEmailView
+    AdminSendEmailView,
+    GroupTargetingView
 )
 
 router = DefaultRouter()
@@ -19,5 +20,5 @@ router.register('styles', EmailStyleViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('send-email/', AdminSendEmailView.as_view(), name='send-template-email'),
-
+    path('group-targeting/', GroupTargetingView.as_view(), name='group-targeting'),
 ]
