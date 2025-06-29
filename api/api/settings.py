@@ -96,7 +96,9 @@ ROOT_URLCONF = 'api.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+             os.path.join(BASE_DIR, 'media', 'email_templates', 'html'),
+            ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -183,7 +185,10 @@ CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')
 
 # Import task modules for the django project app
-CELERY_IMPORTS = ("authentication.tasks",)
+CELERY_IMPORTS = (
+    "authentication.tasks",
+    "notifications.tasks",
+)
 
 # Set Celery to use the same time zone as Django
 CELERY_TIMEZONE = 'UTC'
@@ -217,6 +222,7 @@ EMAIL_USE_TLS = env('EMAIL_USE_TLS')
 EMAIL_USE_SSL = env('EMAIL_USE_SSL')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+# print(f'DEFAULT_FROM_EMAIL: {env("DEFAULT_FROM_EMAIL")}')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 EMAIL_SUBJECT_PREFIX = env('EMAIL_SUBJECT_PREFIX')
 EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
@@ -482,8 +488,6 @@ SIMPLE_JWT = {
 
 # The custom user model that will handel the outh
 AUTH_USER_MODEL = 'accounts.User'
-
-DEFAULT_FROM_EMAIL = 'noreply@example.com' # Should be changed
 
 # Google OAuth2 settings
 GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')

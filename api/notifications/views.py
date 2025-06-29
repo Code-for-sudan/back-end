@@ -6,6 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAdminUser # type: ignore
 from drf_spectacular.utils import extend_schema
 from .models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
+from notifications.tasks import send_email_task
 from .serializers import (
     EmailTemplateSerializer,
     EmailAttachmentSerializer,
@@ -550,10 +551,24 @@ class EmailStyleViewSet(viewsets.ModelViewSet):
     }
 )
 class AdminSendEmailView(APIView):
+    """
+    APIView for admin users to send emails using a specified template.
+    This view allows an admin to send an email to a specified recipient using a selected email template.
+    It validates the input data using `AdminSendEmailSerializer`, retrieves all related attachments, styles,
+    and images from the template, and triggers an asynchronous email sending task. The response includes
+    confirmation of the sent email along with URLs for the attachments, styles, and images used.
+    Methods:
+        post(request):
+            Validates the request data, fetches template resources, triggers the email sending task,
+            and returns a response with details about the sent email and associated resources.
+    Permissions:
+        Only accessible to admin users (`IsAdminUser`).
+    """
     permission_classes = [IsAdminUser]
+    serializer_classes = AdminSendEmailSerializer
 
     def post(self, request):
-        serializer = AdminSendEmailSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
         template = serializer.validated_data['template_id']
@@ -563,9 +578,14 @@ class AdminSendEmailView(APIView):
         styles = template.styles.all()
         images = template.images.all()
 
-        # Now you can use these to build and send your email
-        # Example: send_mail_with_attachments(email, template, attachments, styles, images)
-        # (Implement your own email sending logic here)
+        # All email send by this endpoint with no context
+        send_email_task.delay(
+            subject=template.subject,
+            template_name=template.name,
+            context={},
+            recipient_list=[email],
+            attachments=[a.file.path for a in attachments]
+        )
 
         return Response({
             "message": f"Email sent to {email} using template '{template.name}'.",

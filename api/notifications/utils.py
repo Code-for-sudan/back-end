@@ -3,40 +3,37 @@ import logging
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-from celery import shared_task
 
 logger = logging.getLogger("email")
 
-@shared_task
 def send_email_with_attachments(subject, template_name, context, recipient_list, attachments=None):
     """
-    Sends an email with both plain text and HTML content, and optional file attachments.
+    Sends an email with both HTML and plain text content, and optional file attachments.
+
     Args:
         subject (str): The subject line of the email.
         template_name (str): The base name of the email template (without extension).
-        context (dict): Context variables to render in the email templates.
+        context (dict): Context variables to render into the email templates.
         recipient_list (list): List of recipient email addresses.
         attachments (list, optional): List of file paths to attach to the email. Defaults to None.
+
     Returns:
-        str: "Email sent" if the email was sent successfully, or an error message if sending failed.
-    Logs:
-        - Info log on successful email sending.
-        - Warning log if an attachment file is not found.
-        - Error log if email sending fails.
+        str: "Email sent" if successful, or an error message if sending fails.
+
     Raises:
-        Exception: Any exception encountered during email preparation or sending is caught and logged.
+        Exception: Any exception encountered during email sending is logged and returned as an error message.
     """
-
     try:
-        base_dir = os.path.join(settings.BASE_DIR, "notifications", "emails")
-
-        html_content = render_to_string(
-            os.path.join("emails", "templates", f"{template_name}.html"), context
-        )
-
-        plain_text_path = os.path.join(base_dir, "plain_text", f"{template_name}.txt")
+        base_dir = os.path.join(settings.BASE_DIR, "media", "email_templates")
+        html_content = render_to_string(os.path.join(base_dir, 'html', f"{template_name}.html"), context)
+        plain_text_path = os.path.join(base_dir, "plain", f"{template_name}.txt")
+        logger.error(f'context: {context}')
         with open(plain_text_path, encoding="utf-8") as file:
-            plain_text_content = file.read().format(**context)
+            plain_text_raw = file.read()
+            if context:
+                plain_text_content = plain_text_raw.format(**context)
+            else:
+                plain_text_content = plain_text_raw
 
         email = EmailMultiAlternatives(
             subject=subject,
@@ -47,16 +44,16 @@ def send_email_with_attachments(subject, template_name, context, recipient_list,
         email.attach_alternative(html_content, "text/html")
 
         if attachments:
-            for file_path in attachments:
-                if os.path.exists(file_path):
-                    email.attach_file(file_path)
+            for file in attachments:
+                if os.path.exists(file):
+                    email.attach_file(file)
                 else:
-                    logger.warning(f"Attachment not found: {file_path}")
+                    logger.warning(f"Attachment not found: {file}")
 
         email.send(fail_silently=False)
         logger.info(f"Email sent successfully to: {recipient_list}")
         return "Email sent"
 
     except Exception as e:
-        logger.error(f"Failed to send email: {e}")
+        logger.error(f"Failed to send email: {e}", exc_info=True)
         return f"Error: {e}"

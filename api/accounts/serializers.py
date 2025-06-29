@@ -38,7 +38,6 @@ class UserSerializer(serializers.ModelSerializer):
             'profile_picture',
             'phone_number',
             'whatsapp_number',
-            'otp',
             'password',
             'gender'
         ]
