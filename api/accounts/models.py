@@ -66,7 +66,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     gender = models.CharField( # Only one option can be selected here
         max_length=1,
         choices=GENDER_CHOICES,
-        default=MALE  # Default value (optional), coz men are awesome
+        null=True  # Default value (optional), coz men are awesome
     )
     location = models.CharField(max_length=255, blank=True, null=True)  # Optional location field
     total_spent = models.DecimalField(

@@ -198,7 +198,7 @@ class GroupTargetingSerializer(serializers.Serializer):
     )
 
     VALID_FIELDS = [
-        'account_status', 'cart_status', 'account_date',
+        'is_active', 'cart_status', 'account_date',
         'last_purchase_date', 'location', 'total_spent'
     ]
 

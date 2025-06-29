@@ -610,7 +610,41 @@ class AdminSendEmailView(APIView):
             "images": [i.image.url for i in images],
         }, status=200)
 
-
+@extend_schema(
+    summary="Group Targeting",
+    description="Segment users based on specified filters and grouping criteria. This endpoint allows the admin to specify filters and grouping criteria to segment users. It validates the input data, applies the specified filters, and groups the users accordingly.",
+    request=GroupTargetingSerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "Confirmation message indicating the users were grouped successfully.",
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field_name": {
+                                "type": "string",
+                                "description": "The name of the field used for grouping."
+                            },
+                            "count": {
+                                "type": "integer",
+                                "description": "The number of users in this group."
+                            }
+                        }
+                    },
+                    "description": "List of grouped user data based on the specified filters and grouping criteria."
+                }
+            },
+        },
+        400: "Bad Request",
+        403: "Forbidden",
+    }
+)
 class GroupTargetingView(APIView):
     """
     APIView for handling group targeting based on user segmentation.
