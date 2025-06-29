@@ -146,3 +146,14 @@ class AdminSendEmailSerializer(serializers.Serializer):
         required=True,
         help_text="The email template to use for sending the email."
     )
+
+###TODO:
+# location (country, city)
+
+# last_purchase_date (last 30, 60, 90 days)
+
+# user_type (new vs returning)
+
+# cart_status (active cart, abandoned cart)
+
+# total_spent (tiered spenders: low, mid, high)

@@ -606,3 +606,4 @@ class AdminSendEmailView(APIView):
             "styles": [s.style_file.url for s in styles],
             "images": [i.image.url for i in images],
         }, status=200)
+
