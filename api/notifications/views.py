@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -634,6 +635,10 @@ class AdminSendEmailView(APIView):
                             "count": {
                                 "type": "integer",
                                 "description": "The number of users in this group."
+                            },
+                            "template_id": {
+                                "type": "integer",
+                                "description": "The ID of the email template used for this group."
                             }
                         }
                     },
@@ -646,28 +651,47 @@ class AdminSendEmailView(APIView):
     }
 )
 class GroupTargetingView(APIView):
-    """
-    APIView for handling group targeting based on user segmentation.
-    This view allows the admin to specify filters and grouping criteria to segment users.
-    It validates the input data, applies the specified filters, and groups the users accordingly.
-    Methods:
-        post(request):
-            Validates the request data, applies filters, groups users, and returns the segmented user data.
-    Permissions:
-        Only accessible to admin users (`IsAdminUser`).
-    """
-    permission_classes = [IsAdminUser]
-    
     def post(self, request):
         serializer = GroupTargetingSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         filters = serializer.validated_data['filters']
         group_by = serializer.validated_data['group_by']
-        
-        # Apply filters and group users
-        users = User.objects.filter(**filters).values(*group_by).annotate(count=Count('id'))
+
+        qs = User.objects.filter(**filters).values('email', *group_by)
+        grouped = defaultdict(lambda: {"count": 0, "emails": []})
+
+        template = serializer.validated_data['template_id']
+
+        # Fetch all related attachments, styles, and images
+        attachments = template.attachments.all()
+        styles = template.styles.all()
+        images = template.images.all()
+
+        for user in qs:
+            key = tuple(user[field] for field in group_by)
+            grouped[key]["count"] += 1
+            grouped[key]["emails"].append(user["email"])
+
+        data = []
+        for key, value in grouped.items():
+            group_dict = dict(zip(group_by, key))
+            group_dict["count"] = value["count"]
+            group_dict["emails"] = value["emails"]
+            group_dict["template_id"] = template.id
+            data.append(group_dict)
+
+            # --- BULK EMAIL SENDING ---
+            # You can customize subject, template, and context as needed per group
+            # Send email to all emails in this group (asynchronously)
+            send_email_task.delay(
+                subject=template.subject,
+                template_name=template.name,
+                context={},
+                recipient_list=group_dict["emails"],
+                attachments=[a.file.path for a in attachments]
+            )
 
         return Response({
             "message": "Users grouped successfully.",
-            "data": list(users)
+            "data": data
         }, status=status.HTTP_200_OK)

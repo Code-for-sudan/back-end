@@ -197,6 +197,12 @@ class GroupTargetingSerializer(serializers.Serializer):
         help_text="Fields to group the results by."
     )
 
+    template_id = serializers.PrimaryKeyRelatedField(
+        queryset=EmailTemplate.objects.all(),
+        required=True,
+        help_text="The email template to use for sending the email."
+    )
+
     VALID_FIELDS = [
         'is_active', 'cart_status', 'account_date',
         'last_purchase_date', 'location', 'total_spent'
