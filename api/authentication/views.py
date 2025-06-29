@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
-from notifications.utils import send_email_with_attachments
+from notifications.tasks import send_email_task
 from .serializers import LoginSerializer, GoogleAuthCodeSerializer
 from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
 from .serializers import RequestUpdatePasswordSerializer                   
@@ -356,7 +356,7 @@ class PasswordResetRequestView(APIView):
             'otp_code': user.generate_otp()
         }
         # Send the email with OTP
-        send_email_with_attachments.delay(
+        send_email_task.delay(
             subject=subject,
             template_name=template_name,
             context=context,

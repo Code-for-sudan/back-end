@@ -6,7 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAdminUser # type: ignore
 from drf_spectacular.utils import extend_schema
 from .models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
-from notifications.tasks import send_email_task
+from notifications.tasks import send_email_task, delete_email_task
 from .serializers import (
     EmailTemplateSerializer,
     EmailAttachmentSerializer,
@@ -132,7 +132,20 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
     )
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        html_path = instance.html_file.path if instance.html_file else None
+        plain_path = instance.plain_text_file.path if instance.plain_text_file else None
+        attachment_paths = [a.file.path for a in instance.attachments.all()]
+        image_paths = [i.image.path for i in instance.images.all()]
+        style_paths = [s.style_file.path for s in instance.styles.all()]
+    
         instance.delete()
+        # Trigger the Celery task to delete files
+        delete_email_task.delay(
+            html_path, plain_path,
+            attachment_paths, image_paths,
+            style_paths
+        )
+
         logger.info(f"Email template deleted successfully: {instance.id}")
         return Response(
             {

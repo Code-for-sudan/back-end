@@ -57,3 +57,31 @@ def send_email_with_attachments(subject, template_name, context, recipient_list,
     except Exception as e:
         logger.error(f"Failed to send email: {e}", exc_info=True)
         return f"Error: {e}"
+
+
+def delete_email_files(html_path, plain_path, attachment_paths=None, image_paths=None, style_paths=None):
+    """
+    Deletes specified email-related files from the filesystem.
+    Parameters:
+        html_path (str): Path to the HTML email file to delete.
+        plain_path (str): Path to the plain text email file to delete.
+        attachment_paths (list[str], optional): List of file paths for attachments to delete.
+        image_paths (list[str], optional): List of file paths for images to delete.
+        style_paths (list[str], optional): List of file paths for style files to delete.
+    Notes:
+        - Ignores any paths that are None or do not exist.
+        - Prints an error message if a file cannot be deleted.
+    """
+    paths = [html_path, plain_path]
+    if attachment_paths:
+        paths.extend(attachment_paths)
+    if image_paths:
+        paths.extend(image_paths)
+    if style_paths:
+        paths.extend(style_paths)
+    for path in paths:
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception as e:
+                print(f"Failed to delete {path}: {e}")
