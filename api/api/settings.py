@@ -57,10 +57,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
+    'channels_redis',
     'accounts.apps.AccountsConfig',
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
     'products.apps.ProductsConfig',
+    'search.apps.SearchConfig',
+    'django_elasticsearch_dsl',
     'rest_framework',
     'django_celery_beat',
     'rest_framework_simplejwt',
@@ -100,6 +104,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'api.wsgi.application'
 
+ASGI_APPLICATION = 'api.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379")],
+        },
+    },
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -116,6 +130,13 @@ DATABASES = {
             'NAME': os.getenv('MYSQL_TEST_DB', 'test_myproject'),
         },
     }
+}
+
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200'
+    },
 }
 
 
@@ -369,6 +390,21 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'search_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'search_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'search_consumers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        }
     },
 }
 

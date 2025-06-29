@@ -11,7 +11,7 @@ class Product(models.Model):
         product_description (TextField): Detailed description of the product.
         price (DecimalField): The price of the product (up to 10 digits, 2 decimal places).
         category (CharField): The category of the product (max length 100).
-        picture (CharField): URL to the product's image (max length 255).
+        picture (ImageField): product image uploaded to 'products/' directory.
         color (CharField): Optional color of the product (max length 50).
         size (CharField): Optional size of the product (max length 50).
         quantity (PositiveIntegerField): The available quantity of the product (0 or greater).
@@ -28,7 +28,7 @@ class Product(models.Model):
     product_description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     category = models.CharField(max_length=100)
-    picture = models.CharField(max_length=255)
+    picture = models.ImageField(upload_to='products/')
     color = models.CharField(max_length=50, blank=True, null=True)
     size = models.CharField(max_length=50, blank=True, null=True)
     quantity = models.PositiveIntegerField()

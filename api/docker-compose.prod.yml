@@ -47,7 +47,7 @@ services:
     container_name: redis
     restart: unless-stopped
     ports:
-    - "6379:6379"  # host:container
+      - "6379:6379" # host:container
     volumes:
       - redis_data:/data
 
@@ -100,8 +100,21 @@ services:
     extra_hosts:
     - "host.docker.internal:host-gateway"
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
 volumes:
   static_volume:
   media_volume:
   redis_data:
   db_data:
+  esdata:

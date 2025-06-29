@@ -6,7 +6,7 @@ from .models import User, BusinessOwner
 from stores.models import Store
 
 # Create the looger instance for the celery tasks
-logger = logging.getLogger('user_serializer')
+logger = logging.getLogger('accounts_serializers')
 
 
 class UserSerializer(serializers.ModelSerializer):

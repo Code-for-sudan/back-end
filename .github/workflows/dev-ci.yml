@@ -4,14 +4,13 @@ description: Run Django tests in a CI environment using GitHub Actions.
 on:
   push:
     branches:
-      - 'feature/**'     # Match all feature branches
-      - 'bugfix/**'      # Match all bugfix branches
-      - 'release/**'     # Optional: match release branches
+      - "feature/**" # Match all feature branches
+      - "bugfix/**" # Match all bugfix branches
+      - "release/**" # Optional: match release branches
   pull_request:
     branches:
-      - main             # Only run PR checks when PR targets `main`
-  workflow_dispatch:     # Manual trigger (always good to keep)
-
+      - main # Only run PR checks when PR targets `main`
+  workflow_dispatch: # Manual trigger (always good to keep)
 
 env:
   DOCKER_COMPOSE: docker-compose -f docker-compose.prod.yml
