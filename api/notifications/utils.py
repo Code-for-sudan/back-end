@@ -84,4 +84,4 @@ def delete_email_files(html_path, plain_path, attachment_paths=None, image_paths
             try:
                 os.remove(path)
             except Exception as e:
-                print(f"Failed to delete {path}: {e}")
+                logger.info(f"Failed to delete {path}: {e}")
