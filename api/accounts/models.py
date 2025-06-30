@@ -63,10 +63,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)  # Required for admin access
     is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
+    s_subscribed = models.BooleanField(default=False, help_text="Is the user subscribed to the newsletter?")
     gender = models.CharField( # Only one option can be selected here
         max_length=1,
         choices=GENDER_CHOICES,
-        default=MALE  # Default value (optional), coz men are awesome
+        null=True  # Default value (optional), coz men are awesome
+    )
+    location = models.CharField(max_length=255, blank=True, null=True)  # Optional location field
+    total_spent = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        help_text="Total amount spent by the user in the store."
     )
     # No password field is not explicitly defined
     # because it is inherited from Django's AbstractBaseUser class,
@@ -82,6 +90,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Those line for the create superuser command 
     USERNAME_FIELD = 'email'  # Set email as the unique identifier
     REQUIRED_FIELDS = ['first_name', 'last_name']  # Required when creating superusers
+
+    @property
+    def last_cart(self):
+        return self.carts.first()
 
     def generate_otp(self):
         """
@@ -142,12 +154,16 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class BusinessOwner(models.Model):
     """
-    Represents a business owner profile associated with a user account.
+    Represents a business owner profile that extends the User model.
+    This model creates a one-to-one relationship between a User and a Store,
+    allowing each user to have a unique business owner profile associated with a specific store.
     Attributes:
-        user (User): A one-to-one relationship linking the business owner to a user account.
+        user (OneToOneField): Reference to the User associated with this business owner profile.
+        store (OneToOneField): Reference to the Store owned by this business owner.
     Methods:
-        __str__(): Returns a string representation of the business owner, including the company name and user email.
+        __str__(): Returns a string representation of the business owner, displaying the user's first name and email.
     """
+
     # Extend the user model to create a business owner profile
     # TODO: Add more fields to the business owner profile
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
@@ -155,3 +171,35 @@ class BusinessOwner(models.Model):
 
     def __str__(self):
         return f"{self.user.first_name} ({self.user.email})"
+
+
+class Cart(models.Model):
+    """
+    Represents a shopping cart associated with a user.
+    Fields:
+        user (ForeignKey): Reference to the User who owns the cart.
+        status (CharField): The current status of the cart. Choices are 'active', 'abandoned', or 'completed'.
+        total_spent (FloatField): The total amount spent in this cart.
+        last_purchase_date (DateTimeField): The date and time of the last purchase made with this cart.
+        created_at (DateTimeField): Timestamp when the cart was created.
+        updated_at (DateTimeField): Timestamp when the cart was last updated.
+    Meta:
+        ordering: Carts are ordered by creation date in descending order.
+    """
+
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('abandoned', 'Abandoned'),
+        ('completed', 'Completed'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='carts')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    total_spent = models.FloatField(default=0.0)
+    last_purchase_date = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']

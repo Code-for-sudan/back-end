@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-import environ, json, os
+import environ, json, os, sys
 from pathlib import Path
 from datetime import timedelta
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,6 +35,15 @@ env = environ.Env(
     HOST=(str, 'db'),
     PORT=(str, '3306'),
     NAME=(str, ''),
+    EMAIL_HOST=(str, 'smtp.example.com'),
+    EMAIL_PORT=(int, 587),
+    EMAIL_USE_TLS=(bool, True),
+    EMAIL_USE_SSL=(bool, False),
+    EMAIL_HOST_USER=(str, ''),
+    EMAIL_HOST_PASSWORD=(str, ''),
+    DEFAULT_FROM_EMAIL=(str, ''),
+    EMAIL_SUBJECT_PREFIX=(str, '[Sudamall] '),
+    EMAIL_TIMEOUT=(int, 5),
 )
 
 
@@ -63,6 +73,7 @@ INSTALLED_APPS = [
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
     'products.apps.ProductsConfig',
+    'notifications.apps.NotificationsConfig',
     'search.apps.SearchConfig',
     'django_elasticsearch_dsl',
     'rest_framework',
@@ -89,7 +100,9 @@ ROOT_URLCONF = 'api.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+             os.path.join(BASE_DIR, 'media', 'email_templates', 'html'),
+            ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -119,7 +132,7 @@ CHANNEL_LAYERS = {
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-   'default': {
+    'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': os.getenv('DB_NAME', 'myproject'),
         'USER': os.getenv('DB_USER', 'myuser'),
@@ -128,10 +141,16 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '3306'),
         'TEST': {
             'NAME': os.getenv('MYSQL_TEST_DB', 'test_myproject'),
-        },
+        }
     }
 }
 
+# Use SQLite for tests
+# if 'test' in sys.argv or 'test_coverage' in sys.argv:
+#     DATABASES['default'] = {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': ':memory:',
+#     }
 
 ELASTICSEARCH_DSL = {
     'default': {
@@ -190,7 +209,10 @@ CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')
 
 # Import task modules for the django project app
-CELERY_IMPORTS = ()
+CELERY_IMPORTS = (
+    "authentication.tasks",
+    "notifications.tasks",
+)
 
 # Set Celery to use the same time zone as Django
 CELERY_TIMEZONE = 'UTC'
@@ -204,16 +226,33 @@ CELERY_RESULT_SERIALIZER = 'json'
 # Enable events (for Flower monitoring, optional)
 CELERY_SEND_EVENTS = True
 
-# Schedule the Celery task to delete expired tokens every hour
+# Schedule the Celery task to delete expired tokens every minute
 CELERY_BEAT_SCHEDULE = {
-    
+    'clean_expired_blacklisted_tokens_every_minute': {
+        'task': 'users.celery_tasks.clean_expired_blacklisted_tokens',
+        'schedule': crontab(minute='*',),  # Runs at the start of every hour
+    },
 }
 
 # (Optional) Track started tasks
 CELERY_TRACK_STARTED = True
 
-#### CORS Configuration ####
+#### Email Configuration ####
+# Email settings for sending notifications
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_PORT = env('EMAIL_PORT')
+EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+EMAIL_USE_SSL = env('EMAIL_USE_SSL')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+# print(f'DEFAULT_FROM_EMAIL: {env("DEFAULT_FROM_EMAIL")}')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+EMAIL_SUBJECT_PREFIX = env('EMAIL_SUBJECT_PREFIX')
+EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
 
+
+#### CORS Configuration ####
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
     "https://sudamall.ddns.net",
@@ -321,6 +360,16 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'email': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed email logs
+            'propagate': False,
+        },
+        'signals': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed signal logs
+            'propagate': False,
+        },
         'authentication_views': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
@@ -334,6 +383,12 @@ LOGGING = {
         'authentication_tests': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'celery_tasks.authentication': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
         },
         'accounts_tests': {
             'handlers': ['file', 'console'],
@@ -390,12 +445,32 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'notifications_models': {
+           'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
         'search_views': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'notifications_views': {
+            'handlers': ['file', 'console'],
+             'level': 'DEBUG',  # Set to DEBUG for detailed logs
+             'propagate': False,
+        },
         'search_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'notifications_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'notifications_serializers': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
@@ -413,6 +488,8 @@ LOGGING = {
 #### Rest Framework Configuration ####
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  # Adjust as needed
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',  # For web browsable API (dev only)
@@ -420,8 +497,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,  # Adjust as needed
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',  # Browsable API for dev only
@@ -429,10 +504,13 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle', # For custom throttling scopes
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '10/minute',         # 10 requests per minute for anonymous users
         'user': '100/hour',          # 100 requests per hour for authenticated users
+        'password_resert': '5/hour',  # 5 requests per hour for password reset
+        'newsletter-subscription': '10/day',  # 10 requests per day for newsletter subscription
     },
 }
 
@@ -458,8 +536,6 @@ SIMPLE_JWT = {
 
 # The custom user model that will handel the outh
 AUTH_USER_MODEL = 'accounts.User'
-
-DEFAULT_FROM_EMAIL = 'noreply@example.com' # Should be changed
 
 # Google OAuth2 settings
 GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')

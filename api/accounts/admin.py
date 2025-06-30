@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User
+from .models import User, BusinessOwner
 
 
 class CustomUserAdmin(UserAdmin):
@@ -17,21 +17,29 @@ class CustomUserAdmin(UserAdmin):
     list_display = (
         'email', 'first_name', 'last_name',
         'is_staff', 'profile_picture', 'phone_number',
-        'whatsapp_number', 'gender'
+        'whatsapp_number', 'gender', 'location'
     )
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal Info', {'fields': ('first_name', 'last_name', 'profile_picture')}),
+        ('Personal Info', {'fields': ('first_name', 'last_name', 'profile_picture', 'location')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2')}
+            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'location')}
         ),
     )
 
+
+class BussinessUserAdmin(admin.ModelAdmin):
+    search_fields = ('user__email', 'store__name')
+    list_display = ('user', 'store')
+    search_fields = ('user__email', 'store__name')
+
+
 # Register the custom user model with the custom admin class
 admin.site.register(User, CustomUserAdmin)
+admin.site.register(BusinessOwner, BussinessUserAdmin)

@@ -8,6 +8,7 @@ from stores.models import Store
 from products.models import Product
 from accounts.models import BusinessOwner
 
+
 logger = logging.getLogger('products_tests')
 
 class ProductViewSetTests(APITestCase):

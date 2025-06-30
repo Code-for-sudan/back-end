@@ -45,6 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
             'gender',
             'phone_number',
             'whatsapp_number',
+            'password',
         ]
         extra_kwargs = {
             'email': {'required': True},

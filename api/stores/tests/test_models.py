@@ -1,6 +1,7 @@
+
+from ..models import Store
 from django.test import TestCase
 from django.utils import timezone
-from ..models import Store
 
 
 class StoreModelTests(TestCase):
@@ -33,4 +34,3 @@ class StoreModelTests(TestCase):
         now = timezone.now()
         delta = now - store.created_at
         self.assertTrue(abs(delta.total_seconds()) < 5)
-
