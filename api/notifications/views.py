@@ -4,7 +4,8 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import IsAdminUser # type: ignore
+from rest_framework.permissions import IsAdminUser, IsAuthenticated# type: ignore
+from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
 from drf_spectacular.utils import extend_schema
 from .models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
 from accounts.models import User
@@ -15,7 +16,8 @@ from .serializers import (
     EmailImageSerializer,
     EmailStyleSerializer,
     AdminSendEmailSerializer,
-    GroupTargetingSerializer
+    GroupTargetingSerializer,
+    NewsletterSubscriptionSerializer
 )
 from django.db.models import Count
 
@@ -695,3 +697,56 @@ class GroupTargetingView(APIView):
             "message": "Users grouped successfully.",
             "data": data
         }, status=status.HTTP_200_OK)
+
+
+
+@extend_schema(
+    summary="Newsletter Subscription",
+    description="Allows authenticated users to subscribe or unsubscribe from the newsletter. This endpoint accepts a boolean field 'subscribe' in the request body to indicate whether the user wants to subscribe (true) or unsubscribe (false) from the newsletter. The user's subscription status is updated accordingly.",
+    request=NewsletterSubscriptionSerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "Confirmation message indicating the user's subscription status has been updated.",
+                }
+            },
+        },
+        400: "Bad Request",
+        403: "Forbidden",
+    }
+)
+class NewsletterSubscriptionView(APIView):
+    """
+    API view to handle newsletter subscription for authenticated users.
+    Allows users to subscribe or unsubscribe from the newsletter by sending a POST request.
+    The request body should contain a boolean field 'subscribe'. The user's subscription
+    status is updated accordingly.
+    Permissions:
+        - Only authenticated users can access this view.
+    Throttling:
+        - Scoped rate throttling is applied with the scope 'newsletter-subscription'.
+    Methods:
+        post(request):
+            Updates the user's newsletter subscription status based on the 'subscribe' field
+            in the request data. Returns a message indicating the new subscription status.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'newsletter-subscription'
+
+    def post(self, request):
+        serializer = NewsletterSubscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        subscribe = serializer.validated_data['subscribe']
+        user = request.user
+        user.is_subscribed = subscribe
+        user.save()
+        return Response(
+        {
+            "message": "Subscribed to newsletter." if subscribe else "Unsubscribed from newsletter."
+        },
+        status=status.HTTP_200_OK
+)

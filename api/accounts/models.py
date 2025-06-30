@@ -63,6 +63,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)  # Required for admin access
     is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
+    s_subscribed = models.BooleanField(default=False, help_text="Is the user subscribed to the newsletter?")
     gender = models.CharField( # Only one option can be selected here
         max_length=1,
         choices=GENDER_CHOICES,

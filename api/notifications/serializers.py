@@ -225,3 +225,12 @@ class GroupTargetingSerializer(serializers.Serializer):
                 )
 
         return data
+
+
+class NewsletterSubscriptionSerializer(serializers.Serializer):
+    """
+    Serializer for handling newsletter subscription requests.
+    Fields:
+        subscribe (bool): Indicates whether the user wants to subscribe (True) or unsubscribe (False) from the newsletter.
+    """
+    subscribe = serializers.BooleanField(help_text="Set to true to subscribe, false to unsubscribe.")
