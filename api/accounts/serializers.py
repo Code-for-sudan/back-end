@@ -1,10 +1,12 @@
 import os, logging
 from rest_framework import serializers # type: ignore
+from django.db import transaction
+from phonenumber_field.serializerfields import PhoneNumberField
 from .models import User, BusinessOwner
 from stores.models import Store
 
 # Create the looger instance for the celery tasks
-logger = logging.getLogger('user_serializer')
+logger = logging.getLogger('accounts_serializers')
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -28,6 +30,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     # Set the password field as write-only to prevent it from being serialized
     password = serializers.CharField(write_only=True, min_length=6)
+    # Set phone_number and whatsapp_number as optional fields
+    phone_number = PhoneNumberField(required=False, allow_null=True)
+    whatsapp_number = PhoneNumberField(required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -36,6 +41,8 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'profile_picture',
+            'password',
+            'gender',
             'phone_number',
             'whatsapp_number',
             'password',
@@ -46,7 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name': {'required': True},
             'last_name': {'required': True},
             'password': {'required': True},
-            'gender': {'required': False}
+            'gender': {'required': False},
         }
 
     def validate_profile_picture(self, image):
@@ -102,9 +109,8 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     first_name = serializers.CharField(source='user.first_name', required=True)
     last_name = serializers.CharField(source='user.last_name', required=True)
     profile_picture = serializers.ImageField(source='user.profile_picture', required=False, allow_null=True)
-    phone_number = serializers.CharField(source='user.phone_number', required=False, allow_null=True)
-    whatsapp_number = serializers.CharField(source='user.whatsapp_number', required=False, allow_null=True)
-    otp = serializers.CharField(source='user.otp', write_only=True, required=False)
+    phone_number = PhoneNumberField(required=False, allow_null=True)
+    whatsapp_number = PhoneNumberField(required=False, allow_null=True)
     password = serializers.CharField(source='user.password', write_only=True, min_length=6)
     gender = serializers.CharField(source='user.gender')
     store_name = serializers.CharField(write_only=True, required=True)
@@ -132,7 +138,8 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     def create(self, validated_data):
         store_name = validated_data.pop('store_name')
         user_data = validated_data.pop('user')
-        store = Store.objects.create(name=store_name)
-        user = User.objects.create_user(**user_data)
-        business_owner = BusinessOwner.objects.create(user=user, store=store)
+        with transaction.atomic():
+            store = Store.objects.create(name=store_name)
+            user = User.objects.create_user(**user_data)
+            business_owner = BusinessOwner.objects.create(user=user, store=store)
         return business_owner

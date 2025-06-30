@@ -67,11 +67,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
+    'channels_redis',
     'accounts.apps.AccountsConfig',
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
     'products.apps.ProductsConfig',
     'notifications.apps.NotificationsConfig',
+    'search.apps.SearchConfig',
+    'django_elasticsearch_dsl',
     'rest_framework',
     'django_celery_beat',
     'rest_framework_simplejwt',
@@ -113,6 +117,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'api.wsgi.application'
 
+ASGI_APPLICATION = 'api.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379")],
+        },
+    },
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -134,6 +148,13 @@ if 'test' in sys.argv or 'test_coverage' in sys.argv:
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
     }
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200'
+    },
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -231,33 +252,41 @@ EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
 #### CORS Configuration ####
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",    # React development server
-    ###TODO: Add your frontend domain here
-    # "https://your-frontend-domain.com",  # Replace with your actual frontend domain
+    "https://sudamall.ddns.net",
+    "http://localhost:5173",
 ]
 
-CORS_ALLOW_CREDENTIALS = True  # Allow cookies (for refresh tokens)
-
-# Without this, Django might reject POST/PUT/DELETE requests
-# from your React app, even if CORS allows them.
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    ###TODO: Add your frontend domain here
-    # "https://your-frontend-domain.com",  # Replace with your actual frontend domain
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://sudamall\.ddns\.net$",
+    r"^http://localhost:\d+$",
 ]
 
-# Allow specific headers if needed (optional)
+CORS_ALLOW_CREDENTIALS = True
+
+# Important for credentialed requests
 CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
     'authorization',
     'content-type',
-    'x-csrftoken',
-    'accept',
+    'dnt',
     'origin',
     'user-agent',
+    'x-csrftoken',
     'x-requested-with',
 ]
 
-# Add this for local development (optional, only for testing)
+# Ensure session and CSRF cookies work cross-origin
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://sudamall.ddns.net",  # React prod server
+    "http://localhost:5173",
+]
+
 CORS_ALLOW_ALL_ORIGINS = False
 
 
@@ -414,11 +443,21 @@ LOGGING = {
             'propagate': False,
         },
         'notifications_models': {
+           'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'search_views': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_views': {
+            'handlers': ['file', 'console'],
+             'level': 'DEBUG',  # Set to DEBUG for detailed logs
+             'propagate': False,
+        },
+        'search_tests': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
@@ -433,6 +472,11 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'search_consumers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        }
     },
 }
 
@@ -502,3 +546,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directory where uploaded files w
 #### Static Files Settings ####
 STATIC_URL = '/static/'  # URL to access static files
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Directory where static files
+
+#### Phone Number Settings ####
+# Default region for phone numbers
+PHONENUMBER_DEFAULT_REGION = "SD"  # Sudan, change as needed
