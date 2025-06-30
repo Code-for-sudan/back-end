@@ -234,3 +234,22 @@ class NewsletterSubscriptionSerializer(serializers.Serializer):
         subscribe (bool): Indicates whether the user wants to subscribe (True) or unsubscribe (False) from the newsletter.
     """
     subscribe = serializers.BooleanField(help_text="Set to true to subscribe, false to unsubscribe.")
+
+
+
+class ScheduleNewsletterSerializer(serializers.Serializer):
+    """
+    Serializer for scheduling a newsletter email.
+    Fields:
+        template_id (PrimaryKeyRelatedField): The email template to use for the newsletter.
+        scheduled_time (DateTimeField): The date and time (in ISO 8601 format, UTC) when the newsletter should be sent.
+    """
+    template_id = serializers.PrimaryKeyRelatedField(
+        queryset=EmailTemplate.objects.all(),
+        required=True,
+        help_text="The email template to use for the newsletter."
+    )
+    scheduled_time = serializers.DateTimeField(
+        required=True,
+        help_text="When to send the newsletter (ISO 8601 format, UTC)."
+    )

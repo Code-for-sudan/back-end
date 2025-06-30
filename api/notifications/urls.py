@@ -9,7 +9,8 @@ from .views import (
     EmailStyleViewSet,
     AdminSendEmailView,
     GroupTargetingView,
-    NewsletterSubscriptionView
+    NewsletterSubscriptionView,
+    ScheduleNewsletterView
 )
 
 router = DefaultRouter()
@@ -23,4 +24,5 @@ urlpatterns = [
     path('send-email/', AdminSendEmailView.as_view(), name='send-template-email'),
     path('group-targeting/', GroupTargetingView.as_view(), name='group-targeting'),
     path('NewsletterSubscriptionView/', NewsletterSubscriptionView.as_view(), name='newsletter-subscription'),
+    path('newsletter/schedule/', ScheduleNewsletterView.as_view(), name='newsletter-schedule'),
 ]

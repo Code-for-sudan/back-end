@@ -9,7 +9,7 @@ from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
 from drf_spectacular.utils import extend_schema
 from .models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
 from accounts.models import User
-from notifications.tasks import send_email_task, delete_email_task
+from notifications.tasks import send_email_task, delete_email_task, send_newsletter_task
 from .serializers import (
     EmailTemplateSerializer,
     EmailAttachmentSerializer,
@@ -17,7 +17,8 @@ from .serializers import (
     EmailStyleSerializer,
     AdminSendEmailSerializer,
     GroupTargetingSerializer,
-    NewsletterSubscriptionSerializer
+    NewsletterSubscriptionSerializer,
+    ScheduleNewsletterSerializer
 )
 from django.db.models import Count
 
@@ -750,3 +751,62 @@ class NewsletterSubscriptionView(APIView):
         },
         status=status.HTTP_200_OK
 )
+
+
+
+@extend_schema(
+    summary="Schedule Newsletter",
+    description=(
+        "Allows admin users to schedule a newsletter email to all subscribed users. "
+        "Provide the email template ID and the scheduled time (in ISO 8601 UTC format). "
+        "The newsletter will be sent to all users who are subscribed at the specified time."
+    ),
+    request=ScheduleNewsletterSerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "Confirmation message indicating the newsletter was scheduled."
+                }
+            }
+        },
+        400: "Bad Request",
+        403: "Forbidden"
+    }
+)
+class ScheduleNewsletterView(APIView):
+    """
+    API view to schedule a newsletter for future delivery.
+    This view allows admin users to schedule a newsletter to be sent at a specified time.
+    It expects a POST request with the newsletter template ID and the scheduled time.
+    Upon validation, it schedules a Celery task to send the newsletter at the desired time.
+    Methods:
+        post(request):
+            Schedules the newsletter sending task using the provided template ID and scheduled time.
+            Returns a confirmation message upon successful scheduling.
+    Permissions:
+        Only accessible by admin users.
+    """
+
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        serializer = ScheduleNewsletterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        template = serializer.validated_data['template_id']
+        scheduled_time = serializer.validated_data['scheduled_time']
+
+        # Schedule the Celery task
+        send_newsletter_task.apply_async(
+            args=[template.id],
+            eta=scheduled_time
+        )
+
+        return Response(
+        {
+            "message": f"Newsletter scheduled to be sent at {scheduled_time}."
+        }
+        , status=status.HTTP_200_OK
+        )

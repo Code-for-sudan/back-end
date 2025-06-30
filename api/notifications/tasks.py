@@ -1,7 +1,7 @@
 import os
 from celery import shared_task
 from .utils import send_email_with_attachments, delete_email_files
-
+from accounts.models import User
 
 @shared_task
 def send_email_task(subject, template_name, context, recipient_list, attachments=None):
@@ -39,3 +39,33 @@ def delete_email_task(html_path, plain_path, attachment_paths=None, image_paths=
         image_paths=image_paths,
         style_paths=style_paths
     )
+
+
+@shared_task
+def send_newsletter_task(template_id):
+    """
+    Sends a newsletter email to all subscribed users using the specified email template.
+    Args:
+        template_id (int): The primary key of the EmailTemplate to use for the newsletter.
+    Behavior:
+        - Retrieves the email template and its attachments by the given template_id.
+        - Gathers the email addresses of all users who are subscribed.
+        - Sends an email with the template and attachments to all subscribed users.
+    Raises:
+        EmailTemplate.DoesNotExist: If no EmailTemplate with the given template_id exists.
+    """
+    from notifications.models import EmailTemplate  # Import here to avoid circular import
+    template = EmailTemplate.objects.get(id=template_id)
+    attachments = template.attachments.all()
+    recipient_list = list(User.objects.filter(is_subscribed=True).values_list(
+        'email', flat=True
+        )
+)
+    if recipient_list:
+        send_email_with_attachments(
+            subject=template.subject,
+            template_name=template.name,
+            context={},
+            recipient_list=recipient_list,
+            attachments=[a.file.path for a in attachments]
+        )
