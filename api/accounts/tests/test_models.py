@@ -25,7 +25,8 @@ class UserModelOTPTests(TestCase):
         self.user = User.objects.create(
             email="otpuser@example.com",
             first_name="OTP",
-            last_name="User"
+            last_name="User",
+            gender="M"
         )
 
     def test_generate_otp_sets_otp_and_expiry(self):
