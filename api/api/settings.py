@@ -257,11 +257,13 @@ EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
 CORS_ALLOWED_ORIGINS = [
     "https://sudamall.ddns.net",
     "http://localhost:5173",
+    "http://sudamall.ddns.net:5174",  # <-- new dev host
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://sudamall\.ddns\.net$",
     r"^http://localhost:\d+$",
+    r"^http://sudamall\.ddns\.net:5174$",  # <-- new dev host regex
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -288,6 +290,7 @@ CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = [
     "https://sudamall.ddns.net",  # React prod server
     "http://localhost:5173",
+    "http://sudamall.ddns.net:5174",  # <-- new dev host
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
