@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'products.apps.ProductsConfig',
     'notifications.apps.NotificationsConfig',
     'search.apps.SearchConfig',
+    'chat.apps.ChatConfig',
     'django_elasticsearch_dsl',
     'rest_framework',
     'django_celery_beat',
@@ -118,11 +119,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'api.wsgi.application'
 
 ASGI_APPLICATION = 'api.asgi.application'
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379")],
+            "hosts": [os.environ.get("REDIS_DATABASE_URL", "redis://redis:6379")],
         },
     },
 }
@@ -156,10 +158,22 @@ if 'test' in sys.argv or 'pytest' in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
 
+
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'http://localhost:9200'
+        'hosts': os.environ.get("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
     },
+}
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.environ.get("REDIS_DATABASE_URL", "redis://redis:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
 }
 
 
