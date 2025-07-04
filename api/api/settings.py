@@ -152,6 +152,10 @@ DATABASES = {
 #         'NAME': ':memory:',
 #     }
 
+if 'test' in sys.argv or 'pytest' in sys.argv:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+
 ELASTICSEARCH_DSL = {
     'default': {
         'hosts': 'http://localhost:9200'
