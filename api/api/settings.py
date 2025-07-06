@@ -169,7 +169,7 @@ ELASTICSEARCH_DSL = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.environ.get("REDIS_DATABASE_URL", "redis://redis:6379/1"),
+        "LOCATION": os.environ.get("REDIS_DATABASE_URL", "redis://redis:6379"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -497,7 +497,27 @@ LOGGING = {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
-        }
+        },
+        'chat_consumers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'chat_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'chat_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'chat_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 
