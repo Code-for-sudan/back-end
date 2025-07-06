@@ -86,7 +86,7 @@ jobs:
           echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env.prod
           echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env.prod
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
-          echo "DB_HOST=127.0.0.1" >> api/.env.prod
+          echo "DB_HOST=mysql" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
           echo "ELASTICSEARCH_URL=http://elasticsearch:9200" >> api/.env.prod
@@ -109,4 +109,6 @@ jobs:
           python manage.py makemigrations --noinput
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
+          echo "Waiting for MySQL to be ready..."
+          sleep 4
           python manage.py test
