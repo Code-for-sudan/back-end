@@ -33,34 +33,24 @@ class GoogleLoginTests(TestCase):
 
 class GoogleOAuthViewsTests(TestCase):
     """
-    Test case for testing Google OAuth views.
-    This test case includes tests for the following scenarios:
-    1. Redirect behavior of the `google_login` view.
-    2. Successful OAuth process in the `google_callback` view.
-    3. Failed token exchange in the `google_callback` view.
-    4. Missing authorization code in the `google_callback` view.
-    Tested Views:
-    - `google_login`: Ensures the user is redirected to the Google OAuth URL.
-    - `google_callback`: Handles the callback from Google after the OAuth process.
-    Mocks:
-    - `requests.post`: Mocked to simulate token exchange with Google's OAuth server.
-    - `requests.get`: Mocked to simulate fetching user information from Google's API.
-    Test Methods:
-    - `test_google_login_redirect`: Verifies the redirect to the Google OAuth URL.
-    - `test_google_callback_success`: Tests the successful OAuth process, including token exchange and user info retrieval.
-    - `test_google_callback_failed_token_exchange`: Tests the behavior when the token exchange fails.
-    - `test_google_callback_no_code`: Tests the behavior when no authorization code is provided in the callback request.
+    Test case for testing Google OAuth views and user onboarding flow.
+    Scenarios:
+    - Redirect behavior of the `google_login` view.
+    - Successful OAuth process in the `google_callback` view.
+    - Missing or invalid code handling in `google_callback`.
+    - Setting account type via `set_account_type` view.
+    - Completing seller onboarding via `seller_setup` view.
     """
 
     def setUp(self):
         self.client = APIClient()
-        self.google_login_url = reverse('google_auth')  # Replace with the actual name of the google_login URL
-        self.google_callback_url = reverse('google_callback')  # Replace with the actual name of the google_callback URL
+        self.google_login_url = reverse('google_auth')
+        self.google_callback_url = reverse('google_callback')
+        self.set_account_type_url = reverse('set_account_type')
+        self.seller_setup_url = reverse('seller_setup')
 
     def test_google_login_redirect(self):
-        """
-        Test that the google_login view redirects to the Google OAuth URL.
-        """
+        """Test that the google_login view redirects to the Google OAuth URL."""
         response = self.client.get(self.google_login_url)
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
         self.assertIn("https://accounts.google.com/o/oauth2/auth", response.url)
@@ -68,15 +58,10 @@ class GoogleOAuthViewsTests(TestCase):
     @patch('requests.post')
     @patch('requests.get')
     def test_google_callback_success(self, mock_get, mock_post):
-        """
-        Test the google_callback view when the OAuth process is successful.
-        """
-        # Mock the token response
+        """Test the google_callback view when the OAuth process is successful."""
         mock_post.return_value.json.return_value = {
             "access_token": "mock_access_token"
         }
-
-        # Mock the user info response
         mock_get.return_value.json.return_value = {
             "email": "testuser@example.com",
             "given_name": "Test",
@@ -84,9 +69,7 @@ class GoogleOAuthViewsTests(TestCase):
             "picture": "http://example.com/profile.jpg"
         }
 
-        # Simulate the callback with a valid code
         response = self.client.post(self.google_callback_url, {'code': 'mock_code'})
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access_token', response.data)
         self.assertIn('user', response.data)
@@ -94,27 +77,61 @@ class GoogleOAuthViewsTests(TestCase):
 
     @patch('requests.post')
     def test_google_callback_failed_token_exchange(self, mock_post):
-        """
-        Test the google_callback view when the token exchange fails.
-        """
-        # Mock a failed token response
+        """Test the google_callback view when the token exchange fails."""
         mock_post.return_value.json.return_value = {}
-
-        # Simulate the callback with an invalid code
-        response = self.client.post(reverse("google_callback"), {"code": "invalid"})
-
+        response = self.client.post(self.google_callback_url, {"code": "invalid"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['message'], "Failed to obtain access token")
 
     def test_google_callback_no_code(self):
-        """
-        Test the google_callback view when no code is provided.
-        """
+        """Test the google_callback view when no code is provided."""
         response = self.client.post(self.google_callback_url)
-
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['message'], "No code provided")
 
+    def test_set_account_type_success(self):
+        """Test setting the account type after OAuth login."""
+        user = User.objects.create_user(email="onboarded@example.com", password="pass")
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(self.set_account_type_url, {"account_type": "seller"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Account type updated successfully")
+
+    def test_set_account_type_invalid(self):
+        """Test setting an invalid account type."""
+        user = User.objects.create_user(email="onboarded@example.com", password="pass")
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(self.set_account_type_url, {"account_type": "invalid"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("account_type", response.data)
+
+    def test_seller_setup_success(self):
+        """Test seller setup step after selecting seller role."""
+        user = User.objects.create_user(email="seller@example.com", password="pass", account_type="seller")
+        self.client.force_authenticate(user=user)
+
+        payload = {
+            "store_name": "Test Store",
+            "business_email": "store@example.com"
+        }
+        response = self.client.post(self.seller_setup_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Seller setup completed successfully")
+
+    def test_seller_setup_unauthorized_role(self):
+        """Test seller setup fails if user is not a seller."""
+        user = User.objects.create_user(email="buyer@example.com", password="pass", account_type="buyer")
+        self.client.force_authenticate(user=user)
+
+        payload = {
+            "store_name": "Buyer Store",
+            "business_email": "buyer@example.com"
+        }
+        response = self.client.post(self.seller_setup_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data["message"], "Only sellers can complete this step")
 
 class PasswordResetFlowTests(APITestCase):
     def setUp(self):
