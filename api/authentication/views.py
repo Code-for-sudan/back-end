@@ -15,7 +15,7 @@ from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from .services import authenticate_google_user, set_account_type_for_user
 from notifications.tasks import send_email_task
-from .serializers import LoginSerializer, GoogleAuthCodeSerializer
+from .serializers import LoginSerializer, GoogleAuthCodeSerializer, SetAccountTypeSerializer, SellerSetupSerializer
 from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
 from .serializers import RequestUpdatePasswordSerializer                   
                 
