@@ -10,8 +10,10 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
+from django.db import transaction
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
+from .services import authenticate_google_user, set_account_type_for_user
 from notifications.tasks import send_email_task
 from .serializers import LoginSerializer, GoogleAuthCodeSerializer
 from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer

@@ -30,14 +30,61 @@ class LoginSerializer(serializers.Serializer):
         return data
 
 
+from rest_framework import serializers
+
+
 class GoogleAuthCodeSerializer(serializers.Serializer):
     """
-    Serializer for handling Google OAuth2 authorization codes.
+    Serializer for handling Google OAuth2 authorization code and optional state.
+    
     Fields:
         code (CharField): The authorization code returned by Google after a successful login.
+        state (CharField, optional): Optional state information passed during OAuth initiation (e.g., account type).
     """
+    code = serializers.CharField(
+        help_text="Authorization code returned by Google after login",
+        required=True
+    )
+    state = serializers.CharField(
+        help_text="Optional state string passed to Google (e.g., 'accountType=seller')",
+        required=False,
+        allow_blank=True
+    )
 
-    code = serializers.CharField(help_text="Authorization code returned by Google after login")
+
+class SetAccountTypeSerializer(serializers.Serializer):
+    """
+    Serializer to set or update the user's account type (e.g., 'seller', 'buyer').
+    
+    Fields:
+        account_type (str): Role of the user. Must be one of the allowed choices.
+    """
+    ACCOUNT_TYPE_CHOICES = [
+        ('seller', 'Seller'),
+        ('buyer', 'Buyer'),
+    ]
+
+    account_type = serializers.ChoiceField(
+        choices=ACCOUNT_TYPE_CHOICES,
+        help_text="Specify the type of account: 'seller' or 'buyer'."
+    )
+
+
+class SellerSetupSerializer(serializers.Serializer):
+    """
+    Serializer to gather additional setup data for sellers.
+    
+    Fields:
+        store_name (str): Name of the seller's store.
+        business_email (str): Business email address (can differ from user email).
+    """
+    store_name = serializers.CharField(
+        max_length=255,
+        help_text="Name of your store or business."
+    )
+    business_email = serializers.EmailField(
+        help_text="Email used for business communication."
+    )
 
 
 
