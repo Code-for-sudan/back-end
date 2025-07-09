@@ -18,6 +18,9 @@ from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# to load .env.prod file:
+environ.Env.read_env(os.path.join(BASE_DIR, '.env.prod'))
+
 # An env object, which is an instance of environ.Env().
 # The arguments inside environ.Env() define the expected variables,
 # their data types, and default values (used if not defined in the .env file).
