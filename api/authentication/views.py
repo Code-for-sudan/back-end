@@ -27,275 +27,133 @@ User = get_user_model()
 @extend_schema(
     request=LoginSerializer,
     responses={
-        200: OpenApiResponse(
-            description='Login successful. Returns user data and access token.'
-        ),
-        400: OpenApiResponse(
-            description='Invalid email or password.'
-        ),
+        200: OpenApiResponse(description="Login successful; returns user and access token."),
+        400: OpenApiResponse(description="Invalid credentials."),
     },
     summary="User Login",
-    description="Authenticates user using email and password. Returns JWT access token and sets refresh token as HttpOnly cookie.",
-    examples=[
-        OpenApiExample(
-            name="Login example",
-            value={"email": "user@example.com", "password": "your_password"},
-            request_only=True,
-            response_only=False
-        ),
-        OpenApiExample(
-            name="Successful login response",
-            value={
-                "message": "Login successful.",
-                "user": {
-                    "id": "1234",
-                    "email": "user@example.com",
-                    "first_name": "John"
-                },
-                "access_token": "eyJ0eXAiOiJKV1QiLCJh..."
-            },
-            request_only=False,
-            response_only=True
-        ),
-    ]
 )
 class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
-        """
-        Handles user login by validating email and password.
-        This function authenticates the user and returns a JWT token if successful.
-        Args:
-            request (HttpRequest): The HTTP request object containing the user's email and password.
-        Returns:
-            Response: A DRF Response object containing the login status, user data, and access token.
-                If authentication fails, an error message is returned.
-        """
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.validated_data['user']
+            user = serializer.validated_data["user"]
             access_token, refresh_token = generate_jwt_tokens(user)
-
-            response = Response(
-                {
-                    'message': 'Login successful.',
-                    'user': {
-                        'id': str(user.id),
-                        'email': user.email,
-                        'first_name': user.first_name,
-                    },
-                    'access_token': access_token,
-                },
-                status=status.HTTP_200_OK
-            )
-
+            response = Response({
+                "message": "Login successful.",
+                "user": UserSerializer(user).data,
+                "access_token": access_token,
+            }, status=status.HTTP_200_OK)
             response.set_cookie(
-                key="refresh_token",
-                value=str(refresh_token),
-                httponly=True,
-                secure=True,
-                samesite="Lax",
-            )
+                "refresh_token", str(refresh_token),
+                httponly=True, secure=not settings.DEBUG, samesite="Lax")
             return response
-
         logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
-        return Response(
-            {'message': 'Invalid email or password.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"message": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @extend_schema(
-    summary="Initiate Google OAuth2 login",
-    description="Redirects the user to Google OAuth2 consent screen for authentication.",
-    responses={
-        302: OpenApiResponse(description="Redirects to Google OAuth2 login page"),
-    },
+    summary="Initiate Google OAuth2",
+    description="Frontend should pass optional state `accountType=seller`",
+    responses={302: OpenApiResponse(description="Redirect to Google OAuth")},
 )
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
     def get(self, request):
-        """
-        Redirect user to Google's OAuth 2.0 authentication page.
-        """
-        google_url = (
-            "https://accounts.google.com/o/oauth2/auth"
-            "?response_type=code"
-            f"&client_id={settings.GOOGLE_CLIENT_ID}"
-            f"&redirect_uri={settings.GOOGLE_REDIRECT_URI}"
-            "&scope=email%20profile"
-        )
-        return redirect(google_url)
+        account = request.query_params.get("accountType")
+        state = f"accountType={account}" if account else None
+        params = {
+            "response_type": "code",
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "scope": "email profile",
+        }
+        if state: params["state"] = state
+        url = "https://accounts.google.com/o/oauth2/auth?" + "&".join(f"{k}={v}" for k, v in params.items())
+        return redirect(url)
 
 
 @extend_schema(
     request=GoogleAuthCodeSerializer,
     responses={
-        200: OpenApiResponse(description="Google login successful. Returns user data and JWT access token."),
-        400: OpenApiResponse(description="Error during authentication process (e.g., missing code or failed token exchange)."),
+        200: OpenApiResponse(description="Returns token + flags for new user"),
+        400: OpenApiResponse(description="OAuth error or missing code"),
     },
-    summary="Google OAuth2 Callback",
-    description="Handles the Google OAuth2 callback. Exchanges code for tokens, retrieves user info, logs in or creates user, and sets JWT tokens.",
-    examples=[
-        OpenApiExample(
-            name="Authorization Code Request",
-            value={"code": "4/0AY0e-g7a_example_code"},
-            request_only=True
-        ),
-        OpenApiExample(
-            name="Successful Response",
-            value={
-                "message": "Login successful.",
-                "user": {
-                    "id": 1,
-                    "email": "user@example.com",
-                    "first_name": "Jane",
-                    "last_name": "Doe"
-                },
-                "access_token": "eyJ0eXAiOiJKV1QiLCJh..."
-            },
-            response_only=True
-        )
-    ]
+    summary="Google OAuth Callback",
 )
 class GoogleCallbackView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
-        """
-        Handles the Google OAuth2 callback to authenticate a user.
-        This function processes the authorization code returned by Google, exchanges it
-        for an access token, retrieves user information, and either logs in the user
-        or creates a new user account. It also generates JWT tokens for the user and
-        sets the refresh token as an HTTP-only cookie.
-        Args:
-            request (HttpRequest): The HTTP request object containing the authorization
-                                   code in the query parameters.
-        Returns:
-            Response: A DRF Response object containing the login status, user data,
-                      and access token. If an error occurs, an appropriate error
-                      message and status code are returned.
-        Workflow:
-            1. Extract the authorization code from the query parameters.
-            2. Exchange the authorization code for an access token using Google's token endpoint.
-            3. Use the access token to fetch the user's profile information from Google.
-            4. Check if the user exists in the database; if not, create a new user.
-            5. Generate JWT tokens (access and refresh) for the user.
-            6. Return the user data and access token in the response, and set the refresh
-               token as an HTTP-only cookie.
-        Raises:
-            KeyError: If required settings like GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET
-                      are missing.
-            Exception: If there are issues with the token exchange or user creation.
-        Notes:
-            - Ensure that the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are correctly
-              configured in the Django settings.
-            - The `redirect_uri` must match the one configured in the Google API Console.
-            - The `User` model is assumed to have fields for `email`, `first_name`,
-              `last_name`, and a related `profile` with a `picture` field.
-        """
+        serializer = GoogleAuthCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data["code"]
+        state = serializer.validated_data.get("state")  # e.g. "accountType=seller"
+        try:
+            with transaction.atomic():
+                user, tokens, is_new, account_type = authenticate_google_user(code, state)
+        except Exception as e:
+            logger.error(f"Google auth failed: {e}")
+            return Response({"message": "Authentication failed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the code from the query parameters
-        code = request.data.get("code")
+        resp = {"token": tokens[0], "isNewUser": is_new}
+        if is_new:
+            if account_type:
+                resp["accountType"] = account_type
+                if account_type == "seller":
+                    resp["needsAccountType"] = False
+                    resp["redirect"] = "/dashboard/seller-setup"
+            else:
+                resp["needsAccountType"] = True
 
-        # Check if code is provided
-        if not code:
-            logger.error("No code provided")
-            return Response(
-                {
-                    "message": "No code provided"
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Get the access token
-        token_url = "https://oauth2.googleapis.com/token"
-        token_data = {
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": "http://127.0.0.1:8000/api/auth/google/callback/",
-        }
-
-        token_response = requests.post(token_url, data=token_data).json()
-        access_token = token_response.get("access_token")
-
-        if not access_token:
-            logger.error("Failed to obtain access token")
-            return Response(
-                {
-                    "message": "Failed to obtain access token"
-                }
-                , status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Fetch user info
-        user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
-        user_info = requests.get(
-            user_info_url,
-            headers={
-                "Authorization": "Bearer {}".format(access_token)
-            }
-        ).json()
-
-        email = user_info.get("email")
-        first_name = user_info.get("given_name")
-        last_name = user_info.get("family_name")
-        profile_picture = user_info.get("picture")
-
-        if not email:
-            logger.error("Failed to retrieve email")
-            return Response(
-                {
-                    "message": "Failed to retrieve email"
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Check if user exists or create a new one
-        user, created = User.objects.get_or_create(email=email, defaults={
-            "first_name": first_name,
-            "last_name": last_name,
-        })
-
-        # Update user profile picture
-        if created:
-            if hasattr(user, 'profile_picture'):
-                user.profile_picture = profile_picture
-
-        user.save()
-
-        # Generate JWT Token
-        access_token_jwt, refresh_token = generate_jwt_tokens(user)
-
-        # Serialize the user data
-        user_serializer = UserSerializer(user)
-
-        response = Response(
-            {
-                'message': 'Login successful.',
-                'user': user_serializer.data,
-                'access_token': access_token_jwt,
-                # 'refresh_token': refresh_token
-            },
-            status=status.HTTP_200_OK
-        )
-
-        # Set refresh token as an HTTP-only cookie
-        response.set_cookie(
-            key="refresh_token",
-            value=str(refresh_token),
-            httponly=True,  # Security feature
-            secure=True,  # Use only in HTTPS
-            samesite="Lax",  # Protect against CSRF
-        )
-
+        response = Response(resp, status=status.HTTP_200_OK)
+        response.set_cookie("refresh_token", str(tokens[1]), httponly=True, secure=not settings.DEBUG, samesite="Lax")
         return response
+
+
+@extend_schema(
+    request=SetAccountTypeSerializer,
+    responses={
+        200: OpenApiResponse(description="Account type set successfully"),
+        400: OpenApiResponse(description="Invalid or missing accountType"),
+    },
+    summary="Set Account Type for Google OAuth",
+)
+class SetAccountTypeView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request):
+        serializer = SetAccountTypeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        set_account_type_for_user(user, serializer.validated_data["accountType"])
+        return Response({"message": "Account type updated"}, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    request=SellerSetupSerializer,
+    responses={
+        200: OpenApiResponse(description="Seller profile completed"),
+        400: OpenApiResponse(description="Validation errors"),
+    },
+    summary="Complete Seller Info",
+)
+class SellerSetupView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request):
+        serializer = SellerSetupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        serializer.save(user=user)
+        return Response({"message": "Seller setup complete"}, status=status.HTTP_200_OK)
 
 
 
