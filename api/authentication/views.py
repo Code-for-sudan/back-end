@@ -134,7 +134,7 @@ class SetAccountTypeView(APIView):
         serializer = SetAccountTypeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = request.user
-        set_account_type_for_user(user, serializer.validated_data["accountType"])
+        set_account_type_for_user(user, serializer.validated_data["account_type"])
         return Response({"message": "Account type updated"}, status=status.HTTP_200_OK)
 
 

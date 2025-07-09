@@ -146,11 +146,11 @@ DATABASES = {
 }
 
 # Use SQLite for tests
-# if 'test' in sys.argv or 'test_coverage' in sys.argv:
-#     DATABASES['default'] = {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': ':memory:',
-#     }
+if 'test' in sys.argv or 'test_coverage' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
 
 ELASTICSEARCH_DSL = {
     'default': {

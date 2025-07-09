@@ -53,17 +53,10 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
 
 
 class SetAccountTypeSerializer(serializers.Serializer):
-    """
-    Serializer to set or update the user's account type (e.g., 'seller', 'buyer').
-    
-    Fields:
-        account_type (str): Role of the user. Must be one of the allowed choices.
-    """
     ACCOUNT_TYPE_CHOICES = [
         ('seller', 'Seller'),
         ('buyer', 'Buyer'),
     ]
-
     account_type = serializers.ChoiceField(
         choices=ACCOUNT_TYPE_CHOICES,
         help_text="Specify the type of account: 'seller' or 'buyer'."

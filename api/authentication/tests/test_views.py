@@ -71,8 +71,7 @@ class GoogleOAuthViewsTests(TestCase):
 
         response = self.client.post(self.google_callback_url, {'code': 'mock_code'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access_token', response.data)
-        self.assertIn('user', response.data)
+        self.assertIn('token', response.data)
         self.assertEqual(response.data['user']['email'], "testuser@example.com")
 
     @patch('requests.post')
@@ -81,7 +80,7 @@ class GoogleOAuthViewsTests(TestCase):
         mock_post.return_value.json.return_value = {}
         response = self.client.post(self.google_callback_url, {"code": "invalid"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], "Failed to obtain access token")
+        self.assertEqual(response.data['message'], "Authentication failed")
 
     def test_google_callback_no_code(self):
         """Test the google_callback view when no code is provided."""
@@ -122,7 +121,7 @@ class GoogleOAuthViewsTests(TestCase):
 
     def test_seller_setup_unauthorized_role(self):
         """Test seller setup fails if user is not a seller."""
-        user = User.objects.create_user(email="buyer@example.com", password="pass", account_type="buyer")
+        user = User.objects.create_user(email="buyer@example.com", password="pass", accountType="buyer")
         self.client.force_authenticate(user=user)
 
         payload = {

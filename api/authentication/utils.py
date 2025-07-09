@@ -18,3 +18,14 @@ def generate_jwt_tokens(user):
     refresh_token = str(refresh)
 
     return access_token, refresh_token
+
+
+def set_account_type_for_user(user, account_type):
+    """
+    Maps account_type string to is_store_owner boolean.
+    """
+    if account_type == "seller":
+        user.is_store_owner = True
+    else:
+        user.is_store_owner = False
+    user.save()
