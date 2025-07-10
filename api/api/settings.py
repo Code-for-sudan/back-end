@@ -388,6 +388,11 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'authentication_services': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
         'celery_tasks.authentication': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
@@ -482,7 +487,7 @@ LOGGING = {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
-        }
+        },
     },
 }
 

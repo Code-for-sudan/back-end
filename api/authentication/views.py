@@ -56,65 +56,161 @@ class LoginView(APIView):
         return Response({"message": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 @extend_schema(
-    summary="Initiate Google OAuth2",
-    description="Frontend should pass optional state `accountType=seller`",
-    responses={302: OpenApiResponse(description="Redirect to Google OAuth")},
+    summary="Google OAuth Login",
+    description="Redirects to Google OAuth for user authentication.",
+    responses={
+        302: OpenApiResponse(description="Redirects to Google OAuth URL."),
+    },
+    request=None,
 )
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
     def get(self, request):
-        account = request.query_params.get("accountType")
-        state = f"accountType={account}" if account else None
-        params = {
-            "response_type": "code",
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            "scope": "email profile",
-        }
-        if state: params["state"] = state
-        url = "https://accounts.google.com/o/oauth2/auth?" + "&".join(f"{k}={v}" for k, v in params.items())
-        return redirect(url)
+        # Get the user account type from query parameters
+        # Redirect to Google OAuth with the appropriate parameters
+        account_type = request.query_params.get("accountType")
+        response_type = "code"
+        client_id = settings.GOOGLE_CLIENT_ID
+        redirect_uri = settings.GOOGLE_REDIRECT_URI
+        scope = "email profile"
+        # Check the account_type to set-up the state
+        if account_type:
+            state = account_type.strip().lower()                                                                                            
+        else:
+            state = None
 
+        google_url = "https://accounts.google.com/o/oauth2/auth?&response_type={}&client_id={}&redirect_uri={}&scope={}&state={}".format(
+            response_type, client_id, redirect_uri, scope, state
+        )
+        logger.info(f"Redirecting to Google OAuth: {google_url}")
+        # Redirect the user to Google's OAuth 2.0 server
+        return redirect(google_url)
+        
+        
 
 @extend_schema(
+    summary="Google OAuth Callback",
+    description="Handles the callback from Google OAuth after user authentication.",
     request=GoogleAuthCodeSerializer,
     responses={
-        200: OpenApiResponse(description="Returns token + flags for new user"),
-        400: OpenApiResponse(description="OAuth error or missing code"),
+        200: OpenApiResponse(description="User authenticated successfully; returns user data and tokens."),
+        400: OpenApiResponse(description="Invalid or missing authorization code."),
     },
-    summary="Google OAuth Callback",
+    examples=[
+        OpenApiExample(
+            name="Google OAuth Callback Example",
+            value={
+                "code": "4/0AY0e-g5...",
+                "state": "accountType=seller"
+            },
+            request_only=True
+        ),
+        OpenApiExample(
+            name="Successful Authentication Response",
+            value={
+                "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "isNewUser": True,
+                "user": {
+                    "id": "1234",
+                    "email": "example@test.com",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "is_store_owner": True,
+                        "is_store_owner": True,
+                        "is_verified": True,
+                        "created_at": "2024-01-01T00:00:00Z"
+                    },
+                    "accountType": "seller",
+                    "needsAccountType": False,
+                    "redirect": "/dashboard/seller-setup"
+            },
+            response_only=True
+        )
+    ]
 )
+        
 class GoogleCallbackView(APIView):
+    """
+    View to handle Google OAuth callback and user authentication.
+    This view processes the authorization code received from Google OAuth,
+    authenticates or registers the user, and returns authentication tokens
+    along with user information. It also manages account type selection for
+    new users and sets a secure HTTP-only cookie for the refresh token.
+    Methods
+    -------
+    post(request):
+        Handles POST requests with the Google OAuth authorization code.
+        Validates the code, authenticates the user, and returns tokens and user data.
+        If the user is new, includes account type information and setup redirection.
+        Sets the refresh token as an HTTP-only cookie in the response.
+    Permissions
+    -----------
+    AllowAny: Allows any user (authenticated or not) to access this view.
+    Throttling
+    ----------
+    AnonRateThrottle: Applies rate limiting to anonymous requests.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
-
+    
+    # Get the user info from Google using the authorization code
     def post(self, request):
         serializer = GoogleAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
-        state = serializer.validated_data.get("state")  # e.g. "accountType=seller"
+        state = serializer.validated_data.get("state")
+
+        # Check if the code is provided
+        if not code:
+            logger.error("No code provided in Google OAuth callback.")
+            return Response(
+                {"message": "No code provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             with transaction.atomic():
+                # Authenticate the user using the provided code and state
                 user, tokens, is_new, account_type = authenticate_google_user(code, state)
         except Exception as e:
-            logger.error(f"Google auth failed: {e}")
-            return Response({"message": "Authentication failed"}, status=status.HTTP_400_BAD_REQUEST)
+            logger.error(f"Google authentication failed: {e}")
+            return Response(
+                {"message": "Authentication failed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        resp = {"token": tokens[0], "isNewUser": is_new}
+        # Prepare the response data
+        resp = {
+            "token": tokens[0],
+            "isNewUser": is_new,
+            "user": UserSerializer(user).data
+        }
+        
+        # Check if the user is new and set account type if provided
         if is_new:
             if account_type:
                 resp["accountType"] = account_type
+                resp["needsAccountType"] = False
                 if account_type == "seller":
-                    resp["needsAccountType"] = False
                     resp["redirect"] = "/dashboard/seller-setup"
             else:
                 resp["needsAccountType"] = True
-
+        
+        # Create the response object
         response = Response(resp, status=status.HTTP_200_OK)
-        response.set_cookie("refresh_token", str(tokens[1]), httponly=True, secure=not settings.DEBUG, samesite="Lax")
+        # Set Cookie for refresh token
+        response.set_cookie(
+            "refresh_token",
+            str(tokens[1]),
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite="Lax"
+        )
+        logger.info(f"Google OAuth callback successful for user {user.email}.")
         return response
 
 
@@ -151,7 +247,7 @@ class SellerSetupView(APIView):
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
-        serializer = SellerSetupSerializer(data=request.data)
+        serializer = SellerSetupSerializer(data=request.data, context={'user': request.user})
         serializer.is_valid(raise_exception=True)
         user = request.user
         serializer.save(user=user)

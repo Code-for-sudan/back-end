@@ -95,7 +95,7 @@ class GoogleOAuthViewsTests(TestCase):
 
         response = self.client.post(self.set_account_type_url, {"account_type": "seller"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["message"], "Account type updated successfully")
+        self.assertEqual(response.data["message"], "Account type updated")
 
     def test_set_account_type_invalid(self):
         """Test setting an invalid account type."""
@@ -108,7 +108,7 @@ class GoogleOAuthViewsTests(TestCase):
 
     def test_seller_setup_success(self):
         """Test seller setup step after selecting seller role."""
-        user = User.objects.create_user(email="seller@example.com", password="pass", account_type="seller")
+        user = User.objects.create_user(email="seller@example.com", password="pass", is_store_owner=True)
         self.client.force_authenticate(user=user)
 
         payload = {
@@ -117,11 +117,11 @@ class GoogleOAuthViewsTests(TestCase):
         }
         response = self.client.post(self.seller_setup_url, payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["message"], "Seller setup completed successfully")
+        self.assertEqual(response.data["message"], "Seller setup complete")
 
     def test_seller_setup_unauthorized_role(self):
         """Test seller setup fails if user is not a seller."""
-        user = User.objects.create_user(email="buyer@example.com", password="pass", accountType="buyer")
+        user = User.objects.create_user(email="buyer@example.com", password="pass", is_store_owner=False)
         self.client.force_authenticate(user=user)
 
         payload = {

@@ -30,8 +30,6 @@ class LoginSerializer(serializers.Serializer):
         return data
 
 
-from rest_framework import serializers
-
 
 class GoogleAuthCodeSerializer(serializers.Serializer):
     """
@@ -78,6 +76,12 @@ class SellerSetupSerializer(serializers.Serializer):
     business_email = serializers.EmailField(
         help_text="Email used for business communication."
     )
+
+    def create(self, validated_data):
+        user = self.context.get('user')
+        # You can add logic to create a Store or update user profile here
+        # For now, just return the user or do nothing
+        return user
 
 
 

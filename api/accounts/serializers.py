@@ -33,6 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
     # Set phone_number and whatsapp_number as optional fields
     phone_number = PhoneNumberField(required=False, allow_null=True)
     whatsapp_number = PhoneNumberField(required=False, allow_null=True)
+    accountType = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -46,6 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
             'phone_number',
             'whatsapp_number',
             'password',
+            'accountType'
         ]
         extra_kwargs = {
             'email': {'required': True},
@@ -78,6 +80,10 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Create a new user with the validated data
         return User.objects.create_user(**validated_data)
+
+    def get_accountType(self, obj):
+        return "seller" if obj.is_store_owner else "buyer"
+
 
 
 class BusinessOwnerSignupSerializer(serializers.Serializer):
@@ -113,6 +119,7 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     password = serializers.CharField(source='user.password', write_only=True, min_length=6)
     gender = serializers.CharField(source='user.gender')
     store_name = serializers.CharField(write_only=True, required=True)
+    accountType = serializers.CharField(source='user.accountType', read_only=True)
 
     def validate_profile_picture(self, image):
         if image is None:
@@ -142,3 +149,6 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
             user = User.objects.create_user(**user_data)
             business_owner = BusinessOwner.objects.create(user=user, store=store)
         return business_owner
+
+    def get_accountType(self, obj):
+        return "seller" if obj.user.is_store_owner else "buyer"
