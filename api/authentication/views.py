@@ -587,7 +587,7 @@ class RequestUpdatePasswordView(APIView):
     """
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'password_resert'
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = RequestUpdatePasswordSerializer(data=request.data)
         if not serializer.is_valid():
@@ -763,7 +763,7 @@ class ActivateAccountView(APIView):
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                         "is_store_owner": user.is_store_owner,
-                        "is_verified": user.is_verified,
+                        "is_verified": user.is_active,
                         "created_at": user.created_at.isoformat()
                     },
                 },

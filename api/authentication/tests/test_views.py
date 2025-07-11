@@ -174,22 +174,26 @@ class PasswordResetFlowTests(APITestCase):
         self.update_password_url = reverse('request_update_password')
 
     def test_password_reset_request_success(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email}
         response = self.client.post(self.reset_request_url, data)
         self.assertEqual(response.status_code, 200)
         self.assertIn("message", response.data)
 
     def test_password_reset_request_missing_email(self):
+        self.client.credentials()  # Remove authentication headers
         response = self.client.post(self.reset_request_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_password_reset_request_nonexistent_user(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": "notfound@example.com"}
         response = self.client.post(self.reset_request_url, data)
         self.assertEqual(response.status_code, 200)  # Should not reveal user existence
 
     def test_password_reset_verify_success(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email, "otp": self.otp}
         response = self.client.post(self.reset_verify_url, data)
         self.assertEqual(response.status_code, 200)
@@ -197,23 +201,27 @@ class PasswordResetFlowTests(APITestCase):
         self.assertIn("user", response.data)
 
     def test_password_reset_verify_invalid_otp(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email, "otp": "wrongotp"}
         response = self.client.post(self.reset_verify_url, data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_password_reset_verify_missing_fields(self):
+        self.client.credentials()  # Remove authentication headers
         response = self.client.post(self.reset_verify_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_password_reset_verify_nonexistent_user(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": "nouser@example.com", "otp": "123456"}
         response = self.client.post(self.reset_verify_url, data)
         self.assertEqual(response.status_code, 404)
         self.assertIn("message", response.data)
 
     def test_update_password_success(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email, "new_password": "newsecurepassword123"}
         response = self.client.post(self.update_password_url, data)
         self.assertEqual(response.status_code, 200)
@@ -222,13 +230,54 @@ class PasswordResetFlowTests(APITestCase):
         self.assertTrue(self.user.check_password("newsecurepassword123"))
 
     def test_update_password_missing_fields(self):
+        self.client.credentials()  # Remove authentication headers
         response = self.client.post(self.update_password_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_update_password_nonexistent_user(self):
+        self.client.credentials()  # Remove authentication headers
         data = {"email": "nouser@example.com", "new_password": "newsecurepassword123"}
         response = self.client.post(self.update_password_url, data)
         self.assertEqual(response.status_code, 404)
         self.assertIn("message", response.data)
         User = get_user_model()
+
+
+class ActivateAccountViewTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('activate_account')
+        self.user = User.objects.create_user(
+            email="activate@example.com",
+            password="testpass",
+            is_active=False,
+            first_name="Test",
+            last_name="User"
+        )
+        self.token = str(RefreshToken.for_user(self.user).access_token)
+
+    def test_activate_account_success(self):
+        response = self.client.post(self.url, {"token": self.token})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        self.assertEqual(response.data["message"], "Account activated successfully.")
+        self.assertEqual(response.data["user"]["email"], self.user.email)
+
+    def test_activate_account_already_active(self):
+        self.user.is_active = True
+        self.user.save()
+        response = self.client.post(self.url, {"token": self.token})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Account activated successfully.")
+
+    def test_activate_account_missing_token(self):
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "Token is required.")
+
+    def test_activate_account_invalid_token(self):
+        response = self.client.post(self.url, {"token": "invalidtoken"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], "Invalid or expired token.")

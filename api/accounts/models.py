@@ -28,6 +28,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         otp_expires_at (DateTimeField): Expiration time for the OTP, optional.
         is_active (BooleanField): Indicates whether the user is active.
         is_staff (BooleanField): Indicates whether the user has admin access.
+        created_at (DateTimeField): Timestamp when the user was created.
+        updated_at (DateTimeField): Timestamp when the user was last updated.
+        account_type (CharField): Type of account, either 'seller' or 'buyer'.
+        phone_number (PhoneNumberField): User's phone number, optional and unique.
+        whatsapp_number PhoneNumberField): User's phone number, optional and unique.
         gender (CharField): User's gender, with choices defined in GENDER_CHOICES.
         groups (ManyToManyField): Groups the user belongs to.
         user_permissions (ManyToManyField): Permissions assigned to the user.
@@ -64,6 +69,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)  # Required for admin access
     is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
     s_subscribed = models.BooleanField(default=False, help_text="Is the user subscribed to the newsletter?")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
     account_type = models.CharField(
         max_length=10,
         choices=[('seller', 'Seller'), ('buyer', 'Buyer')],
