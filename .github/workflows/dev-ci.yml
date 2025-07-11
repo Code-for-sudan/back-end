@@ -50,7 +50,7 @@ jobs:
           echo "REDIS_DATABASE_URL=redis://redis:6379" >> api/.env.prod
 
       - name: Build Docker containers
-        run: docker compose -f docker-compose.prod.yml build
+        run: docker compose -f api/docker-compose.prod.yml build
 
       - name: Run tests
         run: |
@@ -63,4 +63,4 @@ jobs:
 
       - name: Shutdown containers
         if: always()
-        run: docker compose -f docker-compose.prod.yml down --volumes
+        run: docker compose -f api/docker-compose.prod.yml down --volumes
