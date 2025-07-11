@@ -88,26 +88,27 @@ class UserSerializer(serializers.ModelSerializer):
 
 class BusinessOwnerSignupSerializer(serializers.Serializer):
     """
-    Serializer for handling business owner sign-up.
+    Serializer for business owner signup, handling both user and store creation.
+
     Fields:
-        email (EmailField): The email address of the user (required).
-        first_name (CharField): The first name of the user (required).
-        last_name (CharField): The last name of the user (required).
-        profile_picture (ImageField): Optional profile picture for the user.
-        phone_number (CharField): Optional phone number of the user.
-        whatsapp_number (CharField): Optional WhatsApp number of the user.
-        otp (CharField): One-time password for verification (write-only, optional).
-        password (CharField): Password for the user account (write-only, required, min_length=6).
-        gender (CharField): Gender of the user.
-        store_name (CharField): Name of the store to be created (write-only, required).
+        email (EmailField): User's email address.
+        first_name (CharField): User's first name.
+        last_name (CharField): User's last name.
+        profile_picture (ImageField): Optional user profile picture (jpg, jpeg, png, max 5MB).
+        phone_number (PhoneNumberField): Optional user phone number.
+        whatsapp_number (PhoneNumberField): Optional user WhatsApp number.
+        password (CharField): User's password (write-only, min length 6).
+        gender (CharField): User's gender.
+        store_name (CharField): Store name (required, write-only).
+        store_location (CharField): Store location (required, write-only).
+        description (CharField): Store description (required, write-only).
+        store_type (CharField): Store type (required, write-only).
+        accountType (CharField): Account type (read-only, "seller" or "buyer").
+
     Methods:
-        validate_profile_picture(image):
-            Validates the uploaded profile picture for allowed extensions (jpg, jpeg, png)
-            and maximum file size (5MB).
-        create(validated_data):
-            Creates a new Store, User, and BusinessOwner instance based on the validated data.
-    Raises:
-        serializers.ValidationError: If the profile picture does not meet extension or size requirements.
+        validate_profile_picture(image): Validates profile picture format and size.
+        create(validated_data): Creates User, Store, and BusinessOwner instances atomically.
+        get_accountType(obj): Returns account type based on user's store ownership.
     """
 
     email = serializers.EmailField(source='user.email', required=True)
@@ -120,6 +121,12 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     gender = serializers.CharField(source='user.gender')
     store_name = serializers.CharField(write_only=True, required=True)
     accountType = serializers.CharField(source='user.accountType', read_only=True)
+
+    # Store fields (all required)
+    store_name = serializers.CharField(write_only=True, required=True)
+    store_location = serializers.CharField(write_only=True, required=True)
+    description = serializers.CharField(write_only=True, required=True)
+    store_type = serializers.CharField(write_only=True, required=True)
 
     def validate_profile_picture(self, image):
         if image is None:
@@ -143,9 +150,17 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         store_name = validated_data.pop('store_name')
+        store_location = validated_data.pop('store_location')
+        description = validated_data.pop('description')
+        store_type = validated_data.pop('store_type')
         user_data = validated_data.pop('user')
         with transaction.atomic():
-            store = Store.objects.create(name=store_name)
+            store = Store.objects.create(
+                name=store_name,
+                location=store_location,
+                description=description,
+                store_type=store_type
+            )
             user = User.objects.create_user(**user_data)
             business_owner = BusinessOwner.objects.create(user=user, store=store)
         return business_owner

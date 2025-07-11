@@ -15,9 +15,9 @@ class Store(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    location = models.CharField(max_length=255, blank=True, null=True)
+    location = models.CharField(max_length=255,)
     created_at = models.DateTimeField(auto_now_add=True)
-    store_type = models.CharField(max_length=100, blank=True, null=True)
+    store_type = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.location})"
