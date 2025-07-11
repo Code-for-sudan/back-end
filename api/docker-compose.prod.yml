@@ -7,10 +7,14 @@ services:
       dockerfile: builds/prod/Dockerfile
     command: >
       sh -c "
-      python manage.py makemigrations &&
-      python manage.py migrate &&
-      ./wait-for-it.sh db:3306 -- daphne -b 0.0.0.0 -p 8000 api.asgi:application"
-
+      ./wait-for-it.sh db:3306 --timeout=60 --strict &&
+      ./wait-for-it.sh redis:6379 --timeout=60 --strict &&
+      ./wait-for-it.sh elasticsearch:9200 --timeout=60 --strict &&
+      python manage.py makemigrations --noinput &&
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      daphne -b 0.0.0.0 -p 8000 api.asgi:application
+      "
     volumes:
       - static_volume:/api/staticfiles
       - media_volume:/api/media
