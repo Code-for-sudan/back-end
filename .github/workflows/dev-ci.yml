@@ -12,69 +12,26 @@ on:
       - main # Only run PR checks when PR targets `main`
   workflow_dispatch: # Manual trigger (always good to keep)
 
-env:
-  DOCKER_COMPOSE: docker-compose -f docker-compose.prod.yml
-
 jobs:
   test:
-    name: Run Django Tests
+    name: Run Django Tests in Docker
     runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.DB_NAME }}
-          MYSQL_USER: ${{ secrets.DB_USER }}
-          MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
-
-      elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-        env:
-          discovery.type: single-node
-          ES_JAVA_OPTS: -Xms512m -Xmx512m
-          xpack.security.enabled: "false"
-        ports:
-          - 9200:9200
-        options: >-
-          --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"' || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.12
+      - name: Set up Docker Buildx (optional but recommended)
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install Dependencies
+      - name: Create .env files
         run: |
-          pip install -r api/requirements/test.txt
-
-      - name: Set up .env for test
-        run: |
+          mkdir -p api
           touch api/.env
           touch api/.env.prod
+
           echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> api/.env
-          echo "DEBUG={{ secrets.DJANGO_DEBUG }}" >> api/.env
+          echo "DEBUG=${{ secrets.DJANGO_DEBUG }}" >> api/.env
           echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> api/.env
           echo "REDIS_DATABASE_URL=${{ secrets.REDIS_DATABASE_URL }}" >> api/.env
           echo "CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}" >> api/.env
@@ -86,29 +43,24 @@ jobs:
           echo "DB_NAME=${{ secrets.DB_NAME }}" >> api/.env.prod
           echo "DB_USER=${{ secrets.DB_USER }}" >> api/.env.prod
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
-          echo "DB_HOST=127.0.0.1" >> api/.env.prod
+          echo "DB_HOST=db" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
           echo "ELASTICSEARCH_URL=http://elasticsearch:9200" >> api/.env.prod
+          echo "REDIS_DATABASE_URL=redis://redis:6379" >> api/.env.prod
 
-      - name: Grant privileges to test user
+      - name: Build Docker containers
+        run: docker-compose -f docker-compose.prod.yml build
+
+      - name: Run tests
         run: |
-          mysql -uroot -p${{ secrets.MYSQL_ROOT_PASSWORD }} -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS sudamall_db;
+          docker-compose -f docker-compose.prod.yml run --rm web sh -c "
+            python manage.py makemigrations --noinput &&
+            python manage.py migrate --noinput &&
+            python manage.py collectstatic --noinput &&
+            python manage.py test
+          "
 
-          CREATE USER IF NOT EXISTS 'api'@'%' IDENTIFIED BY 'sudamall_password';
-
-          GRANT ALL PRIVILEGES ON sudamall_db.* TO 'api'@'%';
-
-          GRANT ALL PRIVILEGES ON test_myproject.* TO 'api'@'%';
-
-          FLUSH PRIVILEGES;"
-
-      - name: Run Tests
-        run: |
-          cd api
-          python manage.py makemigrations --noinput
-          python manage.py migrate --noinput
-          python manage.py collectstatic --noinput
-          echo "Waiting for MySQL to be ready..."
-          sleep 4
-          python manage.py test
+      - name: Shutdown containers
+        if: always()
+        run: docker-compose -f docker-compose.prod.yml down --volumes
