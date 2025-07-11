@@ -9,7 +9,8 @@ services:
       sh -c "
       python manage.py makemigrations &&
       python manage.py migrate &&
-      ./wait-for-it.sh db:3306 -- gunicorn api.wsgi:application --bind 0.0.0.0:8000"
+      ./wait-for-it.sh db:3306 -- daphne -b 0.0.0.0 -p 8000 api.asgi:application"
+
     volumes:
       - static_volume:/api/staticfiles
       - media_volume:/api/media
@@ -22,6 +23,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      elasticsearch:
+        condition: service_healthy
     restart: unless-stopped
 
   db:
@@ -111,6 +114,11 @@ services:
       - "9200:9200"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   static_volume:

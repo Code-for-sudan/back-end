@@ -161,6 +161,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         logger.info("OTP verified successfully.")
         return True
 
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}".strip() or self.email
+
     def __str__(self):
         return f"Email: {self.email}, First Name: {self.first_name}, Last Name: {self.last_name}, Gender: {self.gender}"
 
