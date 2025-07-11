@@ -400,7 +400,12 @@ LOGGING = {
         },
         'accounts_tests': {
             'handlers': ['file', 'console'],
-            'level': 'ERROR',  # Set to DEBUG for detailed logs
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'acoounts_tasks': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_views': {
