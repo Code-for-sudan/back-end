@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from .models import BusinessOwner
 from notifications.tasks import send_email_task
+from .tasks import send_activation_email_task
 
 # Create a signal loogger
 logger = logging.getLogger("signals")
@@ -13,22 +14,19 @@ User = get_user_model()
 @receiver(post_save, sender=User)
 def user_created_handler(sender, instance, created, **kwargs):
     """
-    Signal handler that sends a welcome email to a newly created user.
-
-    This function is intended to be connected to the post_save signal of the User model.
-    When a new user instance is created, it triggers an asynchronous task to send a welcome email
-    to the user's email address.
-
+    Signal handler for user creation events.
+    This function is triggered when a new user instance is created. If the user is not a business owner,
+    it sends a generic welcome email asynchronously. Regardless of user type, it schedules an activation
+    email to be sent after a 60-second delay.
     Args:
-        sender (Model): The model class that sent the signal.
-        instance (User): The actual instance being saved.
-        created (bool): A boolean indicating whether a new record was created.
+        sender: The model class that sent the signal.
+        instance: The instance of the user that was created.
+        created (bool): Indicates whether a new record was created.
         **kwargs: Additional keyword arguments passed by the signal.
-
-    Returns:
-        None
+    Side Effects:
+        - Sends a welcome email to non-business owner users.
+        - Schedules an activation email for all users.
     """
-
     if created:
         print(f"User created: {instance.email}")
         # Only send generic email if not a business owner
@@ -41,24 +39,25 @@ def user_created_handler(sender, instance, created, **kwargs):
                 },
                 recipient_list=[instance.email]
             )
-
+    # After sending the welcome email:
+    send_activation_email_task.apply_async(
+        args=[instance.id],
+        countdown=60
+    )  # 60 seconds delay
 
 
 @receiver(post_save, sender=BusinessOwner)
 def business_owner_created_handler(sender, instance, created, **kwargs):
     """
-    Signal handler that sends a welcome email to a newly created business owner.
-    This function is intended to be connected to a model's post_save signal. When a new business owner instance is created,
-    it triggers an asynchronous task to send a welcome email to the owner's associated user email address.
+    Signal handler for the creation of a BusinessOwner instance.
+    When a new BusinessOwner is created, this handler sends a welcome email to the associated user
+    and schedules an activation email to be sent after a 60-second delay.
     Args:
-        sender (type): The model class that sent the signal.
-        instance (object): The actual instance being saved.
-        created (bool): A boolean indicating whether a new record was created.
+        sender: The model class that sent the signal.
+        instance: The instance of BusinessOwner that was created.
+        created (bool): Whether the instance was created (True) or updated (False).
         **kwargs: Additional keyword arguments passed by the signal.
-    Side Effects:
-        Initiates an asynchronous email sending task if a new business owner is created.
     """
-
     if created:
         send_email_task.delay(
             subject="Welcome, Business Partner!",
@@ -68,3 +67,8 @@ def business_owner_created_handler(sender, instance, created, **kwargs):
             },
             recipient_list=[instance.user.email]
         )
+    # After sending the welcome email:
+    send_activation_email_task.apply_async(
+        args=[instance.id],
+        countdown=60
+    )  # 60 seconds delay

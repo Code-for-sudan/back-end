@@ -8,9 +8,9 @@ from .serializers import UserSerializer, BusinessOwnerSignupSerializer # type: i
 from rest_framework import status # type: ignore
 from .models import User, BusinessOwner # type: ignore
 
-
 # Create a logger for this module
 logger = logging.getLogger('accounts_views')
+# TODO: update all the emails templates and test them
 
 @extend_schema(
     request=UserSerializer,
