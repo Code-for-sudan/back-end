@@ -1,8 +1,10 @@
-import logging
-import re
+import logging, re
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from ..accounts import BusinessOwner
+from ..stores.models import Store
+
 
 # Get the user model
 User = get_user_model()
@@ -63,25 +65,63 @@ class SetAccountTypeSerializer(serializers.Serializer):
 
 class SellerSetupSerializer(serializers.Serializer):
     """
-    Serializer to gather additional setup data for sellers.
-    
+    Serializer for setting up or updating a seller's store information.
+
     Fields:
-        store_name (str): Name of the seller's store.
-        business_email (str): Business email address (can differ from user email).
+        store_name (CharField): Name of the store or business.
+        store_location (CharField): Physical location of the store (if applicable).
+        store_type (CharField): Type of store (e.g., 'retail', 'online', etc.).
+        store_description (CharField): Brief description of the store or business.
+
+    Methods:
+        update(instance, validated_data):
+            Updates the given Store instance with validated data.
+
+        create(validated_data):
+            Creates or updates the store associated with the business owner profile of the current user.
+            Raises ValidationError if the business owner profile is not found.
     """
     store_name = serializers.CharField(
         max_length=255,
         help_text="Name of your store or business."
     )
-    business_email = serializers.EmailField(
-        help_text="Email used for business communication."
+    store_location = serializers.CharField(
+        max_length=255,
+        help_text="Physical location of your store (if applicable)."
     )
+    store_type = serializers.CharField(
+        max_length=100,
+        help_text="Type of store (e.g., 'retail', 'online', etc.)."
+    )
+    store_description = serializers.CharField(
+        max_length=500,
+        help_text="Brief description of your store or business."
+    )
+
+    def update(self, instance, validated_data):
+        # instance is the Store object
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
     def create(self, validated_data):
         user = self.context.get('user')
-        # You can add logic to create a Store or update user profile here
-        # For now, just return the user or do nothing
-        return user
+        # Get the business owner profile
+        try:
+            business_owner = user.business_owner_profile
+        except BusinessOwner.DoesNotExist:
+            logger.error(f"No business owner profile found for user: {user.email}")
+            raise serializers.ValidationError(
+                "Business owner profile not found for this user."
+            )
+
+        store = business_owner.store
+        # Update store fields
+        for attr, value in validated_data.items():
+            setattr(store, attr, value)
+        store.save()
+        return store
 
 
 

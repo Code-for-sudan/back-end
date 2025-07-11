@@ -223,6 +223,18 @@ class GoogleCallbackView(APIView):
     summary="Set Account Type for Google OAuth",
 )
 class SetAccountTypeView(APIView):
+    """
+    API view to set or update the account type for a user.
+    POST:
+        Expects a payload containing the 'account_type' field.
+        Validates the input using SetAccountTypeSerializer.
+        Updates the account type for the authenticated user.
+        Returns a success message upon completion.
+    Permissions:
+        - AllowAny: Any user (authenticated or not) can access this endpoint.
+    Throttling:
+        - AnonRateThrottle: Applies rate limiting to anonymous users.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
@@ -243,15 +255,34 @@ class SetAccountTypeView(APIView):
     summary="Complete Seller Info",
 )
 class SellerSetupView(APIView):
-    permission_classes = [AllowAny]
+    """
+    APIView for handling seller setup process.
+    Allows authenticated users to submit seller setup information via POST request.
+    Uses SellerSetupSerializer to validate and save the data.
+    Returns a success message upon completion.
+    Permissions:
+        - IsAuthenticated: Only authenticated users can access.
+    Throttling:
+        - AnonRateThrottle: Applies rate limiting for anonymous requests.
+    Methods:
+        post(request):
+            Validates and saves seller setup data.
+            Returns a success response if setup is complete.
+    """
+    permission_classes = [IsAuthenticated]
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
-        serializer = SellerSetupSerializer(data=request.data, context={'user': request.user})
+        serializer = SellerSetupSerializer(
+            data=request.data,
+            context={'user': request.user}
+        )
         serializer.is_valid(raise_exception=True)
-        user = request.user
-        serializer.save(user=user)
-        return Response({"message": "Seller setup complete"}, status=status.HTTP_200_OK)
+        serializer.save()
+        return Response(
+            {"message": "Seller setup complete"},
+            status=status.HTTP_200_OK
+        )
 
 
 
