@@ -14,7 +14,16 @@ logger = logging.getLogger('authentication_serializers')
 
 class LoginSerializer(serializers.Serializer):
     """
-    A Login serializer for user authentication validating user's email and password, returning the user instance if valid.
+    Serializer for handling user login authentication.
+    Fields:
+        email (EmailField): The user's email address.
+        password (CharField): The user's password (write-only).
+    Methods:
+        validate(data):
+            Authenticates the user using the provided email and password.
+            Logs failed authentication attempts and inactive user login attempts.
+            Raises ValidationError if authentication fails or the user is inactive.
+            On success, adds the authenticated user to the returned data.
     """
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -28,6 +37,10 @@ class LoginSerializer(serializers.Serializer):
             # Log the failed authentication attempt
             logger.error(f"[LoginSerializer] Authentication failed for email: {email}")
             raise serializers.ValidationError("Invalid email or password.")
+        if not user.is_active:
+            # Log the inactive user attempt
+            logger.warning(f"[LoginSerializer] Inactive user attempted login: {email}")
+            raise serializers.ValidationError("This account is inactive.")
         data['user'] = user
         return data
 
@@ -53,6 +66,15 @@ class GoogleAuthCodeSerializer(serializers.Serializer):
 
 
 class SetAccountTypeSerializer(serializers.Serializer):
+    """
+    Serializer for setting the account type of a user.
+    Fields:
+        account_type (ChoiceField): Specifies the type of account. 
+            Choices are 'seller' or 'buyer'.
+    Usage:
+        Use this serializer to validate and process requests where a user selects 
+        their account type during registration or profile update.
+    """
     ACCOUNT_TYPE_CHOICES = [
         ('seller', 'Seller'),
         ('buyer', 'Buyer'),
@@ -144,6 +166,13 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
 
 
 class ResetPasswordrequestVerifySerializer(serializers.Serializer):
+    """
+    Serializer for verifying a password reset request using email and OTP.
+    Fields:
+        email (EmailField): The user's email address. Required, max length 254.
+        otp (CharField): The one-time password code. Required, exactly 6 characters, write-only.
+    Used to validate the data required for verifying a password reset request.
+    """
     email = serializers.EmailField(
         required=True,
         max_length=254,
