@@ -145,12 +145,13 @@ DATABASES = {
     }
 }
 
-# Use SQLite for tests
-if 'test' in sys.argv or 'test_coverage' in sys.argv:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
-    }
+# Use SQLite for tests in local development
+# This allows for faster test runs without needing a MySQL server.
+# if 'test' in sys.argv or 'test_coverage' in sys.argv:
+#     DATABASES['default'] = {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': ':memory:',
+#     }
 
 ELASTICSEARCH_DSL = {
     'default': {
