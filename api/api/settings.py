@@ -25,7 +25,7 @@ env = environ.Env(
     DEBUG=(bool, False),
     SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, []),
-    REDAIS_DATABASE_URL=(str, ''),
+    REDIS_DATABASE_URL=(str, ''),
     CELERY_BROKER_URL=(str, ''),
     GOOGLE_REDIRECT_URI=(str, ''),
     GOOGLE_CLIENT_ID=(str, ''),
@@ -45,7 +45,6 @@ env = environ.Env(
     EMAIL_SUBJECT_PREFIX=(str, '[Sudamall] '),
     EMAIL_TIMEOUT=(int, 5),
 )
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -75,6 +74,7 @@ INSTALLED_APPS = [
     'products.apps.ProductsConfig',
     'notifications.apps.NotificationsConfig',
     'search.apps.SearchConfig',
+    'chat.apps.ChatConfig',
     'django_elasticsearch_dsl',
     'rest_framework',
     'django_celery_beat',
@@ -118,11 +118,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'api.wsgi.application'
 
 ASGI_APPLICATION = 'api.asgi.application'
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379")],
+            "hosts": [env("REDIS_DATABASE_URL")],
         },
     },
 }
@@ -152,10 +153,26 @@ DATABASES = {
 #         'NAME': ':memory:',
 #     }
 
+if 'test' in sys.argv or 'pytest' in sys.argv:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+
+
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'http://localhost:9200'
+        'hosts': os.getenv("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
     },
+}
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_DATABASE_URL", "redis://redis:6379"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
 }
 
 
@@ -206,7 +223,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 
 # Store Celery task results in Redis (Optional)
-CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')
+CELERY_RESULT_BACKEND = env('REDIS_DATABASE_URL')
 
 # Import task modules for the django project app
 CELERY_IMPORTS = (
@@ -482,7 +499,27 @@ LOGGING = {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
-        }
+        },
+        'chat_consumers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'chat_views': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'chat_tests': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'chat_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
     },
 }
 
