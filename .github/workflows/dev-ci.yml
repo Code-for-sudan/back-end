@@ -14,14 +14,14 @@ on:
 
 jobs:
   test:
-    name: Run Django Tests in Docker
+    name: Run Django Tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx (optional but recommended)
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Create .env files
@@ -50,7 +50,7 @@ jobs:
           echo "REDIS_DATABASE_URL=redis://redis:6379" >> api/.env.prod
 
       - name: Build Docker containers
-        run: docker-compose -f docker-compose.prod.yml build
+        run: docker compose -f docker-compose.prod.yml build
 
       - name: Run tests
         run: |
