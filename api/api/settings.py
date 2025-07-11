@@ -18,9 +18,6 @@ from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# to load .env.prod file:
-environ.Env.read_env(os.path.join(BASE_DIR, '.env.prod'))
-
 # An env object, which is an instance of environ.Env().
 # The arguments inside environ.Env() define the expected variables,
 # their data types, and default values (used if not defined in the .env file).
@@ -28,7 +25,7 @@ env = environ.Env(
     DEBUG=(bool, False),
     SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, []),
-    REDAIS_DATABASE_URL=(str, ''),
+    REDIS_DATABASE_URL=(str, ''),
     CELERY_BROKER_URL=(str, ''),
     GOOGLE_REDIRECT_URI=(str, ''),
     GOOGLE_CLIENT_ID=(str, ''),
@@ -48,7 +45,6 @@ env = environ.Env(
     EMAIL_SUBJECT_PREFIX=(str, '[Sudamall] '),
     EMAIL_TIMEOUT=(int, 5),
 )
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -127,7 +123,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get("REDIS_DATABASE_URL", "redis://redis:6379")],
+            "hosts": [env("REDIS_DATABASE_URL", "redis://redis:6379")],
         },
     },
 }
@@ -164,7 +160,7 @@ if 'test' in sys.argv or 'pytest' in sys.argv:
 
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': os.environ.get("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
+        'hosts': os.getenv("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
     },
 }
 
@@ -172,7 +168,7 @@ ELASTICSEARCH_DSL = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.environ.get("REDIS_DATABASE_URL", "redis://redis:6379"),
+        "LOCATION": os.getenv("REDIS_DATABASE_URL", "redis://redis:6379"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -227,7 +223,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = env('CELERY_BROKER_URL')
 
 # Store Celery task results in Redis (Optional)
-CELERY_RESULT_BACKEND = env('REDAIS_DATABASE_URL')
+CELERY_RESULT_BACKEND = env('REDIS_DATABASE_URL')
 
 # Import task modules for the django project app
 CELERY_IMPORTS = (
