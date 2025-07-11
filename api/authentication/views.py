@@ -13,7 +13,7 @@ from django.shortcuts import redirect
 from django.db import transaction
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
-from .services import authenticate_google_user, set_account_type_for_user
+from .services import authenticate_google_user
 from notifications.tasks import send_email_task
 from .serializers import LoginSerializer, GoogleAuthCodeSerializer, SetAccountTypeSerializer, SellerSetupSerializer
 from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
@@ -111,7 +111,13 @@ class GoogleLoginView(APIView):
         )
         logger.info(f"Redirecting to Google OAuth: {google_url}")
         # Instead of redirecting, return the Google OAuth URL so the frontend can handle the redirect
-        return Response({"google_oauth_url": google_url}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": "Redirect to Google OAuth",
+                "google_oauth_url": google_url
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 @extend_schema(
@@ -121,6 +127,7 @@ class GoogleLoginView(APIView):
     responses={
         200: OpenApiResponse(description="User authenticated successfully; returns user data and tokens."),
         400: OpenApiResponse(description="Invalid or missing authorization code."),
+        401: OpenApiResponse(description="Authentication failed; invalid code or user not found."),
     },
     examples=[
         OpenApiExample(
@@ -181,8 +188,17 @@ class GoogleCallbackView(APIView):
     
     # Get the user info from Google using the authorization code
     def get(self, request):
-        serializer = GoogleAuthCodeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer = GoogleAuthCodeSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            logger.error(f"Invalid data for Google OAuth callback: {serializer.errors}")
+            return Response(
+            {
+                "message": "Invalid or missing authorization code.",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+            )
+
         code = serializer.validated_data["code"]
         state = serializer.validated_data.get("state")
 
@@ -193,7 +209,7 @@ class GoogleCallbackView(APIView):
         except Exception as e:
             logger.error(f"Google authentication failed: {e}")
             return Response(
-                {"message": "Authentication failed"},
+                {"message": "Authentication failed."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -254,10 +270,26 @@ class SetAccountTypeView(APIView):
 
     def post(self, request):
         serializer = SetAccountTypeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(
+            {
+                "message": "Invalid account type.",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+            )
+
+        account_type = serializer.validated_data["account_type"]
         user = request.user
-        set_account_type_for_user(user, serializer.validated_data["account_type"])
-        return Response({"message": "Account type updated"}, status=status.HTTP_200_OK)
+        user.account_type = account_type
+        user.is_store_owner = (account_type == "seller")
+        user.save()
+        return Response(
+            {
+                "message": "Account type updated"
+                },
+            status=status.HTTP_200_OK
+        )
 
 
 @extend_schema(

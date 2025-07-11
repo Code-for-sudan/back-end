@@ -118,8 +118,11 @@ class SellerSetupSerializer(serializers.Serializer):
 
         store = business_owner.store
         # Update store fields
-        for attr, value in validated_data.items():
-            setattr(store, attr, value)
+        # Map serializer fields to Store model fields
+        store.name = validated_data.get("store_name", store.name)
+        store.location = validated_data.get("store_location", store.location)
+        store.store_type = validated_data.get("store_type", store.store_type)
+        store.description = validated_data.get("store_description", store.description)
         store.save()
         return store
 
