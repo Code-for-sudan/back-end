@@ -58,7 +58,7 @@ jobs:
             python manage.py makemigrations --noinput &&
             python manage.py migrate --noinput &&
             python manage.py collectstatic --noinput &&
-            python manage.py test
+            python manage.py test --noinput
           "
 
       - name: Shutdown containers
