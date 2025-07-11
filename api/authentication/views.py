@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from django.db import transaction
+from rest_framework_simplejwt.tokens import AccessToken
 from accounts.serializers import UserSerializer
 from .utils import generate_jwt_tokens
 from .services import authenticate_google_user
@@ -662,3 +663,118 @@ class RequestUpdatePasswordView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+@extend_schema(
+    summary="Activate User Account",
+    description="Activates a user account using a JWT token provided in the request body.",
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "description": "JWT activation token"
+                }
+            },
+            "required": ["token"]
+        }
+    },
+    responses={
+        200: OpenApiResponse(
+            description="Account activated successfully. Returns user details.",
+            examples=[
+                OpenApiExample(
+                    name="Successful Activation",
+                    value={
+                        "message": "Account activated successfully.",
+                        "user": {
+                            "id": "1234",
+                            "email": "user@example.com",
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "is_store_owner": True,
+                            "is_verified": True,
+                            "created_at": "2024-01-01T00:00:00Z"
+                        }
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            description="Invalid or expired token.",
+            examples=[
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "message": "Invalid or expired token.",
+                        "error": "Token is invalid or expired."
+                    },
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
+class ActivateAccountView(APIView):
+    """
+    APIView for activating a user account using a JWT token.
+    POST:
+        Expects a JSON payload with a "token" field containing the activation JWT.
+        - If the token is missing, returns HTTP 400 with an error message.
+        - If the token is valid and the user is found:
+            - Activates the user account if not already active.
+            - Returns HTTP 200 with a success message and user details.
+        - If the token is invalid or expired, returns HTTP 400 with an error message.
+    Logging:
+        - Logs errors for missing or invalid tokens.
+        - Logs successful account activations.
+    Permissions:
+        - AllowAny: No authentication required to access this endpoint.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            logger.error("Activation token is required.")
+            return Response(
+                {
+                    "message": "Token is required."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            access_token = AccessToken(token)
+            user_id = access_token["user_id"]
+            user = User.objects.get(id=user_id)
+            if not user.is_active:
+                user.is_active = True
+                user.save()
+                logger.info(f"User {user.email} activated successfully.")
+            
+            logger.info(f"Account activated for user {user.email}.")
+            return Response(
+                {
+                    "message": "Account activated successfully.",
+                    "user": {
+                        "id": str(user.id),
+                        "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "is_store_owner": user.is_store_owner,
+                        "is_verified": user.is_verified,
+                        "created_at": user.created_at.isoformat()
+                    },
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.error(f"Failed to activate account: {e}", exc_info=True)
+            return Response(
+                {
+                    "message": "Invalid or expired token.",
+                    "error": str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )

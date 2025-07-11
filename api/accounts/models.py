@@ -60,7 +60,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     whatsapp_number = PhoneNumberField(blank=True, null=True, unique=True, db_index=True)
     otp = models.CharField(max_length=64, blank=True, null=True, db_index=True)  # Store hashed OTP
     otp_expires_at = models.DateTimeField(blank=True, null=True, db_index=True)  # Expiration time
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)  # Required for admin access
     is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
     s_subscribed = models.BooleanField(default=False, help_text="Is the user subscribed to the newsletter?")
