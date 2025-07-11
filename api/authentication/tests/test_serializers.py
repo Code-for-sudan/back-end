@@ -1,7 +1,14 @@
 from django.test import TestCase
 from unittest.mock import patch, MagicMock
+from accounts.models import User, BusinessOwner
+from stores.models import Store
 from rest_framework.exceptions import ValidationError
-from ..serializers import LoginSerializer
+from ..serializers import (
+    GoogleAuthCodeSerializer,
+    SetAccountTypeSerializer,
+    SellerSetupSerializer,
+    LoginSerializer
+)
 
 
 
@@ -42,3 +49,96 @@ class TestLoginSerializer(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('email', serializer.errors)
         self.assertIn('password', serializer.errors)
+
+
+
+class GoogleAuthCodeSerializerTests(TestCase):
+    def test_valid_data(self):
+        data = {"code": "abc123", "state": "accountType=seller"}
+        serializer = GoogleAuthCodeSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["code"], "abc123")
+        self.assertEqual(serializer.validated_data["state"], "accountType=seller")
+
+    def test_missing_code(self):
+        data = {"state": "accountType=seller"}
+        serializer = GoogleAuthCodeSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("code", serializer.errors)
+
+    def test_blank_state(self):
+        data = {"code": "abc123", "state": ""}
+        serializer = GoogleAuthCodeSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["state"], "")
+
+class SetAccountTypeSerializerTests(TestCase):
+    def test_valid_seller(self):
+        data = {"account_type": "seller"}
+        serializer = SetAccountTypeSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["account_type"], "seller")
+
+    def test_valid_buyer(self):
+        data = {"account_type": "buyer"}
+        serializer = SetAccountTypeSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["account_type"], "buyer")
+
+    def test_invalid_type(self):
+        data = {"account_type": "admin"}
+        serializer = SetAccountTypeSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("account_type", serializer.errors)
+
+    def test_missing_type(self):
+        data = {}
+        serializer = SetAccountTypeSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("account_type", serializer.errors)
+
+class SellerSetupSerializerTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="seller@example.com", password="pass", is_store_owner=True)
+        self.store = Store.objects.create(name="Old Store", location="Old Location", store_type="Retail", description="Old Desc")
+        self.owner = BusinessOwner.objects.create(user=self.user, store=self.store)
+
+    def test_valid_data(self):
+        data = {
+            "store_name": "New Store",
+            "store_location": "New Location",
+            "store_type": "Online",
+            "store_description": "New Desc"
+        }
+        serializer = SellerSetupSerializer(data=data, context={"user": self.user})
+        self.assertTrue(serializer.is_valid())
+        store = serializer.save()
+        self.store.refresh_from_db()
+        self.assertEqual(store.name, "New Store")
+        self.assertEqual(store.location, "New Location")
+        self.assertEqual(store.store_type, "Online")
+        self.assertEqual(store.description, "New Desc")
+
+    def test_missing_fields(self):
+        data = {
+            "store_name": "",
+            "store_location": "",
+            "store_type": "",
+            "store_description": ""
+        }
+        serializer = SellerSetupSerializer(data=data, context={"user": self.user})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("store_name", serializer.errors)
+
+    def test_no_business_owner(self):
+        user2 = User.objects.create_user(email="buyer@example.com", password="pass", is_store_owner=False)
+        data = {
+            "store_name": "Should Fail",
+            "store_location": "Nowhere",
+            "store_type": "None",
+            "store_description": "No business owner"
+        }
+        serializer = SellerSetupSerializer(data=data, context={"user": user2})
+        self.assertTrue(serializer.is_valid())
+        with self.assertRaisesMessage(Exception, "Business owner profile not found for this user."):
+            serializer.save()
