@@ -37,4 +37,4 @@ COPY . .
 # Collect static files (will be served by nginx)
 RUN python manage.py collectstatic --noinput
 # Set default command to use Gunicorn WSGI server
-CMD ["gunicorn", "api.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "api.asgi:application"]
