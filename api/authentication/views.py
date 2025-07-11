@@ -35,6 +35,23 @@ User = get_user_model()
     summary="User Login",
 )
 class LoginView(APIView):
+    """
+    LoginView handles user authentication via POST requests.
+    POST:
+        Authenticates a user using provided credentials.
+        On successful authentication:
+            - Returns a success message, serialized user data, and an access token.
+            - Sets a secure, HTTP-only refresh token cookie.
+        On failure:
+            - Logs the failed attempt.
+            - Returns an error message with HTTP 400 status.
+    Permissions:
+        - Allows any user to access.
+        - Applies anonymous rate throttling.
+    Attributes:
+        permission_classes (list): Permissions required to access the view.
+        throttle_classes (list): Throttling classes applied to the view.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
@@ -57,15 +74,21 @@ class LoginView(APIView):
 
 
 
-@extend_schema(
-    summary="Google OAuth Login",
-    description="Redirects to Google OAuth for user authentication.",
-    responses={
-        302: OpenApiResponse(description="Redirects to Google OAuth URL."),
-    },
-    request=None,
-)
+@extend_schema()
 class GoogleLoginView(APIView):
+    """
+    GoogleLoginView handles the initiation of the Google OAuth 2.0 authentication flow.
+    This view accepts GET requests and redirects users to Google's OAuth 2.0 authorization endpoint.
+    It reads the 'accountType' query parameter to set the 'state' parameter for the OAuth request,
+    allowing differentiation between user account types during authentication.
+    Attributes:
+        permission_classes (list): Permissions required to access this view (AllowAny).
+        throttle_classes (list): Throttling applied to anonymous requests (AnonRateThrottle).
+    Methods:
+        get(request):
+            Processes the GET request, constructs the Google OAuth URL with appropriate parameters,
+            and redirects the user to Google's OAuth 2.0 server.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
@@ -87,10 +110,9 @@ class GoogleLoginView(APIView):
             response_type, client_id, redirect_uri, scope, state
         )
         logger.info(f"Redirecting to Google OAuth: {google_url}")
-        # Redirect the user to Google's OAuth 2.0 server
-        return redirect(google_url)
-        
-        
+        # Instead of redirecting, return the Google OAuth URL so the frontend can handle the redirect
+        return Response({"google_oauth_url": google_url}, status=status.HTTP_200_OK)
+
 
 @extend_schema(
     summary="Google OAuth Callback",
@@ -158,19 +180,11 @@ class GoogleCallbackView(APIView):
     throttle_classes = [AnonRateThrottle]
     
     # Get the user info from Google using the authorization code
-    def post(self, request):
+    def get(self, request):
         serializer = GoogleAuthCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
         state = serializer.validated_data.get("state")
-
-        # Check if the code is provided
-        if not code:
-            logger.error("No code provided in Google OAuth callback.")
-            return Response(
-                {"message": "No code provided"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
         try:
             with transaction.atomic():

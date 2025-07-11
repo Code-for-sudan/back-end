@@ -3,8 +3,8 @@ import requests, logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from .utils import generate_jwt_tokens
-from ..accounts.models import BusinessOwner
-from ..stores.models import Store
+from accounts.models import BusinessOwner
+from stores.models import Store
 
 # Get the user model
 User = get_user_model()

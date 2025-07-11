@@ -2,8 +2,8 @@ import logging, re
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from ..accounts import BusinessOwner
-from ..stores.models import Store
+from accounts.models import BusinessOwner
+from stores.models import Store
 
 
 # Get the user model
