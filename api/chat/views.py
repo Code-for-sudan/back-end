@@ -13,51 +13,52 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiRespon
 User = get_user_model()
 logger = logging.getLogger("chat_views")
 
-@extend_schema(
-    summary="Chat history between authenticated user and a customer",
-    description="Retrieve the chat history (all messages) between the authenticated user and a specified customer. Returns user info for both parties and a list of serialized messages.",
-    parameters=[
-        OpenApiParameter(
-            name="customer_id",
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
-            required=True,
-            description="ID of the customer to fetch chat history with"
-        ),
-    ],
-    responses={
-        200: OpenApiResponse(
-            response={
-                "chat_between": {
-                    "owner": {
-                        "id": int,
-                        "name": str,
-                        "image_url": str
-                    },
-                    "customer": {
-                        "id": int,
-                        "name": str,
-                        "image_url": str
-                    }
-                },
-                "messages": [
-                    {
-                        "id": int,
-                        "sender_id": int,
-                        "receiver_id": int,
-                        "message": str,
-                        "timestamp": str,
-                        "is_read": bool
-                    }
-                ]
-            },
-            description="Chat history and user info returned successfully."
-        ),
-        400: OpenApiResponse(description="customer_id is required."),
-        404: OpenApiResponse(description="Customer not found."),
-        500: OpenApiResponse(description="An error occurred while fetching chat history."),
-    }
-)
+# TODO: Fixed the OpenAPI schema generation for the ChatHistoryView and ChatContactsView
+# @extend_schema(
+#     summary="Chat history between authenticated user and a customer",
+#     description="Retrieve the chat history (all messages) between the authenticated user and a specified customer. Returns user info for both parties and a list of serialized messages.",
+#     parameters=[
+#         OpenApiParameter(
+#             name="customer_id",
+#             type=OpenApiTypes.INT,
+#             location=OpenApiParameter.QUERY,
+#             required=True,
+#             description="ID of the customer to fetch chat history with"
+#         ),
+#     ],
+#     responses={
+#         200: OpenApiResponse(
+#             response={
+#                 "chat_between": {
+#                     "owner": {
+#                         "id": OpenApiTypes.INT,
+#                         "name": OpenApiTypes.STR,
+#                         "image_url": OpenApiTypes.STR
+#                     },
+#                     "customer": {
+#                         "id": OpenApiTypes.INT,
+#                         "name": OpenApiTypes.STR,
+#                         "image_url": OpenApiTypes.STR
+#                     }
+#                 },
+#                 "messages": [
+#                     {
+#                         "id": OpenApiTypes.INT,
+#                         "sender_id": OpenApiTypes.INT,
+#                         "receiver_id": OpenApiTypes.INT,
+#                         "message": OpenApiTypes.STR,
+#                         "timestamp": OpenApiTypes.STR,
+#                         "is_read": OpenApiTypes.BOOL
+#                     }
+#                 ]
+#             },
+#             description="Chat history and user info returned successfully."
+#         ),
+#         400: OpenApiResponse(description="customer_id is required."),
+#         404: OpenApiResponse(description="Customer not found."),
+#         500: OpenApiResponse(description="An error occurred while fetching chat history."),
+#     }
+# )
 class ChatHistoryView(APIView):
     """
     Retrieve the chat history (all messages) between the authenticated user and a specified customer.
@@ -115,31 +116,31 @@ class ChatHistoryView(APIView):
             logger.error(f"Error in ChatHistoryView.get: {e}")
             return Response({"error": "An error occurred while fetching chat history."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@extend_schema(
-    summary="Chat contacts for the authenticated user",
-    description="Returns a list of users the authenticated user has chatted with, including unread message count, online status, last seen, and last message.",
-    responses={
-        200: OpenApiResponse(
-            response={
-                "user_id": int,
-                "chats": [
-                    {
-                        "contact_id": int,
-                        "contact_name": str,
-                        "contact_img": str,
-                        "last_message": str,
-                        "timestamp": str,
-                        "unread_count": int,
-                        "online": bool,
-                        "last_seen": str
-                    }
-                ]
-            },
-            description="List of chat contacts returned successfully."
-        ),
-        500: OpenApiResponse(description="An error occurred while fetching chat contacts."),
-    }
-)
+# @extend_schema(
+#     summary="Chat contacts for the authenticated user",
+#     description="Returns a list of users the authenticated user has chatted with, including unread message count, online status, last seen, and last message.",
+#     responses={
+#         200: OpenApiResponse(
+#             response={
+#                 "user_id": OpenApiTypes.INT,
+#                 "chats": [
+#                     {
+#                         "contact_id": OpenApiTypes.INT,
+#                         "contact_name": OpenApiTypes.STR,
+#                         "contact_img": OpenApiTypes.STR,
+#                         "last_message": OpenApiTypes.STR,
+#                         "timestamp": OpenApiTypes.STR,
+#                         "unread_count": OpenApiTypes.INT,
+#                         "online": OpenApiTypes.BOOL,
+#                         "last_seen": OpenApiTypes.STR
+#                     }
+#                 ]
+#             },
+#             description="List of chat contacts returned successfully."
+#         ),
+#         500: OpenApiResponse(description="An error occurred while fetching chat contacts."),
+#     }
+# )
 class ChatContactsView(APIView):
     """
     Retrieve a list of chat contacts for the authenticated user.
