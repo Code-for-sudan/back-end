@@ -1,6 +1,10 @@
 import logging, os
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
+from django.conf import settings
 
+
+# Create the logger for celery tasks
+logger = logging.getLogger('accounts_utils')
 
 def generate_jwt_tokens(user):
     """
@@ -18,3 +22,22 @@ def generate_jwt_tokens(user):
     refresh_token = str(refresh)
 
     return access_token, refresh_token
+
+
+def generate_activation_link(user):
+    """
+    Generate an activation link for a user or business owner.
+    Args:
+        user (User): The user instance.
+    Returns:
+        str: The activation link containing the token.
+    """
+    from rest_framework_simplejwt.tokens import RefreshToken
+    token = str(RefreshToken.for_user(user).access_token)
+    # You can use a dedicated activation token if you want, but JWT works fine for this purpose.
+    base_url = getattr(
+        settings,
+        "FRONTEND_ACTIVATION_URL",
+        "https://your-frontend.com/activate"
+    )
+    return f"{base_url}?token={token}"

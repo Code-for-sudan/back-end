@@ -146,12 +146,13 @@ DATABASES = {
     }
 }
 
-# Use SQLite for tests
-# if 'test' in sys.argv or 'test_coverage' in sys.argv:
-#     DATABASES['default'] = {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': ':memory:',
-#     }
+# Use SQLite for tests in local development
+# This allows for faster test runs without needing a MySQL server.
+if 'test' in sys.argv or 'test_coverage' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
 
 if 'test' in sys.argv or 'pytest' in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
@@ -405,6 +406,11 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'authentication_services': {
+            'handlers': ['file'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
         'celery_tasks.authentication': {
             'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
@@ -412,7 +418,12 @@ LOGGING = {
         },
         'accounts_tests': {
             'handlers': ['file', 'console'],
-            'level': 'ERROR',  # Set to DEBUG for detailed logs
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'acoounts_tasks': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_views': {
@@ -421,6 +432,11 @@ LOGGING = {
             'propagate': False,
         },
         'accounts_serializers': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        },
+        'accounts_utils': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,

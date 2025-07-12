@@ -66,7 +66,6 @@ class BusinessOwnerSignupTests(APITestCase):
 
     def setUp(self):
         self.signup_url = reverse('signup_business_owner')
-        # Example of valid business owner data; adjust fields as per your BusinessOwner serializer
         self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
         with open(self.image_path, 'rb') as image_file:
             self.user_data = {
@@ -77,11 +76,19 @@ class BusinessOwnerSignupTests(APITestCase):
                 'last_name': 'User',
                 'profile_picture': SimpleUploadedFile(name='test_1.png', content=image_file.read(), content_type='image/png'),
                 'store_name': 'Test Store',
+                'store_location': 'Khartoum',
+                'description': 'A great store for testing.',
+                'store_type': 'Retail'
             }
         self.invalid_data = {
             'email': 'not-an-email',
             'password': '',
-            'business_name': ''
+            'first_name': '',
+            'last_name': '',
+            'store_name': '',
+            'store_location': '',
+            'description': '',
+            'store_type': ''
         }
 
     def test_signup_success(self):
