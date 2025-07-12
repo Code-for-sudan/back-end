@@ -24,6 +24,7 @@ class GoogleLoginTests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.url = reverse('google_auth')
 
@@ -37,6 +38,12 @@ class GoogleLoginViewTests(TestCase):
         self.client = APIClient()
         self.url = reverse('google_auth')
 
+    @override_settings(
+        REST_FRAMEWORK={
+            "DEFAULT_THROTTLE_CLASSES": [],
+            "DEFAULT_THROTTLE_RATES": {},
+        }
+    )
     def test_google_login_url_no_account_type(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
@@ -50,6 +57,7 @@ class GoogleLoginViewTests(TestCase):
 
 class GoogleCallbackViewTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.url = reverse('google_callback')
 
@@ -103,6 +111,7 @@ class SetAccountTypeViewTests(TestCase):
 
 class SellerSetupViewTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.url = reverse('seller_setup')
         self.user = User.objects.create_user(email="seller@example.com", password="pass", is_store_owner=True, account_type="seller")
@@ -235,6 +244,7 @@ class PasswordResetFlowTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
+
     def test_update_password_nonexistent_user(self):
         self.client.credentials()  # Remove authentication headers
         data = {"email": "nouser@example.com", "new_password": "newsecurepassword123"}
@@ -246,6 +256,7 @@ class PasswordResetFlowTests(APITestCase):
 
 class ActivateAccountViewTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.url = reverse('activate_account')
         self.user = User.objects.create_user(
