@@ -266,7 +266,7 @@ class SetAccountTypeView(APIView):
     Throttling:
         - AnonRateThrottle: Applies rate limiting to anonymous users.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
