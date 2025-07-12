@@ -17,7 +17,7 @@ logger = logging.getLogger('search_views')
     ],
     responses={
         200: OpenApiResponse(
-            response=ProductSearchSerializer(many=True),
+            response=ProductSearchSerializer,  # <-- FIXED
             description='List of products matching the search query (paginated, 12 per page).'
         ),
         400: OpenApiResponse(
