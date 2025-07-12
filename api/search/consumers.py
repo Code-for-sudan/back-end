@@ -1,6 +1,7 @@
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
+from asgiref.sync import sync_to_async
 from django_elasticsearch_dsl.registries import registry
 from django_elasticsearch_dsl.search import Search
 from .documents import ProductDocument
@@ -51,7 +52,7 @@ class AutocompleteConsumer(AsyncWebsocketConsumer):
                 return
 
             if search_type == "product":
-                suggestions = self.product_autocomplete(query, size)
+                suggestions = await self.product_autocomplete(query, size)
             else:
                 await self.send(text_data=json.dumps({'error': 'Unknown type'}))
                 return
@@ -63,7 +64,7 @@ class AutocompleteConsumer(AsyncWebsocketConsumer):
             logger.error(f"Error in autocomplete consumer: {e}")
             await self.send(text_data=json.dumps({'error': str(e)}))
 
-    def product_autocomplete(self, query, size):
+    async def product_autocomplete(self, query, size):
         search = ProductDocument.search().query(
             "bool",
             should=[
@@ -73,5 +74,6 @@ class AutocompleteConsumer(AsyncWebsocketConsumer):
             ],
             minimum_should_match=1,
         )[:size]
-        results = search.to_queryset()
-        return [result.product_name for result in results]
+
+        results = await sync_to_async(search.execute)()
+        return [hit.product_name for hit in results]
