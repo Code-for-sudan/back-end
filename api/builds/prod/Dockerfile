@@ -27,6 +27,8 @@ RUN pip install -r requirements/prod.txt
 
 COPY . .
 
+RUN mkdir -p /api/logs
+
 COPY builds/prod/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
