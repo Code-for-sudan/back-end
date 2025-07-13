@@ -103,6 +103,12 @@ jobs:
             export COMPOSE_HTTP_TIMEOUT=300
             cd /home/${{ secrets.SSH_USER }}/back-end/api
             git pull origin main
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up --build -d
+            # Stop and remove ALL containers
+            docker ps -aq | xargs docker stop || true
+            docker ps -aq | xargs docker rm || true
+            # Remove dangling images (optional, for clean build)
+            docker images -aq | xargs docker rmi -f || true
+            # Now rebuild and start fresh
+            docker compose -f docker-compose.prod.yml up --build -d
           EOF
+
