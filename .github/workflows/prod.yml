@@ -100,7 +100,7 @@ jobs:
       - name: Deploy App
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            export COMPOSE_HTTP_TIMEOUT=200
+            export COMPOSE_HTTP_TIMEOUT=300
             cd /home/${{ secrets.SSH_USER }}/back-end/api
             git pull origin main
             docker-compose -f docker-compose.prod.yml down
