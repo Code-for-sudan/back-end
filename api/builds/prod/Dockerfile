@@ -1,16 +1,13 @@
-# builds/prod/Dockerfile
-
-# Use official Python base image
+# Dockerfile for production build of the API service
+# This Dockerfile sets up the environment for running the Django application with Supervisor for process management.
+# It installs necessary dependencies, copies the application code, and configures Supervisor to manage the application
 FROM python:3.12-slim
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Set working directory inside container
 WORKDIR /api
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
@@ -20,21 +17,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     zlib1g-dev \
     build-essential \
+    supervisor \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
 COPY requirements/ /api/requirements/
-COPY .env /api/.env
-COPY .env.prod /api/.env.prod
-COPY wait-for-it.sh /api/wait-for-it.sh
-RUN chmod +x /api/wait-for-it.sh
 RUN pip install --upgrade pip
 RUN pip install -r requirements/prod.txt
 
-# Copy only necessary project files
 COPY . .
 
-# Collect static files (will be served by nginx)
-RUN python manage.py collectstatic --noinput
-# Set default command to use Gunicorn WSGI server
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "api.asgi:application"]
+RUN mkdir -p /api/logs
+
+COPY builds/prod/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
