@@ -120,8 +120,7 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     whatsapp_number = PhoneNumberField(required=False, allow_null=True)
     password = serializers.CharField(source='user.password', write_only=True, min_length=6)
     gender = serializers.CharField(source='user.gender')
-    store_name = serializers.CharField(write_only=True, required=True)
-    accountType = serializers.CharField(source='user.accountType', read_only=True)
+    accountType = serializers.CharField(source='user.account_type', read_only=True)
 
     # Store fields (all required)
     store_name = serializers.CharField(write_only=True, required=True)
@@ -158,6 +157,7 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
         description = validated_data.pop('description')
         store_type = validated_data.pop('store_type')
         user_data = validated_data.pop('user')
+        user_data['account_type'] = 'seller'  # <-- Ensure this is set!
         with transaction.atomic():
             store = Store.objects.create(
                 name=store_name,

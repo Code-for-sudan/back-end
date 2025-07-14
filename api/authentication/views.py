@@ -386,7 +386,6 @@ class PasswordResetRequestView(APIView):
         recipient_list = [user.email]
         attachments = None  # No attachments needed for OTP resend
         context = {
-            'user': user.first_name,
             'otp_code': user.generate_otp()
         }
         # Send the email with OTP

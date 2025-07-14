@@ -24,7 +24,6 @@ def send_activation_email_task(user_id):
         user_first_name = user.first_name or "User"
         activation_link = generate_activation_link(user)
         context = {
-            "user": user_first_name,
             "activation_link": activation_link,
         }
         subject = "Activate your account"

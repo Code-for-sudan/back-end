@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from ..models import User
+from django.core.cache import cache
 
 User = get_user_model()
 
@@ -27,6 +28,7 @@ class UserSignupTests(APITestCase):
 
     def setUp(self):
         self.signup_url = reverse('signup_user')
+        cache.clear()
         self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
         with open(self.image_path, 'rb') as image_file:
             self.user_data = {
