@@ -230,6 +230,7 @@ CELERY_RESULT_BACKEND = env('REDIS_DATABASE_URL')
 CELERY_IMPORTS = (
     "authentication.tasks",
     "notifications.tasks",
+    "accounts.tasks",
 )
 
 # Set Celery to use the same time zone as Django
@@ -274,14 +275,18 @@ EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
     "https://sudamall.ddns.net",
+    "https://sudamall.me",           # <-- new domain
     "http://localhost:5173",
-    "http://sudamall.ddns.net:5174",  # <-- new dev host
+    "http://sudamall.ddns.net:5174",
+    "http://sudamall.me:5174",       # <-- dev port for new domain
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://sudamall\.ddns\.net$",
+    r"^https://sudamall\.me$",       # <-- new domain regex
     r"^http://localhost:\d+$",
-    r"^http://sudamall\.ddns\.net:5174$",  # <-- new dev host regex
+    r"^http://sudamall\.ddns\.net:5174$",
+    r"^http://sudamall\.me:5174$",   # <-- dev port regex for new domain
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -306,9 +311,11 @@ CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://sudamall.ddns.net",  # React prod server
+    "https://sudamall.ddns.net",
+    "https://sudamall.me",           # <-- new domain
     "http://localhost:5173",
-    "http://sudamall.ddns.net:5174",  # <-- new dev host
+    "http://sudamall.ddns.net:5174",
+    "http://sudamall.me:5174",       # <-- dev port for new domain
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
