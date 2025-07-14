@@ -33,7 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
     # Set phone_number and whatsapp_number as optional fields
     phone_number = PhoneNumberField(required=False, allow_null=True)
     whatsapp_number = PhoneNumberField(required=False, allow_null=True)
-    accountType = serializers.SerializerMethodField()
+    account_type = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -48,7 +48,7 @@ class UserSerializer(serializers.ModelSerializer):
             'phone_number',
             'whatsapp_number',
             'password',
-            'accountType'
+            'account_type'
         ]
         extra_kwargs = {
             'email': {'required': True},
@@ -82,7 +82,7 @@ class UserSerializer(serializers.ModelSerializer):
         # Create a new user with the validated data
         return User.objects.create_user(**validated_data)
 
-    def get_accountType(self, obj):
+    def get_account_type(self, obj):
         return "seller" if obj.is_store_owner else "buyer"
 
 
@@ -120,7 +120,7 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     whatsapp_number = PhoneNumberField(required=False, allow_null=True)
     password = serializers.CharField(source='user.password', write_only=True, min_length=6)
     gender = serializers.CharField(source='user.gender')
-    accountType = serializers.CharField(source='user.account_type', read_only=True)
+    account_type = serializers.CharField(source='user.account_type', read_only=True)
 
     # Store fields (all required)
     store_name = serializers.CharField(write_only=True, required=True)
