@@ -82,7 +82,7 @@ class UserSerializer(serializers.ModelSerializer):
         # Create a new user with the validated data
         return User.objects.create_user(**validated_data)
 
-    def get_account_type(self, obj):
+    def get_accountType(self, obj):
         return "seller" if obj.is_store_owner else "buyer"
 
 
