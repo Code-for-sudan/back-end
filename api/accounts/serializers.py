@@ -38,6 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
+            'id',
             'email',
             'first_name',
             'last_name',
@@ -110,7 +111,7 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
         create(validated_data): Creates User, Store, and BusinessOwner instances atomically.
         get_accountType(obj): Returns account type based on user's store ownership.
     """
-
+    user_id = serializers.SerializerMethodField()
     email = serializers.EmailField(source='user.email', required=True)
     first_name = serializers.CharField(source='user.first_name', required=True)
     last_name = serializers.CharField(source='user.last_name', required=True)
@@ -127,6 +128,9 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     store_location = serializers.CharField(write_only=True, required=True)
     description = serializers.CharField(write_only=True, required=True)
     store_type = serializers.CharField(write_only=True, required=True)
+
+    def get_user_id(self, obj):
+        return obj.user.id if obj.user else None
 
     def validate_profile_picture(self, image):
         if image is None:
