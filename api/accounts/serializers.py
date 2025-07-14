@@ -169,5 +169,5 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
             business_owner = BusinessOwner.objects.create(user=user, store=store)
         return business_owner
 
-    def get_account_type(self, obj):
+    def get_accountType(self, obj):
         return "seller" if obj.user.is_store_owner else "buyer"
