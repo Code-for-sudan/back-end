@@ -11,13 +11,13 @@ logger = logging.getLogger('accounts_tasks')
 @shared_task
 def send_activation_email_task(user_id):
     """
-    Sends an account activation email to the specified user.
-    Retrieves the user by their ID, generates an activation link, and sends an email using a predefined template.
+    Sends an account activation email to the user with the specified user ID.
+    Retrieves the user from the database, generates an activation link, and sends an email using dedicated sender credentials.
     Logs an error if the email could not be sent.
     Args:
         user_id (int): The ID of the user to send the activation email to.
     Raises:
-        Logs any exception encountered during the process.
+        Logs any exception that occurs during the process.
     """
     try:
         user = User.objects.get(id=user_id)
@@ -28,6 +28,15 @@ def send_activation_email_task(user_id):
         subject = "Activate your account"
         template_name = "activation"
         recipient_list = [user.email]
-        send_email_with_attachments(subject, template_name, context, recipient_list)
+        # Use dedicated sender credentials for activation emails
+        send_email_with_attachments(
+            subject,
+            template_name,
+            context,
+            recipient_list,
+            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
+            from_email=settings.EMAIL_HOST_USER_NO_REPLY
+        )
     except Exception as e:
-       logger.error(f"Failed to send activation email for user {user_id}: {e}", exc_info=True)
+        logger.error(f"Failed to send activation email for user {user_id}: {e}", exc_info=True)

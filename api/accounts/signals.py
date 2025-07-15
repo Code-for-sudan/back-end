@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from .models import BusinessOwner
 from notifications.tasks import send_email_task
 from .tasks import send_activation_email_task
+from django.conf import settings
 
 # Create a signal loogger
 logger = logging.getLogger("signals")
@@ -36,7 +37,10 @@ def user_created_handler(sender, instance, created, **kwargs):
                 context={
                     "first_name": instance.first_name,   
                 },
-                recipient_list=[instance.email]
+                recipient_list=[instance.email],
+                email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
+                email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
+                from_email=settings.EMAIL_HOST_USER_NO_REPLY
             )
     # After sending the welcome email:
     send_activation_email_task.apply_async(
@@ -64,7 +68,10 @@ def business_owner_created_handler(sender, instance, created, **kwargs):
             context={
                "first_name": instance.user.first_name,
             },
-            recipient_list=[instance.user.email]
+            recipient_list=[instance.user.email],
+            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
+            from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
     # After sending the welcome email:
     send_activation_email_task.apply_async(
