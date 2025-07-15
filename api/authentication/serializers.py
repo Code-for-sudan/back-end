@@ -45,7 +45,7 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             logger.warning(f"[LoginSerializer] Inactive user attempted login: {email}")
             raise serializers.ValidationError(
-                "Account exists but is not activated. Please check your email and activate your account."
+                "Email already registered but not verified."
             )
 
         # Now authenticate (will check password)

@@ -57,6 +57,7 @@ class LoginView(APIView):
             response = Response(
                 {
                     "message": "Login successful.",
+                    "resend_verification_link": "False",
                     "user": UserSerializer(user).data,
                     "access_token": access_token,
                 },
@@ -73,6 +74,7 @@ class LoginView(APIView):
         return Response(
             {
                 "message": "Login failed.",
+                "resend_verification_link": "True",
                 "errors": serializer.errors
             },
             status=status.HTTP_400_BAD_REQUEST

@@ -104,7 +104,9 @@ class SignupBusinessOwnerView(APIView):
             # Log the error message
             logger.error('Business owner already exists.')
             return Response(
-                {'message': 'Business owner already exists.'},
+                {
+                    'message': 'Business owner already exists.'
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
         if not serializer.is_valid():
@@ -121,8 +123,7 @@ class SignupBusinessOwnerView(APIView):
             serializer.save()
             return Response(
                 {
-                    'message': 'Business owner created successfully.',
-                    'data': serializer.data
+                    'message': 'Account created successfully. Please check your email to verify your account before logging in.'
                 },
                 status=status.HTTP_201_CREATED
             )
