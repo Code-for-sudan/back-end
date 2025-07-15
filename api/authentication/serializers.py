@@ -218,3 +218,16 @@ class RequestUpdatePasswordSerializer(serializers.Serializer):
         max_length=128,
         help_text="New password for the user"
     )
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    """
+    Serializer for handling requests to resend email verification.
+    Fields:
+        email (EmailField): The user's email address to which the verification email will be resent.
+    """
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        help_text="User's email address"
+    )

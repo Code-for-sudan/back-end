@@ -18,7 +18,7 @@ from .services import authenticate_google_user
 from notifications.tasks import send_email_task
 from .serializers import LoginSerializer, GoogleAuthCodeSerializer, SetAccountTypeSerializer, SellerSetupSerializer
 from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
-from .serializers import RequestUpdatePasswordSerializer                   
+from .serializers import RequestUpdatePasswordSerializer, ResendVerificationSerializer                
                 
 
 # Create a logger for this module
@@ -783,3 +783,4 @@ class ActivateAccountView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+
