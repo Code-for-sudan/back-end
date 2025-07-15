@@ -46,7 +46,9 @@ class SignupUserView(APIView):
             # Log the error message
             logger.error('User already exists.')
             return Response(
-                {'message': 'User already exists.'},
+                {
+                    'message': 'User already exists.'
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
         if not serializer.is_valid():
@@ -63,8 +65,7 @@ class SignupUserView(APIView):
             serializer.save()
             return Response(
                 {
-                    'message': 'User created successfully.',
-                    'data': serializer.data
+                    'message': 'Account created successfully. Please check your email to verify your account before logging in.'
                 },
                 status=status.HTTP_201_CREATED
             )
