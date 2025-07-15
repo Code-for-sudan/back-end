@@ -784,3 +784,64 @@ class ActivateAccountView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+
+@extend_schema(
+    request=ResendVerificationSerializer,
+    responses={
+        200: OpenApiResponse(description="Verification link sent or already verified."),
+        404: OpenApiResponse(description="Email not found."),
+    },
+    summary="Resend Verification Email",
+)
+class ResendVerificationView(APIView):
+    """
+    APIView for resending email verification links to users.
+    This view handles POST requests containing an email address. It validates the email,
+    checks if a user exists with that email, and whether the user's email is already verified.
+    If the user exists and is not verified, it triggers a Celery task to send a new verification link.
+    Responses:
+    - 400 BAD REQUEST: If the email is invalid.
+    - 404 NOT FOUND: If no user is found with the provided email.
+    - 200 OK: If the email is already verified or a new verification link is sent.
+    Permissions:
+    - AllowAny: Accessible to unauthenticated users.
+    - AnonRateThrottle: Throttles requests from anonymous users.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "message": "Invalid email.",
+                    "errors": serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        email = serializer.validated_data["email"].strip().lower()
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {
+                    "message": "No account found with this email address."
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        if user.is_active:
+            return Response(
+                {
+                    "message": "Email is already verified."
+                },
+                status=status.HTTP_200_OK
+            )
+        # Send activation email (using your existing Celery task)
+        from accounts.tasks import send_activation_email_task
+        send_activation_email_task.delay(user.id)
+        return Response(
+            {
+                "message": "A new verification link has been sent to your email address."
+            },
+            status=status.HTTP_200_OK
+        )
