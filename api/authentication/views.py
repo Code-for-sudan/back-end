@@ -400,7 +400,10 @@ class PasswordResetRequestView(APIView):
             template_name=template_name,
             context=context,
             recipient_list=recipient_list,
-            attachments=attachments
+            attachments=attachments,
+            email_host_user=settings.EMAIL_HOST_USER_SECURE,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
+            from_email=settings.EMAIL_HOST_USER_SECURE
         )
 
         logger.info(f"OTP sent to user {email}.")
@@ -658,7 +661,10 @@ class RequestUpdatePasswordView(APIView):
             template_name=template_name,
             context=context,
             recipient_list=recipient_list,
-            attachments=attachments
+            attachments=attachments,
+            email_host_user=settings.EMAIL_HOST_USER_SECURE,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
+            from_email=settings.EMAIL_HOST_USER_SECURE
         )
 
         logger.info(f"Password updated successfully for user {email}.")
@@ -838,7 +844,12 @@ class ResendVerificationView(APIView):
             )
         # Send activation email (using your existing Celery task)
         from accounts.tasks import send_activation_email_task
-        send_activation_email_task.delay(user.id)
+        send_activation_email_task.delay(
+            user.id,
+            email_host_user=settings.EMAIL_HOST_USER_SECURE,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
+            from_email=settings.EMAIL_HOST_USER_SECURE
+        )
         return Response(
             {
                 "message": "A new verification link has been sent to your email address."
