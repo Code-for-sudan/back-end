@@ -26,10 +26,13 @@ class TestLoginSerializer(TestCase):
         - test_validate_missing_fields: Checks that missing required fields result in validation errors for both 'email' and 'password'.
     """
 
+    @patch('authentication.serializers.User.objects.get')
     @patch('authentication.serializers.authenticate')
-    def test_validate_success(self, mock_authenticate):
+    def test_validate_success(self, mock_authenticate, mock_get):
         mock_user = MagicMock()
+        mock_user.is_active = True
         mock_authenticate.return_value = mock_user
+        mock_get.return_value = mock_user
 
         data = {'email': 'test@example.com', 'password': 'secret'}
         serializer = LoginSerializer(data=data)

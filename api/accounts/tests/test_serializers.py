@@ -104,7 +104,11 @@ class BusinessOwnerSignupTests(APITestCase):
             'gender': 'F'
         }
         self.data = {
-            'user': self.user_data,
+            'email': 'owner@example.com',
+            'first_name': 'Owner',
+            'last_name': 'Test',
+            'password': 'ownerpass123',
+            'gender': 'F',
             'store_name': 'My Store',
             'store_location': 'Khartoum',
             'description': 'Best store',

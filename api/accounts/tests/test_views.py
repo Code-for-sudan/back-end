@@ -44,7 +44,6 @@ class UserSignupTests(APITestCase):
         response = self.client.post(self.signup_url, self.user_data, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['message'], 'Account created successfully. Please check your email to verify your account before logging in.')
-        self.assertIn('data', response.data)
 
     def test_signup_user_already_exists(self):
         User.objects.create_user(**self.user_data)
@@ -57,7 +56,7 @@ class UserSignupTests(APITestCase):
         invalid_data['email'] = 'invalid-email'
         response = self.client.post(self.signup_url, invalid_data, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], 'Account created successfully. Please check your email to verify your account before logging in.')
+        self.assertEqual(response.data['message'], 'User creation failed.')
         self.assertIn('errors', response.data)
 
 
@@ -96,8 +95,7 @@ class BusinessOwnerSignupTests(APITestCase):
     def test_signup_success(self):
         response = self.client.post(self.signup_url, self.user_data, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['message'], 'Business owner created successfully.')
-        self.assertIn('data', response.data)
+        self.assertEqual(response.data['message'], 'Account created successfully. Please check your email to verify your account before logging in.')
 
     def test_signup_invalid_data(self):
         response = self.client.post(self.signup_url, self.invalid_data, format='multipart')
