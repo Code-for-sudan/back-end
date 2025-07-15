@@ -9,6 +9,7 @@ from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
 from drf_spectacular.utils import extend_schema
 from .models import EmailTemplate, EmailAttachment, EmailImage, EmailStyle
 from accounts.models import User
+from django.conf import settings
 from notifications.tasks import send_email_task, delete_email_task, send_newsletter_task
 from .serializers import (
     EmailTemplateSerializer,
@@ -595,13 +596,16 @@ class AdminSendEmailView(APIView):
         styles = template.styles.all()
         images = template.images.all()
 
-        # All email send by this endpoint with no context
+        # Use secure host credentials for admin email sending
         send_email_task.delay(
             subject=template.subject,
             template_name=template.name,
             context={},
             recipient_list=[email],
-            attachments=[a.file.path for a in attachments]
+            attachments=[a.file.path for a in attachments],
+            email_host_user=settings.EMAIL_HOST_USER_SECURE,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
+            from_email=settings.EMAIL_HOST_USER_SECURE
         )
 
         return Response({
@@ -688,7 +692,10 @@ class GroupTargetingView(APIView):
                 template_name=template.name,
                 context={},
                 recipient_list=group_dict["emails"],
-                attachments=[a.file.path for a in attachments]
+                attachments=[a.file.path for a in attachments],
+                email_host_user=settings.EMAIL_HOST_USER_SECURE,
+                email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
+                from_email=settings.EMAIL_HOST_USER_SECURE
             )
 
         return Response({
@@ -795,10 +802,15 @@ class ScheduleNewsletterView(APIView):
         template = serializer.validated_data['template_id']
         scheduled_time = serializer.validated_data['scheduled_time']
 
-        # Schedule the Celery task
+       # Schedule the Celery task with secure host credentials
         send_newsletter_task.apply_async(
             args=[template.id],
-            eta=scheduled_time
+            eta=scheduled_time,
+            kwargs={
+                "email_host_user": settings.EMAIL_HOST_USER_SECURE,
+                "email_host_password": settings.EMAIL_HOST_PASSWORD_SECURE,
+                "from_email": settings.EMAIL_HOST_USER_SECURE
+            }
         )
 
         return Response(
