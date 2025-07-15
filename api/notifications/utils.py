@@ -36,13 +36,16 @@ def send_email_with_attachments(subject, template_name, context, recipient_list,
                 plain_text_content = plain_text_raw
 
         # Overwrite the email and password with the no-reply email settings
-        
+        settings.EMAIL_HOST_USER = settings.EMAIL_HOST_USER_NO_REPLY
+        settings.EMAIL_HOST_PASSWORD = settings.EMAIL_HOST_PASSWORD_NO_REPLY
 
         email = EmailMultiAlternatives(
             subject=subject,
             body=plain_text_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=recipient_list,
+            from_email=settings.EMAIL_HOST_USER_NO_REPLY,
+            
         )
         email.attach_alternative(html_content, "text/html")
 
