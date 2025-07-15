@@ -157,7 +157,8 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
         description = validated_data.pop('description')
         store_type = validated_data.pop('store_type')
         user_data = validated_data.pop('user')
-        user_data['account_type'] = 'seller'  # <-- Ensure this is set!
+        user_data['account_type'] = 'seller'  # <-- Set account type to seller
+        user_data['is_store_owner'] = True # <-- Set is_store_owner to True
         with transaction.atomic():
             store = Store.objects.create(
                 name=store_name,
