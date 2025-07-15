@@ -28,7 +28,6 @@ def user_created_handler(sender, instance, created, **kwargs):
         - Schedules an activation email for all users.
     """
     if created:
-        print(f"User created: {instance.email}")
         # Only send generic email if not a business owner
         if not hasattr(instance, 'business_owner_profile'):
             send_email_task.delay(
