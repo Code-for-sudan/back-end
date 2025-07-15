@@ -6,9 +6,19 @@ from django.template.loader import render_to_string
 
 logger = logging.getLogger("email")
 
-def send_email_with_attachments(subject, template_name, context, recipient_list, attachments=None):
+def send_email_with_attachments(
+    subject,
+    template_name,
+    context,
+    recipient_list,
+    attachments=None,
+    email_host_user=None,
+    email_host_password=None,
+    from_email=None
+):
     """
     Sends an email with both HTML and plain text content, and optional file attachments.
+    Allows specifying custom SMTP credentials and sender address.
 
     Args:
         subject (str): The subject line of the email.
@@ -16,6 +26,9 @@ def send_email_with_attachments(subject, template_name, context, recipient_list,
         context (dict): Context variables to render into the email templates.
         recipient_list (list): List of recipient email addresses.
         attachments (list, optional): List of file paths to attach to the email. Defaults to None.
+        email_host_user (str, optional): Custom SMTP username. Defaults to None.
+        email_host_password (str, optional): Custom SMTP password. Defaults to None.
+        from_email (str, optional): Sender's email address. Defaults to None.
 
     Returns:
         str: "Email sent" if successful, or an error message if sending fails.
@@ -35,17 +48,24 @@ def send_email_with_attachments(subject, template_name, context, recipient_list,
             else:
                 plain_text_content = plain_text_raw
 
-        # Overwrite the email and password with the no-reply email settings
-        settings.EMAIL_HOST_USER = settings.EMAIL_HOST_USER_NO_REPLY
-        settings.EMAIL_HOST_PASSWORD = settings.EMAIL_HOST_PASSWORD_NO_REPLY
+        # Save original settings
+        original_user = settings.EMAIL_HOST_USER
+        original_password = settings.EMAIL_HOST_PASSWORD
+
+        # Override with provided credentials if given
+        if email_host_user:
+            settings.EMAIL_HOST_USER = email_host_user
+        if email_host_password:
+            settings.EMAIL_HOST_PASSWORD = email_host_password
+
+        # Use provided from_email or default
+        sender = from_email or settings.EMAIL_HOST_USER
 
         email = EmailMultiAlternatives(
             subject=subject,
             body=plain_text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=sender,
             to=recipient_list,
-            from_email=settings.EMAIL_HOST_USER_NO_REPLY,
-            
         )
         email.attach_alternative(html_content, "text/html")
 
@@ -58,6 +78,11 @@ def send_email_with_attachments(subject, template_name, context, recipient_list,
 
         email.send(fail_silently=False)
         logger.info(f"Email sent successfully to: {recipient_list}")
+
+        # Restore original settings
+        settings.EMAIL_HOST_USER = original_user
+        settings.EMAIL_HOST_PASSWORD = original_password
+
         return "Email sent"
 
     except Exception as e:
