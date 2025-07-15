@@ -44,9 +44,10 @@ env = environ.Env(
     DEFAULT_FROM_EMAIL=(str, ''),
     EMAIL_SUBJECT_PREFIX=(str, '[Sudamall] '),
     EMAIL_TIMEOUT=(int, 5),
+    FRONTEND_ACTIVATION_URL=(str, '')
 )
 
-# Quick-start development settings - unsuitable for production
+# Quick-start development (settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -56,7 +57,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
-
+FRONTEND_ACTIVATION_URL = env('FRONTEND_ACTIVATION_URL')
 
 # Application definition
 INSTALLED_APPS = [

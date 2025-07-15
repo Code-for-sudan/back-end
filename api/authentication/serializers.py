@@ -20,10 +20,12 @@ class LoginSerializer(serializers.Serializer):
         password (CharField): The user's password (write-only).
     Methods:
         validate(data):
-            Authenticates the user using the provided email and password.
-            Logs failed authentication attempts and inactive user login attempts.
-            Raises ValidationError if authentication fails or the user is inactive.
-            On success, adds the authenticated user to the returned data.
+            Validates the provided email and password.
+            - Checks if a user with the given email exists.
+            - Ensures the user's account is active.
+            - Authenticates the user using the provided credentials.
+            - Raises ValidationError for invalid credentials or inactive accounts.
+            - On success, adds the authenticated user to the returned data.
     """
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -32,18 +34,28 @@ class LoginSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
 
+        # Try to get the user by email
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            logger.error(f"[LoginSerializer] No user found for email: {email}")
+            raise serializers.ValidationError("Invalid email or password.")
+
+        # Check if the account is active
+        if not user.is_active:
+            logger.warning(f"[LoginSerializer] Inactive user attempted login: {email}")
+            raise serializers.ValidationError(
+                "Email already registered but not verified."
+            )
+
+        # Now authenticate (will check password)
         user = authenticate(username=email, password=password)
         if not user:
-            # Log the failed authentication attempt
             logger.error(f"[LoginSerializer] Authentication failed for email: {email}")
             raise serializers.ValidationError("Invalid email or password.")
-        if not user.is_active:
-            # Log the inactive user attempt
-            logger.warning(f"[LoginSerializer] Inactive user attempted login: {email}")
-            raise serializers.ValidationError("This account is inactive.")
+
         data['user'] = user
         return data
-
 
 
 class GoogleAuthCodeSerializer(serializers.Serializer):
@@ -205,4 +217,17 @@ class RequestUpdatePasswordSerializer(serializers.Serializer):
         min_length=8,
         max_length=128,
         help_text="New password for the user"
+    )
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    """
+    Serializer for handling requests to resend email verification.
+    Fields:
+        email (EmailField): The user's email address to which the verification email will be resent.
+    """
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        help_text="User's email address"
     )

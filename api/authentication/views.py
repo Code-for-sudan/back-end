@@ -18,7 +18,7 @@ from .services import authenticate_google_user
 from notifications.tasks import send_email_task
 from .serializers import LoginSerializer, GoogleAuthCodeSerializer, SetAccountTypeSerializer, SellerSetupSerializer
 from .serializers import ResetPasswordRequestSerializer, ResetPasswordrequestVerifySerializer
-from .serializers import RequestUpdatePasswordSerializer                   
+from .serializers import RequestUpdatePasswordSerializer, ResendVerificationSerializer                
                 
 
 # Create a logger for this module
@@ -38,21 +38,14 @@ User = get_user_model()
 class LoginView(APIView):
     """
     LoginView handles user authentication via POST requests.
-    POST:
-        Authenticates a user using provided credentials.
-        On successful authentication:
-            - Returns a success message, serialized user data, and an access token.
-            - Sets a secure, HTTP-only refresh token cookie.
-        On failure:
-            - Logs the failed attempt.
-            - Returns an error message with HTTP 400 status.
-    Permissions:
-        - Allows any user to access.
-        - Applies anonymous rate throttling.
-    Attributes:
-        permission_classes (list): Permissions required to access the view.
-        throttle_classes (list): Throttling classes applied to the view.
+    This view allows any user to attempt login and applies rate throttling to anonymous requests.
+    On successful authentication, it returns a success message, serialized user data, and a JWT access token.
+    A refresh token is set in an HTTP-only cookie for secure session management.
+    If authentication fails, it logs the error and returns a failure message along with serializer errors.
+    Methods:
+        post(request): Authenticates the user and returns JWT tokens if credentials are valid.
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
@@ -61,18 +54,31 @@ class LoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data["user"]
             access_token, refresh_token = generate_jwt_tokens(user)
-            response = Response({
-                "message": "Login successful.",
-                "user": UserSerializer(user).data,
-                "access_token": access_token,
-            }, status=status.HTTP_200_OK)
+            response = Response(
+                {
+                    "message": "Login successful.",
+                    "resend_verification_link": "False",
+                    "user": UserSerializer(user).data,
+                    "access_token": access_token,
+                },
+                status=status.HTTP_200_OK
+            )
             response.set_cookie(
                 "refresh_token", str(refresh_token),
-                httponly=True, secure=not settings.DEBUG, samesite="Lax")
+                httponly=True, secure=not settings.DEBUG,
+                samesite="Lax"
+            )
             return response
+        # Return serializer errors
         logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
-        return Response({"message": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response(
+            {
+                "message": "Login failed.",
+                "resend_verification_link": "True",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 @extend_schema()
@@ -777,3 +783,65 @@ class ActivateAccountView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+@extend_schema(
+    request=ResendVerificationSerializer,
+    responses={
+        200: OpenApiResponse(description="Verification link sent or already verified."),
+        404: OpenApiResponse(description="Email not found."),
+    },
+    summary="Resend Verification Email",
+)
+class ResendVerificationView(APIView):
+    """
+    APIView for resending email verification links to users.
+    This view handles POST requests containing an email address. It validates the email,
+    checks if a user exists with that email, and whether the user's email is already verified.
+    If the user exists and is not verified, it triggers a Celery task to send a new verification link.
+    Responses:
+    - 400 BAD REQUEST: If the email is invalid.
+    - 404 NOT FOUND: If no user is found with the provided email.
+    - 200 OK: If the email is already verified or a new verification link is sent.
+    Permissions:
+    - AllowAny: Accessible to unauthenticated users.
+    - AnonRateThrottle: Throttles requests from anonymous users.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "message": "Invalid email.",
+                    "errors": serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        email = serializer.validated_data["email"].strip().lower()
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {
+                    "message": "No account found with this email address."
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        if user.is_active:
+            return Response(
+                {
+                    "message": "Email is already verified."
+                },
+                status=status.HTTP_200_OK
+            )
+        # Send activation email (using your existing Celery task)
+        from accounts.tasks import send_activation_email_task
+        send_activation_email_task.delay(user.id)
+        return Response(
+            {
+                "message": "A new verification link has been sent to your email address."
+            },
+            status=status.HTTP_200_OK
+        )

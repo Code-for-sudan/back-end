@@ -180,7 +180,6 @@ class EmailAttachmentViewSet(viewsets.ModelViewSet):
     """
 
     queryset = EmailAttachment.objects.all().order_by('updated_at')
-    serializer_class = EmailTemplateSerializer
     serializer_class = EmailAttachmentSerializer
     parser_classes = [MultiPartParser, FormParser]
 
@@ -298,7 +297,6 @@ class EmailImageViewSet(viewsets.ModelViewSet):
     Logging is performed for all operations to track success and failure events.
     """
     queryset = EmailImage.objects.all().order_by('updated_at')
-    serializer_class = EmailTemplateSerializer
     serializer_class = EmailImageSerializer
     parser_classes = [MultiPartParser, FormParser]
 
@@ -423,7 +421,6 @@ class EmailStyleViewSet(viewsets.ModelViewSet):
         parser_classes (list): Parsers for handling multipart and form data.
     """
     queryset = EmailStyle.objects.all().order_by('updated_at')
-    serializer_class = EmailTemplateSerializer
     serializer_class = EmailStyleSerializer
     parser_classes = [MultiPartParser, FormParser]
 
@@ -588,7 +585,7 @@ class AdminSendEmailView(APIView):
     serializer_classes = AdminSendEmailSerializer
 
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
+        serializer = AdminSendEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
         template = serializer.validated_data['template_id']

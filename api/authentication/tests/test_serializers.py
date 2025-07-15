@@ -7,7 +7,8 @@ from ..serializers import (
     GoogleAuthCodeSerializer,
     SetAccountTypeSerializer,
     SellerSetupSerializer,
-    LoginSerializer
+    LoginSerializer,
+    ResendVerificationSerializer
 )
 
 
@@ -25,10 +26,13 @@ class TestLoginSerializer(TestCase):
         - test_validate_missing_fields: Checks that missing required fields result in validation errors for both 'email' and 'password'.
     """
 
+    @patch('authentication.serializers.User.objects.get')
     @patch('authentication.serializers.authenticate')
-    def test_validate_success(self, mock_authenticate):
+    def test_validate_success(self, mock_authenticate, mock_get):
         mock_user = MagicMock()
+        mock_user.is_active = True
         mock_authenticate.return_value = mock_user
+        mock_get.return_value = mock_user
 
         data = {'email': 'test@example.com', 'password': 'secret'}
         serializer = LoginSerializer(data=data)
@@ -97,6 +101,7 @@ class SetAccountTypeSerializerTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("account_type", serializer.errors)
 
+
 class SellerSetupSerializerTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="seller@example.com", password="pass", is_store_owner=True)
@@ -142,3 +147,22 @@ class SellerSetupSerializerTests(TestCase):
         self.assertTrue(serializer.is_valid())
         with self.assertRaisesMessage(Exception, "Business owner profile not found for this user."):
             serializer.save()
+
+
+class ResendVerificationSerializerTests(TestCase):
+    def test_valid_email(self):
+        data = {"email": "user@example.com"}
+        serializer = ResendVerificationSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["email"], "user@example.com")
+
+    def test_missing_email(self):
+        serializer = ResendVerificationSerializer(data={})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+    def test_invalid_email(self):
+        data = {"email": "not-an-email"}
+        serializer = ResendVerificationSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)

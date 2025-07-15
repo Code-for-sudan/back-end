@@ -38,6 +38,6 @@ def generate_activation_link(user):
     base_url = getattr(
         settings,
         "FRONTEND_ACTIVATION_URL",
-        "https://your-frontend.com/activate"
+        "https://sudamall.ddns.net/account-activate"
     )
     return f"{base_url}?token={token}"
