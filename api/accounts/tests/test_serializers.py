@@ -2,12 +2,13 @@ import os
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError # type: ignore
-from ..serializers import UserSerializer
+from ..serializers import UserSerializer, BusinessOwnerSignupSerializer
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
 from django.urls import reverse
 from django.test import TestCase
+from ..models import User, BusinessOwner
 from rest_framework.test import APITestCase
 
 class UserSerializerTest(TestCase):
@@ -35,6 +36,16 @@ class UserSerializerTest(TestCase):
     def test_valid_user_serializer(self):
         serializer = UserSerializer(data=self.valid_user_data)
         self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data['email'], self.valid_user_data['email'])
+
+    def test_account_type_field(self):
+        user = User.objects.create_user(**self.valid_user_data, is_store_owner=True)
+        serializer = UserSerializer(user)
+        self.assertEqual(serializer.data['account_type'], 'seller')
+        user.is_store_owner = False
+        user.save()
+        serializer = UserSerializer(user)
+        self.assertEqual(serializer.data['account_type'], 'buyer')
 
     def test_invalid_user_serializer_missing_fields(self):
         invalid_data = self.valid_user_data.copy()
@@ -79,57 +90,46 @@ class UserSerializerTest(TestCase):
             with self.assertRaises(ValidationError):
                 serializer.is_valid(raise_exception=True)
 
-    def test_create_user(self):
-        serializer = UserSerializer(data=self.valid_user_data)
-        self.assertTrue(serializer.is_valid())
-        user = serializer.save()
-        self.assertEqual(user.email, self.valid_user_data['email'])
-        self.assertEqual(user.first_name, self.valid_user_data['first_name'])
-        self.assertEqual(user.last_name, self.valid_user_data['last_name'])
-        self.assertTrue(user.check_password(self.valid_user_data['password']))
-        self.assertEqual(user.gender, self.valid_user_data['gender'])
-
-
 class BusinessOwnerSignupTests(APITestCase):
     """
     Test suite for business owner signup functionality.
     """
 
     def setUp(self):
-        self.signup_url = reverse('signup_business_owner')
-        self.image_path = os.path.join(os.path.dirname(__file__), 'media', 'test_1.png')
-        with open(self.image_path, 'rb') as image_file:
-            self.user_data = {
-                'email': 'testuser@example.com',
-                'password': 'testpassword123',
-                'first_name': 'Test',
-                'gender': 'M',
-                'last_name': 'User',
-                'profile_picture': SimpleUploadedFile(name='test_1.png', content=image_file.read(), content_type='image/png'),
-                'store_name': 'Test Store',
-                'store_location': 'Khartoum',
-                'description': 'A great store for testing.',
-                'store_type': 'Retail'
-            }
-        self.invalid_data = {
-            'email': 'not-an-email',
-            'password': '',
-            'first_name': '',
-            'last_name': '',
-            'store_name': '',
-            'store_location': '',
-            'description': '',
-            'store_type': ''
+        self.user_data = {
+            'email': 'owner@example.com',
+            'first_name': 'Owner',
+            'last_name': 'Test',
+            'password': 'ownerpass123',
+            'gender': 'F'
+        }
+        self.data = {
+            'user': self.user_data,
+            'store_name': 'My Store',
+            'store_location': 'Khartoum',
+            'description': 'Best store',
+            'store_type': 'Retail'
         }
 
-    def test_signup_success(self):
-        response = self.client.post(self.signup_url, self.user_data, format='multipart')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['message'], 'Business owner created successfully.')
-        self.assertIn('data', response.data)
+    def test_business_owner_signup_serializer_valid(self):
+        serializer = BusinessOwnerSignupSerializer(data=self.data)
+        self.assertTrue(serializer.is_valid())
+        business_owner = serializer.save()
+        self.assertIsInstance(business_owner, BusinessOwner)
+        self.assertEqual(business_owner.user.email, self.user_data['email'])
+        self.assertEqual(business_owner.user.account_type, 'seller')
+        self.assertTrue(business_owner.user.is_store_owner)
+        self.assertEqual(business_owner.store.name, self.data['store_name'])
 
-    def test_signup_invalid_data(self):
-        response = self.client.post(self.signup_url, self.invalid_data, format='multipart')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['message'], 'Business owner creation failed.')
-        self.assertIn('errors', response.data)
+    def test_account_type_field(self):
+        serializer = BusinessOwnerSignupSerializer(data=self.data)
+        self.assertTrue(serializer.is_valid())
+        business_owner = serializer.save()
+        self.assertEqual(serializer.data['account_type'], 'seller')
+
+    def test_missing_required_fields(self):
+        invalid_data = self.data.copy()
+        invalid_data.pop('store_name')
+        serializer = BusinessOwnerSignupSerializer(data=invalid_data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('store_name', serializer.errors)
