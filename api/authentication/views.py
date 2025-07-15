@@ -39,19 +39,20 @@ class LoginView(APIView):
     """
     LoginView handles user authentication via POST requests.
     POST:
-        Authenticates a user using provided credentials.
-        On successful authentication:
-            - Returns a success message, serialized user data, and an access token.
-            - Sets a secure, HTTP-only refresh token cookie.
-        On failure:
-            - Logs the failed attempt.
-            - Returns an error message with HTTP 400 status.
+        - Accepts user credentials (typically email and password).
+        - Validates credentials using LoginSerializer.
+        - If credentials are valid and the user account is active:
+            - Generates JWT access and refresh tokens.
+            - Returns user data and access token in the response.
+            - Sets the refresh token as an HTTP-only cookie.
+        - If the account is not activated:
+            - Returns a 403 Forbidden response with an appropriate message.
+        - If credentials are invalid:
+            - Logs the error.
+            - Returns a 400 Bad Request response with an error message.
     Permissions:
-        - Allows any user to access.
-        - Applies anonymous rate throttling.
-    Attributes:
-        permission_classes (list): Permissions required to access the view.
-        throttle_classes (list): Throttling classes applied to the view.
+        - AllowAny: No authentication required.
+        - AnonRateThrottle: Throttles requests from anonymous users.
     """
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
@@ -60,19 +61,38 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data["user"]
+            # Check user for activation and return a response
+            if not user.is_active:
+                return Response(
+                {
+                    "message": "Account is not activated. Please check your email and activate your account."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
             access_token, refresh_token = generate_jwt_tokens(user)
-            response = Response({
-                "message": "Login successful.",
-                "user": UserSerializer(user).data,
-                "access_token": access_token,
-            }, status=status.HTTP_200_OK)
+            response = Response(
+                {
+                    "message": "Login successful.",
+                    "user": UserSerializer(user).data,
+                    "access_token": access_token,
+                },
+                status=status.HTTP_200_OK
+            )
             response.set_cookie(
                 "refresh_token", str(refresh_token),
-                httponly=True, secure=not settings.DEBUG, samesite="Lax")
+                httponly=True, secure=not settings.DEBUG,
+                samesite="Lax"
+            )
             return response
+        # Log the error if authentication fails and return a response
         logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
-        return Response({"message": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response(
+            {
+                "message": "Invalid credentials."
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 @extend_schema()
