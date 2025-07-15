@@ -38,22 +38,14 @@ User = get_user_model()
 class LoginView(APIView):
     """
     LoginView handles user authentication via POST requests.
-    POST:
-        - Accepts user credentials (typically email and password).
-        - Validates credentials using LoginSerializer.
-        - If credentials are valid and the user account is active:
-            - Generates JWT access and refresh tokens.
-            - Returns user data and access token in the response.
-            - Sets the refresh token as an HTTP-only cookie.
-        - If the account is not activated:
-            - Returns a 403 Forbidden response with an appropriate message.
-        - If credentials are invalid:
-            - Logs the error.
-            - Returns a 400 Bad Request response with an error message.
-    Permissions:
-        - AllowAny: No authentication required.
-        - AnonRateThrottle: Throttles requests from anonymous users.
+    This view allows any user to attempt login and applies rate throttling to anonymous requests.
+    On successful authentication, it returns a success message, serialized user data, and a JWT access token.
+    A refresh token is set in an HTTP-only cookie for secure session management.
+    If authentication fails, it logs the error and returns a failure message along with serializer errors.
+    Methods:
+        post(request): Authenticates the user and returns JWT tokens if credentials are valid.
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
@@ -61,15 +53,6 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data["user"]
-            # Check user for activation and return a response
-            if not user.is_active:
-                return Response(
-                {
-                    "message": "Account is not activated. Please check your email and activate your account."
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
-
             access_token, refresh_token = generate_jwt_tokens(user)
             response = Response(
                 {
@@ -85,11 +68,12 @@ class LoginView(APIView):
                 samesite="Lax"
             )
             return response
-        # Log the error if authentication fails and return a response
+        # Return serializer errors
         logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
         return Response(
             {
-                "message": "Invalid credentials."
+                "message": "Login failed.",
+                "errors": serializer.errors
             },
             status=status.HTTP_400_BAD_REQUEST
         )
