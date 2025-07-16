@@ -603,9 +603,9 @@ class AdminSendEmailView(APIView):
             context={},
             recipient_list=[email],
             attachments=[a.file.path for a in attachments],
-            email_host_user=settings.EMAIL_HOST_USER_SECURE,
-            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
-            from_email=settings.EMAIL_HOST_USER_SECURE
+            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
+            from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
 
         return Response({
