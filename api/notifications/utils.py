@@ -37,16 +37,12 @@ def send_email_with_attachments(
         Exception: Any exception encountered during email sending is logged and returned as an error message.
     """
     try:
-        base_dir = os.path.join(settings.BASE_DIR, "media", "email_templates")
-        html_content = render_to_string(os.path.join(base_dir, 'html', f"{template_name}.html"), context)
-        plain_text_path = os.path.join(base_dir, "plain", f"{template_name}.txt")
-        logger.error(f'context: {context}')
-        with open(plain_text_path, encoding="utf-8") as file:
-            plain_text_raw = file.read()
-            if context:
-                plain_text_content = plain_text_raw.format(**context)
-            else:
-                plain_text_content = plain_text_raw
+        # Use relative paths for Django template loader
+        html_template = f"html/{template_name}.html"
+        plain_template = f"plain/{template_name}.txt"
+
+        html_content = render_to_string(html_template, context)
+        plain_text_content = render_to_string(plain_template, context)
 
         # Save original settings
         original_user = settings.EMAIL_HOST_USER
@@ -58,7 +54,6 @@ def send_email_with_attachments(
         if email_host_password:
             settings.EMAIL_HOST_PASSWORD = email_host_password
 
-        # Use provided from_email or default
         sender = from_email or settings.EMAIL_HOST_USER
 
         email = EmailMultiAlternatives(
