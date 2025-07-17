@@ -406,9 +406,9 @@ class PasswordResetRequestView(APIView):
             context=context,
             recipient_list=recipient_list,
             attachments=attachments,
-            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
-            email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
-            from_email=settings.EMAIL_HOST_USER_NO_REPLY
+            email_host_user=settings.EMAIL_HOST_USER_SECURITY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURITY,
+            from_email=settings.EMAIL_HOST_USER_SECURITY
         )
         return Response(
             {
