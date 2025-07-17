@@ -103,7 +103,10 @@ class UserSerializer(serializers.ModelSerializer):
         if len(value) > 254:
             logger.error("Email length exceeds 254 characters.")
             raise serializers.ValidationError("Email length must not exceed 254 characters.")
-        # Additional email format validation can be added here if needed
+        email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+        if not re.match(email_regex, value):
+            logger.error("Invalid email format.")
+            raise serializers.ValidationError("Invalid email format.")
         return value
     
     def validate_password(self, attrs):

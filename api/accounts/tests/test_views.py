@@ -71,7 +71,7 @@ class BusinessOwnerSignupTests(APITestCase):
         with open(self.image_path, 'rb') as image_file:
             self.user_data = {
                 'email': 'testuser@example.com',
-                'password': 'testpassword123',
+                'password': 'Ttestpassword123',
                 'first_name': 'Test',
                 'gender': 'M',
                 'last_name': 'User',
