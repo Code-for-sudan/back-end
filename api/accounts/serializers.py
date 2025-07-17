@@ -275,6 +275,9 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
         if not re.search(r'[a-z]', password):
             logger.error("Password must contain at least one lowercase letter.")
             raise serializers.ValidationError("Password must contain at least one lowercase letter.")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            logger.error("Password must contain at least one special character.")
+            raise serializers.ValidationError("Password must contain at least one special character.")
         return password
     
     def validate_first_name(self, attrs):
