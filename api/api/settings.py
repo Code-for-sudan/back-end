@@ -586,7 +586,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '10/minute',         # 10 requests per minute for anonymous users
         'user': '100/hour',          # 100 requests per hour for authenticated users
-        'password_resert': '5/hour',  # 5 requests per hour for password reset
+        'password_resert': '100/hour',  # 5 requests per hour for password reset
         'newsletter-subscription': '10/day',  # 10 requests per day for newsletter subscription
     },
 }

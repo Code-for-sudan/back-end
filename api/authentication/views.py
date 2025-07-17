@@ -388,13 +388,15 @@ class PasswordResetRequestView(APIView):
             )
         # Create the email context
         subject = "[Attention] Password Reset OTP"
-        template_name = "reset_password_otp"
+        template_name = "update_password"
         recipient_list = [user.email]
         attachments = None  # No attachments needed for OTP resend
         context = {
             'otp_code': user.generate_otp()
         }
         # Send the email with OTP
+        logger.info(f'hereeeeeeee: {settings.EMAIL_HOST_USER_SECURITY}, pass: {settings.EMAIL_HOST_PASSWORD_SECURITY}')
+        logger.info(f"OTP sent to user {email}.")
         send_email_task.delay(
             subject=subject,
             template_name=template_name,
@@ -405,8 +407,6 @@ class PasswordResetRequestView(APIView):
             email_host_password=settings.EMAIL_HOST_PASSWORD_SECURITY,
             from_email=settings.EMAIL_HOST_USER_SECURITY
         )
-
-        logger.info(f"OTP sent to user {email}.")
         return Response(
             {
                 'message': 'OTP has been sent to your email.'

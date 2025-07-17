@@ -1,6 +1,7 @@
 #!/bin/bash
 set -a
-source .env  # or .env.prod or .env, as needed
-source .env.prod  # Load production environment variables if needed
+export $(cat .env | grep -v '^#' | xargs)
+export $(cat .env.prod | grep -v '^#' | xargs)
+celery -A api worker --loglevel=infoariables if needed
 set +a
 celery -A api worker --loglevel=info
