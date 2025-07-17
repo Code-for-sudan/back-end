@@ -22,6 +22,7 @@ def send_activation_email_task(user_id):
     try:
         user = User.objects.get(id=user_id)
         activation_link = generate_activation_link(user)
+        logger.error(activation_link)
         context = {
             "activation_link": activation_link,
         }

@@ -401,9 +401,9 @@ class PasswordResetRequestView(APIView):
             context=context,
             recipient_list=recipient_list,
             attachments=attachments,
-            email_host_user=settings.EMAIL_HOST_USER_SECURE,
-            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
-            from_email=settings.EMAIL_HOST_USER_SECURE
+            email_host_user=settings.EMAIL_HOST_USER_SECURITY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURITY,
+            from_email=settings.EMAIL_HOST_USER_SECURITY
         )
 
         logger.info(f"OTP sent to user {email}.")
@@ -846,9 +846,6 @@ class ResendVerificationView(APIView):
         from accounts.tasks import send_activation_email_task
         send_activation_email_task.delay(
             user.id,
-            email_host_user=settings.EMAIL_HOST_USER_SECURE,
-            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
-            from_email=settings.EMAIL_HOST_USER_SECURE
         )
         return Response(
             {
