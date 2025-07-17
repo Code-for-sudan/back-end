@@ -29,6 +29,19 @@ class LoginSerializer(serializers.Serializer):
     Returns:
         dict: The validated data with the authenticated user instance added under the 'user' key.
     """
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        help_text="User's email address"
+    )
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        min_length=8,
+        max_length=128,
+        help_text="User's password"
+    )
+
     def validate(self, data):
         email = data.get('email')
         password = data.get('password')

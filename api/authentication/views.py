@@ -400,17 +400,15 @@ class PasswordResetRequestView(APIView):
             'otp_code': user.generate_otp()
         }
         # Send the email with OTP
-        logger.info(f'hereeeeeeee: {settings.EMAIL_HOST_USER_SECURITY}, pass: {settings.EMAIL_HOST_PASSWORD_SECURITY}')
-        logger.info(f"OTP sent to user {email}.")
         send_email_task.delay(
             subject=subject,
             template_name=template_name,
             context=context,
             recipient_list=recipient_list,
             attachments=attachments,
-            email_host_user=settings.EMAIL_HOST_USER_SECURITY,
-            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURITY,
-            from_email=settings.EMAIL_HOST_USER_SECURITY
+            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
+            from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
         return Response(
             {
@@ -655,32 +653,6 @@ class RequestUpdatePasswordView(APIView):
         user.set_password(new_password)
         user.save()
     
-        # Create the email context
-        subject = "[Attention] Password Update"
-        template_name = "update_password"
-        recipient_list = [user.email]
-        attachments = None  # No attachments needed for OTP
-        now = timezone.now()
-        formated_time_now = now.strftime("%Y-%m-%d %H:%M:%S")  # Get current time in a readable format
-        context = {
-            'user': user.first_name,
-            'time_now': formated_time_now,
-        }
-
-        # Send Notification email
-        # This task is asynchronous and will run in the background
-        # It allows the user to continue using the application without waiting for the email to be sent
-        send_email_task.delay(
-            subject=subject,
-            template_name=template_name,
-            context=context,
-            recipient_list=recipient_list,
-            attachments=attachments,
-            email_host_user=settings.EMAIL_HOST_USER_SECURE,
-            email_host_password=settings.EMAIL_HOST_PASSWORD_SECURE,
-            from_email=settings.EMAIL_HOST_USER_SECURE
-        )
-
         logger.info(f"Password updated successfully for user {email}.")
         return Response(
             {
