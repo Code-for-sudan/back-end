@@ -35,7 +35,7 @@ def send_activation_email_task(user_id):
             template_name,
             context,
             recipient_list,
-            email_host_user=settings.EMAIL_HOST_USER_SECURITY,
+            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
             email_host_password=settings.EMAIL_HOST_PASSWORD_SECURITY,
             from_email=settings.EMAIL_HOST_USER_SECURITY
         )
