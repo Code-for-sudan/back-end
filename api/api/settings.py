@@ -398,7 +398,7 @@ LOGGING = {
             'propagate': False,
         },
         'celery': {
-            'handlers': ['celery'],
+            'handlers': ['file'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -438,122 +438,122 @@ LOGGING = {
             'propagate': False,
         },
         'accounts_tests': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'acoounts_tasks': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_utils': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'stores_models': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'stores_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'stores_tests': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'stores_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'products_models': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'products_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'products_tests': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'products_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_models': {
-           'handlers': ['file', 'console'],
+           'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'search_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
              'level': 'DEBUG',  # Set to DEBUG for detailed logs
              'propagate': False,
         },
         'search_tests': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_tests': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'search_consumers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'chat_consumers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'chat_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'chat_tests': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'chat_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
