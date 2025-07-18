@@ -33,7 +33,7 @@ class UserSignupTests(APITestCase):
         with open(self.image_path, 'rb') as image_file:
             self.user_data = {
                 'email': 'testuser@example.com',
-                'password': 'testpassword123',
+                'password': 'T@estpassword123',
                 'first_name': 'Test',
                 'gender': 'M',
                 'last_name': 'User',
@@ -71,7 +71,7 @@ class BusinessOwnerSignupTests(APITestCase):
         with open(self.image_path, 'rb') as image_file:
             self.user_data = {
                 'email': 'testuser@example.com',
-                'password': 'Ttestpassword123',
+                'password': 'T@testpassword123',
                 'first_name': 'Test',
                 'gender': 'M',
                 'last_name': 'User',
