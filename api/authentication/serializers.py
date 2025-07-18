@@ -15,20 +15,32 @@ logger = logging.getLogger('authentication_serializers')
 class LoginSerializer(serializers.Serializer):
     """
     Serializer for handling user login authentication.
-    Fields:
-        email (EmailField): The user's email address.
-        password (CharField): The user's password (write-only).
-    Methods:
-        validate(data):
-            Validates the provided email and password.
-            - Checks if a user with the given email exists.
-            - Ensures the user's account is active.
-            - Authenticates the user using the provided credentials.
-            - Raises ValidationError for invalid credentials or inactive accounts.
-            - On success, adds the authenticated user to the returned data.
+
+    Validates the provided email and password:
+    - Checks if a user with the given email exists.
+    - Ensures the user's account is active.
+    - Authenticates the user using the provided credentials.
+
+    Raises:
+        serializers.ValidationError: If the email does not exist, the account is inactive,
+        or the authentication fails. If the account is inactive, a custom attribute
+        'resend_verification_link' is set to True on the exception.
+
+    Returns:
+        dict: The validated data with the authenticated user instance added under the 'user' key.
     """
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    email = serializers.EmailField(
+        required=True,
+        max_length=254,
+        help_text="User's email address"
+    )
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        min_length=8,
+        max_length=128,
+        help_text="User's password"
+    )
 
     def validate(self, data):
         email = data.get('email')
@@ -44,9 +56,11 @@ class LoginSerializer(serializers.Serializer):
         # Check if the account is active
         if not user.is_active:
             logger.warning(f"[LoginSerializer] Inactive user attempted login: {email}")
-            raise serializers.ValidationError(
+            error = serializers.ValidationError(
                 "Email already registered but not verified."
             )
+            error.resend_verification_link = True  # Custom attribute
+            raise error
 
         # Now authenticate (will check password)
         user = authenticate(username=email, password=password)

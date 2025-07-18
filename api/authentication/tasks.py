@@ -25,4 +25,3 @@ def clean_expired_blacklisted_tokens():
         logger.info("Deleted {} expired blacklisted tokens.".format(count))
     except Exception as e:
         logger.error("Failed to delete expired blacklisted tokens: {}".format(e))
-

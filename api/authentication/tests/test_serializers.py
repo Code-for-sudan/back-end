@@ -34,7 +34,7 @@ class TestLoginSerializer(TestCase):
         mock_authenticate.return_value = mock_user
         mock_get.return_value = mock_user
 
-        data = {'email': 'test@example.com', 'password': 'secret'}
+        data = {'email': 'test@example.com', 'password': 'secretjshs'}
         serializer = LoginSerializer(data=data)
         self.assertTrue(serializer.is_valid())
         self.assertEqual(serializer.validated_data['user'], mock_user)

@@ -1,6 +1,7 @@
 import requests, logging
 from django.utils import timezone
 from rest_framework import status # type: ignore
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
 from rest_framework.views import APIView
@@ -38,20 +39,28 @@ User = get_user_model()
 class LoginView(APIView):
     """
     LoginView handles user authentication via POST requests.
-    This view allows any user to attempt login and applies rate throttling to anonymous requests.
-    On successful authentication, it returns a success message, serialized user data, and a JWT access token.
-    A refresh token is set in an HTTP-only cookie for secure session management.
-    If authentication fails, it logs the error and returns a failure message along with serializer errors.
-    Methods:
-        post(request): Authenticates the user and returns JWT tokens if credentials are valid.
+    POST:
+        Authenticates a user using provided credentials.
+        On successful authentication:
+            - Returns a success message.
+            - Returns user data and an access token in the response body.
+            - Sets a refresh token as an HTTP-only cookie.
+        On validation error:
+            - Returns an error message.
+            - Indicates if a verification link should be resent.
+    Permissions:
+        - AllowAny: No authentication required.
+        - Throttled for anonymous users.
+    Raises:
+        ValidationError: If credentials are invalid or user verification is required.
     """
-
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
+        try:
+            serializer.is_valid(raise_exception=True)
             user = serializer.validated_data["user"]
             access_token, refresh_token = generate_jwt_tokens(user)
             response = Response(
@@ -69,16 +78,12 @@ class LoginView(APIView):
                 samesite="Lax"
             )
             return response
-        # Return serializer errors
-        logger.error(f"Login failed for {request.data.get('email')}: {serializer.errors}")
-        return Response(
-            {
-                "message": "Login failed.",
-                "resend_verification_link": "True",
-                "errors": serializer.errors
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        except ValidationError as exc:
+            resend = getattr(exc, 'resend_verification_link', False)
+            return Response({
+                "message": exc.detail[0] if isinstance(exc.detail, list) else exc.detail,
+                "resend_verification_link": str(resend),
+            }, status=400)
 
 
 @extend_schema()
@@ -388,7 +393,7 @@ class PasswordResetRequestView(APIView):
             )
         # Create the email context
         subject = "[Attention] Password Reset OTP"
-        template_name = "reset_password_otp"
+        template_name = "update_password"
         recipient_list = [user.email]
         attachments = None  # No attachments needed for OTP resend
         context = {
@@ -400,10 +405,11 @@ class PasswordResetRequestView(APIView):
             template_name=template_name,
             context=context,
             recipient_list=recipient_list,
-            attachments=attachments
+            attachments=attachments,
+            email_host_user=settings.EMAIL_HOST_USER_NO_REPLY,
+            email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
+            from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
-
-        logger.info(f"OTP sent to user {email}.")
         return Response(
             {
                 'message': 'OTP has been sent to your email.'
@@ -444,7 +450,16 @@ class PasswordResetRequestView(APIView):
                 "user": {
                     "id": "1234",
                     "email": "exmple@test.com",
-                }
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "is_store_owner": True,
+                        "is_store_owner": True,
+                        "is_verified": True,
+                        "created_at": "2024-01-01T00:00:00Z"
+                    },
+                    "accountType": "seller",
+                    "needsAccountType": False,
+                    "redirect": "/dashboard/seller-setup"
             },
             response_only=True
         ),
@@ -638,29 +653,6 @@ class RequestUpdatePasswordView(APIView):
         user.set_password(new_password)
         user.save()
     
-        # Create the email context
-        subject = "[Attention] Password Update"
-        template_name = "update_password"
-        recipient_list = [user.email]
-        attachments = None  # No attachments needed for OTP
-        now = timezone.now()
-        formated_time_now = now.strftime("%Y-%m-%d %H:%M:%S")  # Get current time in a readable format
-        context = {
-            'user': user.first_name,
-            'time_now': formated_time_now,
-        }
-
-        # Send Notification email
-        # This task is asynchronous and will run in the background
-        # It allows the user to continue using the application without waiting for the email to be sent
-        send_email_task.delay(
-            subject=subject,
-            template_name=template_name,
-            context=context,
-            recipient_list=recipient_list,
-            attachments=attachments
-        )
-
         logger.info(f"Password updated successfully for user {email}.")
         return Response(
             {
@@ -838,7 +830,9 @@ class ResendVerificationView(APIView):
             )
         # Send activation email (using your existing Celery task)
         from accounts.tasks import send_activation_email_task
-        send_activation_email_task.delay(user.id)
+        send_activation_email_task.delay(
+            user.id,
+        )
         return Response(
             {
                 "message": "A new verification link has been sent to your email address."

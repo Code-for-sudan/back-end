@@ -15,6 +15,8 @@ services:
       python manage.py makemigrations --noinput &&
       python manage.py migrate --noinput &&
       python manage.py collectstatic --noinput &&
+      chmod +x /start_celery.sh &&
+      chmod +x /start_celerybeat.sh &&
       supervisord -c /etc/supervisor/conf.d/supervisord.conf
       "
     volumes:
