@@ -36,8 +36,6 @@ def send_email_with_attachments(
     Raises:
         Exception: Any exception encountered during email sending is logged and returned as an error message.
     """
-    logger.error("TEMPLATE DIRS:", settings.TEMPLATES[0]['DIRS'])
-    logger.error("FILES IN html/: %s", os.listdir(os.path.join(settings.TEMPLATES[0]['DIRS'][0], "html")))
     try:
         base_dir = os.path.join(settings.BASE_DIR, "media", "email_templates")
         html_content = render_to_string(f"html/{template_name}.html", context)
