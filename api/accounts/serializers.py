@@ -1,4 +1,5 @@
 import os, logging
+import re
 from rest_framework import serializers # type: ignore
 from django.db import transaction
 from phonenumber_field.serializerfields import PhoneNumberField
@@ -29,7 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
 
     # Set the password field as write-only to prevent it from being serialized
-    password = serializers.CharField(write_only=True, min_length=6)
+    password = serializers.CharField(write_only=True, min_length=8)
     # Set phone_number and whatsapp_number as optional fields
     phone_number = PhoneNumberField(required=False, allow_null=True)
     whatsapp_number = PhoneNumberField(required=False, allow_null=True)
@@ -77,6 +78,90 @@ class UserSerializer(serializers.ModelSerializer):
                 'The image is too large. Max size: 5MB.'
             )
         return image
+    
+    def validate_gender(self, value):
+        """
+        Validate gender value 
+        """
+        if type(value) is not str:
+            logger.error("The gender must be a string.")
+            raise serializers.ValidationError("gender must be a string.")
+        if value.lower() not in ['m', 'f']:
+            logger.error("gender must be either 'M' or 'F'.")
+            raise serializers.ValidationError("gender must be either 'M' or 'F'.")
+        return value
+        
+    def validate_email(self, value):
+        """
+        Validate email format and uniqueness.
+        """
+        if not value:
+            raise serializers.ValidationError("Email is required.")
+        if User.objects.filter(email=value).exists():
+            logger.error(f"User with email {value} already exists.")
+            raise serializers.ValidationError("A user with this email already exists.")
+        if len(value) > 254:
+            logger.error("Email length exceeds 254 characters.")
+            raise serializers.ValidationError("Email length must not exceed 254 characters.")
+        email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+        if not re.match(email_regex, value):
+            logger.error("Invalid email format.")
+            raise serializers.ValidationError("Invalid email format.")
+        return value
+    
+    def validate_password(self, attrs):
+        # Password must be at least 8 characters, contain at least one digit, one uppercase, and one lowercase letter
+        password = attrs
+        if len(password) < 8:
+            logger.error("Password must be at least 8 characters long.")
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not re.search(r'\d', password):
+            logger.error("Password must contain at least one digit.")
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not re.search(r'[A-Z]', password):
+            logger.error("Password must contain at least one uppercase letter.")
+            raise serializers.ValidationError("Password must contain at least one uppercase letter.")
+        if not re.search(r'[a-z]', password):
+            logger.error("Password must contain at least one lowercase letter.")
+            raise serializers.ValidationError("Password must contain at least one lowercase letter.")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            logger.error("Password must contain at least one special character.")
+            raise serializers.ValidationError("Password must contain at least one special character.")
+        return password
+    
+    def validate_first_name(self, attrs):
+        """
+        Validate first name to ensure it is not empty and does not contain numbers.
+        """
+        first_name = attrs
+        if not first_name:
+            logger.error("First name is required.")
+            raise serializers.ValidationError("First name is required.")
+        if any(char.isdigit() for char in first_name):
+            logger.error("First name must not contain numbers.")
+            raise serializers.ValidationError("First name must not contain numbers.")
+        if len(first_name) > 50:
+            logger.error("First name must not exceed 50 characters.")
+            raise serializers.ValidationError("First name must not exceed 50 characters.")
+        return first_name
+
+    def validate_last_name(self, attrs):
+        """
+        Validate last name to ensure it is not empty and does not contain numbers.
+        """
+        last_name = attrs
+        if not last_name:
+            logger.error("Last name is required.")
+            raise serializers.ValidationError("Last name is required.")
+        if any(char.isdigit() for char in last_name):
+            logger.error("Last name must not contain numbers.")
+            raise serializers.ValidationError("Last name must not contain numbers.")
+        if len(last_name) > 50:
+            logger.error("Last name must not exceed 50 characters.")
+            raise serializers.ValidationError("Last name must not exceed 50 characters.")
+        return last_name
+
+
 
     def create(self, validated_data):
         # Create a new user with the validated data
@@ -118,8 +203,8 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
     profile_picture = serializers.ImageField(source='user.profile_picture', required=False, allow_null=True)
     phone_number = PhoneNumberField(required=False, allow_null=True)
     whatsapp_number = PhoneNumberField(required=False, allow_null=True)
-    password = serializers.CharField(source='user.password', write_only=True, min_length=6)
-    gender = serializers.CharField(source='user.gender')
+    password = serializers.CharField(source='user.password', write_only=True, min_length=8)
+    gender = serializers.CharField(source='user.gender', required=True)
     account_type = serializers.CharField(source='user.account_type', read_only=True)
 
     # Store fields (all required)
@@ -150,6 +235,86 @@ class BusinessOwnerSignupSerializer(serializers.Serializer):
                 'The image is too large. Max size: 5MB.'
             )
         return image
+
+    def validate_gender(self, value):
+        """
+        Validate gender value 
+        """
+        if type(value) is not str:
+            logger.error("The gender must be a string.")
+            raise serializers.ValidationError("gender must be a string.")
+        if value.lower() not in ['m', 'f']:
+            logger.error("gender must be either 'M' or 'F'.")
+            raise serializers.ValidationError("gender must be either 'M' or 'F'.")
+        return value
+        
+    def validate_email(self, value):
+        """
+        Validate email format and uniqueness.
+        """
+        if not value:
+            raise serializers.ValidationError("Email is required.")
+        if User.objects.filter(email=value).exists():
+            logger.error(f"User with email {value} already exists.")
+            raise serializers.ValidationError("A user with this email already exists.")
+        if len(value) > 254:
+            logger.error("Email length exceeds 254 characters.")
+            raise serializers.ValidationError("Email length must not exceed 254 characters.")
+        # Additional email format validation can be added here if needed
+        return value
+    
+    def validate_password(self, attrs):
+        # Password must be at least 8 characters, contain at least one digit, one uppercase, and one lowercase letter
+        password = attrs
+        if len(password) < 8:
+            logger.error("Password must be at least 8 characters long.")
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not re.search(r'\d', password):
+            logger.error("Password must contain at least one digit.")
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not re.search(r'[A-Z]', password):
+            logger.error("Password must contain at least one uppercase letter.")
+            raise serializers.ValidationError("Password must contain at least one uppercase letter.")
+        if not re.search(r'[a-z]', password):
+            logger.error("Password must contain at least one lowercase letter.")
+            raise serializers.ValidationError("Password must contain at least one lowercase letter.")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            logger.error("Password must contain at least one special character.")
+            raise serializers.ValidationError("Password must contain at least one special character.")
+        return password
+    
+    def validate_first_name(self, attrs):
+        """
+        Validate first name to ensure it is not empty and does not contain numbers.
+        """
+        first_name = attrs
+        if not first_name:
+            logger.error("First name is required.")
+            raise serializers.ValidationError("First name is required.")
+        if any(char.isdigit() for char in first_name):
+            logger.error("First name must not contain numbers.")
+            raise serializers.ValidationError("First name must not contain numbers.")
+        if len(first_name) > 50:
+            logger.error("First name must not exceed 50 characters.")
+            raise serializers.ValidationError("First name must not exceed 50 characters.")
+        return first_name
+    
+    def validate_last_name(self, attrs):
+        """
+        Validate last name to ensure it is not empty and does not contain numbers.
+        """
+        last_name = attrs
+        if not last_name:
+            logger.error("Last name is required.")
+            raise serializers.ValidationError("Last name is required.")
+        if any(char.isdigit() for char in last_name):
+            logger.error("Last name must not contain numbers.")
+            raise serializers.ValidationError("Last name must not contain numbers.")
+        if len(last_name) > 50:
+            logger.error("Last name must not exceed 50 characters.")
+            raise serializers.ValidationError("Last name must not exceed 50 characters.")
+        return last_name
+    
 
     def create(self, validated_data):
         store_name = validated_data.pop('store_name')
