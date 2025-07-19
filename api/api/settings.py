@@ -557,6 +557,11 @@ LOGGING = {
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
+        'middlewares': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',  # Set to DEBUG for detailed logs
+            'propagate': False,
+        }
     },
 }
 
