@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import cache
 import json
 import logging
@@ -145,7 +145,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def set_user_offline(self, user_id):
         try:
-            last_seen = datetime.utcnow().isoformat()
+            last_seen = timezone.now().isoformat()
             cache.set(f"user_online_{user_id}", False)
             cache.set(f"user_last_seen_{user_id}", last_seen)
 
