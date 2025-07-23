@@ -135,6 +135,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+*.env.*
 
 # Spyder project settings
 .spyderproject
@@ -196,3 +197,8 @@ log/
 profile_pics/
 staticfiles/
 emails/
+
+
+# extra doc local files
+DEV_QUICK_START.md
+TECHNICAL_ARCHITECTURE.md
