@@ -38,6 +38,8 @@ urlpatterns = [
     path('api/v1/auth/', include('authentication.urls')),
     path('api/v1/accounts/', include('accounts.urls')),
     path('api/v1/products/', include('products.urls')),
+    path('api/v1/orders/', include('orders.urls')),
+    path('api/v1/carts/', include('carts.urls')),
     path('api/v1/notfications/', include('notifications.urls')),
     path('api/v1/search/', include('search.urls')),
     path('api/v1/chat/', include('chat.urls')),

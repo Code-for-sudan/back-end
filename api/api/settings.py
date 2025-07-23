@@ -79,6 +79,8 @@ INSTALLED_APPS = [
     'authentication.apps.AuthenticationConfig',
     'stores.apps.StoresConfig',
     'products.apps.ProductsConfig',
+    'orders.apps.OrdersConfig',
+    'carts.apps.CartsConfig',
     'notifications.apps.NotificationsConfig',
     'search.apps.SearchConfig',
     'chat.apps.ChatConfig',
