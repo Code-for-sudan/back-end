@@ -54,6 +54,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     picture = models.CharField(max_length=255)
     color = models.CharField(max_length=50, blank=True, null=True)
+    brand = models.CharField(max_length=100, blank=True, null=True)
     available_quantity = models.IntegerField(blank=True, null=True)
     reserved_quantity = models.BigIntegerField(blank=True, null=True)
     has_sizes: models.BooleanField = models.BooleanField(default=False)
