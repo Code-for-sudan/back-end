@@ -10,6 +10,36 @@ from .documents import ProductDocument
 logger = logging.getLogger("search_consumers")
 
 class AutocompleteConsumer(AsyncWebsocketConsumer):
+    """
+    WebSocket consumer for real-time autocomplete suggestions.
+    This consumer listens for incoming WebSocket connections and receives search queries
+    from the client. Upon receiving a query, it performs an Elasticsearch search on the
+    Document using a combination of match, match_phrase_prefix, and fuzzy queries
+    to provide both exact and similar suggestions.
+
+    It supports role-based filtering
+    
+    Logging is used for connection events, received queries, and errors.
+    Expected client message format:
+        {
+            "query": "<search string>",
+            "size": <number of suggestions, optional>
+            "type":"<autocomplete type, e.g., 'product'>"
+        }
+    Response format:
+        {
+            "suggestions": [<list of suggested items names>]
+        }
+    If no suggestions are found:
+        {
+            "suggestions": [],
+            "message": "No similar products were found."
+        }
+    If an error occurs:
+        {
+            "error": "<error message>"
+        }
+    """
 
     MAX_SIZE = 15
     DEFAULT_SIZE = 10
