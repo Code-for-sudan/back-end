@@ -16,9 +16,11 @@ class StockService:
 
         if product.has_sizes:
             if not size:
+                logger.error("Size must be specified for products with sizes.")
                 raise ValidationError("Size must be specified for products with sizes.")
             size_obj = Size.objects.select_for_update().get(product=product, size=size)
             if size_obj.available_quantity < quantity:
+                logger.error("Not enough stock available for size %s of product %s.", size, product_id)
                 raise ValidationError("Not enough stock available for this size.")
             size_obj.available_quantity -= quantity
             size_obj.reserved_quantity += quantity
@@ -26,6 +28,7 @@ class StockService:
             return size_obj
 
         if product.available_quantity < quantity:
+            logger.error("Not enough stock available for product %s.", product_id)
             raise ValidationError("Not enough stock available.")
         product.available_quantity -= quantity
         product.reserved_quantity += quantity
@@ -39,6 +42,7 @@ def unreserve_stock(product_id, quantity, size=None):
 
     if product.has_sizes:
         if not size:
+            logger.error("Size must be specified for products with sizes.")
             raise ValidationError("Size must be specified for products with sizes.")
         size_obj = Size.objects.select_for_update().get(product=product, size=size)
         size_obj.available_quantity += quantity

@@ -1,79 +1,31 @@
-import logging
+import json
 import os
+import logging
 from rest_framework import serializers
-from .models import Product, Size, Tag
-
-logger = logging.getLogger("product_serializer")
-
-class TagListSerializer(serializers.ListSerializer):
-    def to_internal_value(self, data):
-        if not isinstance(data, list):
-            raise serializers.ValidationError("Expected a list of tag names.")
-        tags = []
-        for item in data:
-            if not isinstance(item, str):
-                raise serializers.ValidationError("Each tag must be a string.")
-            name = item.strip()
-            tag, _ = Tag.objects.get_or_create(name=name)
-            tags.append(tag)
-        return tags
-
-    def to_representation(self, value):
-        return [{"id": tag.id, "name": tag.name} for tag in value]
-
-
-class TagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tag
-        fields = ["id", "name"]
-        read_only_fields = ["id"]
-        list_serializer_class = TagListSerializer
+from .models import Product, Tag, Size
 
 
 class SizeSerializer(serializers.ModelSerializer):
-    product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(),
-        source='product'
-    )
+    logger = logging.getLogger(__name__)
 
     class Meta:
         model = Size
-        fields = [
-            'id',
-            'product_id',
-            'size',
-            'available_quantity',
-            'reserved_quantity',
-        ]
-        read_only_fields = ['id']
+        fields = ["size", "available_quantity", "reserved_quantity"]
+        extra_kwargs = {
+            "available_quantity": {"required": True},
+            "reserved_quantity": {"read_only": True},  # Always set to 0 during creation
+        }
+
+    def create(self, validated_data):
+        # Ensure reserved_quantity is always 0 for a new Size
+        validated_data["reserved_quantity"] = 0
+        return super().create(validated_data)
+
 
 class ProductSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Product model.
-    Handles serialization and deserialization of product data, including validation for required and optional fields.
-    Fields:
-        - id (int): Read-only. The unique identifier for the product.
-        - product_name (str): Required. The name of the product.
-        - product_description (str): Required. Detailed description of the product.
-        - price (decimal): Required. The price of the product.
-        - category (str): Required. The category of the product.
-        - picture (str): Required. The product's image.
-        - color (str): Optional. The color of the product.
-        - size (str): Optional. The size of the product.
-        - quantity (int): Required. The available quantity of the product.
-        - owner_id (int): Read-only. The ID of the user who owns the product.
-        - store_name (str): Read-only. The name of the store where the product is listed.
-        - store_location (str): Read-only. The location of the store.
-        - created_at (datetime): Read-only. Timestamp when the product was created.
-    """
-
-    picture = serializers.ImageField()
-    store_name = serializers.ReadOnlyField(source="store.name")
-    store_location = serializers.ReadOnlyField(source="store.location")
-    owner_id = serializers.PrimaryKeyRelatedField(read_only=True)
-    category = serializers.CharField(max_length=100)
-    tags = TagSerializer(many=True, required=False)
+    tags = serializers.SerializerMethodField()
     sizes = SizeSerializer(many=True, required=False)
+    logger = logging.getLogger(__name__)
 
     class Meta:
         model = Product
@@ -91,87 +43,100 @@ class ProductSerializer(serializers.ModelSerializer):
             "has_sizes",
             "properties",
             "tags",
+            "sizes",
             "owner_id",
-            "store_name",
-            "store_location",
+            "store",
             "created_at",
         ]
         read_only_fields = [
             "id",
-            "store_name",
-            "store_location",
-            "created_at",
             "owner_id",
+            "store",
+            "created_at",
         ]
         extra_kwargs = {
             "product_name": {"required": True},
             "product_description": {"required": True},
             "price": {"required": True},
-            "brand": {"required": False, "allow_null": True, "allow_blank": True},
             "category": {"required": True},
             "picture": {"required": True},
-            "available_quantity": {"required": True},
-            "color": {"required": False, "allow_null": True, "allow_blank": True},
-            "reserved_quantity": {"required": False, "allow_null": True},
             "has_sizes": {"required": True},
-            "properties": {"required": False, "allow_null": True},
+            "store": {"required": True},
         }
 
+    def get_tags(self, obj):
+        # Return list of tag names for the product
+        return [tag.name for tag in obj.tags.all()]
+
+    def to_internal_value(self, data):
+        data = data.copy()
+        if "sizes" in data and isinstance(data["sizes"], str):
+            try:
+                data["sizes"] = json.loads(data["sizes"])
+            except json.JSONDecodeError:
+                raise serializers.ValidationError({"sizes": "Invalid JSON."})
+        # Convert tags from string to list if it's a JSON string
+        if "tags" in data and isinstance(data["tags"], str):
+            try:
+                data["tags"] = json.loads(data["tags"])
+            except json.JSONDecodeError:
+                raise serializers.ValidationError(
+                    {"tags": "Invalid JSON format for tags."}
+                )
+
+        ret = super().to_internal_value(data)
+        ret["sizes"] = data.get("sizes", [])
+        ret["tags"] = data.get("tags", [])
+        return ret
+
     def validate(self, attrs):
+        sizes = attrs.get("sizes", [])
         has_sizes = attrs.get("has_sizes")
-        reserved_quantity = attrs.get("reserved_quantity")
-        available_quantity = attrs.get("available_quantity")
-        sizes = self.initial_data.get("sizes")
+        has_available = "available_quantity" in attrs
+
+        # Validate sizes
+        validated_sizes = SizeSerializer(many=True).run_validation(sizes)
+        attrs["sizes"] = validated_sizes
 
         if has_sizes:
-            if not sizes or len(sizes) == 0:
-                raise serializers.ValidationError(
-                    {
-                        "sizes": "At least one size entry is required when has_sizes is True."
-                    }
+            if not validated_sizes:
+                self.logger.error(
+                    "At least one size must be provided when 'has_sizes' is True."
                 )
-            if reserved_quantity is not None:
                 raise serializers.ValidationError(
-                    {
-                        "reserved_quantity": "This field must be null when has_sizes is True."
-                    }
-                )
-            if available_quantity is not None:
-                raise serializers.ValidationError(
-                    {
-                        "available_quantity": "This field must be null when has_sizes is True."
-                    }
+                    "At least one size must be provided when 'has_sizes' is True."
                 )
         else:
-            if sizes:
-                raise serializers.ValidationError(
-                    {"sizes": "Sizes must be empty when has_sizes is False."}
+            if not has_available:
+                self.logger.error(
+                    "Product must have 'available_quantity' when has_sizes is False."
                 )
-            if reserved_quantity is None:
                 raise serializers.ValidationError(
-                    {
-                        "reserved_quantity": "This field cannot be null when has_sizes is False."
-                    }
+                    "Product must have 'available_quantity' when has_sizes is False."
                 )
-            if available_quantity is None:
-                raise serializers.ValidationError(
-                    {
-                        "available_quantity": "This field cannot be null when has_sizes is False."
-                    }
-                )
-
         return attrs
 
-    def validate_category(self, value):
-        if not value:
-            raise serializers.ValidationError("Category is required.")
-        if not isinstance(value, str):
-            raise serializers.ValidationError("Category must be a string.")
-        return value.strip()
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["tags"] = [tag.name for tag in instance.tags.all()]
+        return rep
 
-    def validate_tags(self, value):
-        # Normalize each tag string
-        return [tag.strip() for tag in value]
+    def create(self, validated_data):
+        tags_data = validated_data.pop("tags", [])
+        sizes_data = validated_data.pop("sizes", [])
+        if not validated_data.get("has_sizes"):
+            validated_data["reserved_quantity"] = 0
+        product = Product.objects.create(**validated_data)
+
+        for tag_name in tags_data:
+            tag, _ = Tag.objects.get_or_create(name=tag_name)
+            product.tags.add(tag)
+
+        if sizes_data:
+            for size_data in sizes_data:
+                Size.objects.create(product=product, reserved_quantity=0, **size_data)
+
+        return product
 
     def validate_picture(self, image):
         if image is None:
@@ -181,23 +146,12 @@ class ProductSerializer(serializers.ModelSerializer):
 
         image_extension = os.path.splitext(image.name)[1][1:].lower()
         if image_extension not in allowed_image_extensions:
-            logger.error("Unsupported file extension. Allowed: jpg, jpeg, png.")
+            self.logger.error("Unsupported file extension. Allowed: jpg, jpeg, png.")
             raise serializers.ValidationError(
                 "Unsupported file extension. Allowed: jpg, jpeg, png."
             )
 
         if image.size > allowed_image_size:
-            logger.error("The image is too large. Max size: 5MB.")
+            self.logger.error("The image is too large. Max size: 5MB.")
             raise serializers.ValidationError("The image is too large. Max size: 5MB.")
         return image
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        # Category is now a string
-        data["category"] = instance.category
-        # Convert tags to list of strings
-        data["tags"] = [tag["name"] for tag in data.get("tags", [])]
-        return data
-
-
-

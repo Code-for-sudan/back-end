@@ -1,3 +1,4 @@
+import logging
 from django.conf import settings
 from django.db import models
 from stores.models import Store
@@ -19,6 +20,7 @@ class Tag(models.Model):
 
 
 class Product(models.Model):
+    logger = logging.getLogger(__name__)
     """
     Represents a product entity with key details such as
     name, description, price, category, image, color, size, quantity,
@@ -52,7 +54,6 @@ class Product(models.Model):
     product_name = models.CharField(max_length=255)
     product_description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    picture = models.CharField(max_length=255)
     color = models.CharField(max_length=50, blank=True, null=True)
     brand = models.CharField(max_length=100, blank=True, null=True)
     available_quantity = models.IntegerField(blank=True, null=True)
@@ -83,19 +84,23 @@ class Product(models.Model):
     def clean(self):
         if self.has_sizes:
             if self.reserved_quantity is not None:
+                self.logger.error("reserved_quantity must be null when has_sizes is True.")
                 raise ValidationError(
                     {"reserved_quantity": "must be null when has_sizes is True."}
                 )
             if self.available_quantity is not None:
+                self.logger.error("available_quantity must be null when has_sizes is True.")
                 raise ValidationError(
                     {"available_quantity": "must be null when has_sizes is True."}
                 )
         else:
             if self.reserved_quantity is None:
+                self.logger.error("reserved_quantity cannot be null when has_sizes is False.")
                 raise ValidationError(
                     {"reserved_quantity": "Cannot be null when has_sizes is False."}
                 )
             if self.available_quantity is None:
+                self.logger.error("available_quantity cannot be null when has_sizes is False.")
                 raise ValidationError(
                     {"available_quantity": "Cannot be null when has_sizes is False."}
                 )
@@ -105,7 +110,7 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
 class Size(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="sizes")
     size = models.CharField(max_length=50)
     available_quantity = models.IntegerField()
     reserved_quantity = models.BigIntegerField()
