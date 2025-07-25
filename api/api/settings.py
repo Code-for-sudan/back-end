@@ -23,108 +23,108 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # their data types, and default values (used if not defined in the .env file).
 env = environ.Env(
     DEBUG=(bool, False),
-    SECRET_KEY=(str, ''),
+    SECRET_KEY=(str, ""),
     ALLOWED_HOSTS=(list, []),
-    REDIS_DATABASE_URL=(str, ''),
-    CELERY_BROKER_URL=(str, ''),
-    GOOGLE_REDIRECT_URI=(str, ''),
-    GOOGLE_CLIENT_ID=(str, ''),
-    GOOGLE_CLIENT_SECRET=(str, ''),
-    USER=(str, ''),
-    PASSWORD=(str, ''),
-    HOST=(str, 'db'),
-    PORT=(str, '3306'),
-    NAME=(str, ''),
-    EMAIL_HOST=(str, 'smtp.example.com'),
+    REDIS_DATABASE_URL=(str, ""),
+    CELERY_BROKER_URL=(str, ""),
+    GOOGLE_REDIRECT_URI=(str, ""),
+    GOOGLE_CLIENT_ID=(str, ""),
+    GOOGLE_CLIENT_SECRET=(str, ""),
+    USER=(str, ""),
+    PASSWORD=(str, ""),
+    HOST=(str, "db"),
+    PORT=(str, "3306"),
+    NAME=(str, ""),
+    EMAIL_HOST=(str, "smtp.example.com"),
     EMAIL_PORT=(int, 587),
     EMAIL_USE_TLS=(bool, True),
     EMAIL_USE_SSL=(bool, False),
-    EMAIL_HOST_USER=(str, ''),
-    EMAIL_HOST_PASSWORD=(str, ''),
-    EMAIL_HOST_USER_NO_REPLY=(str, ''),
-    EMAIL_HOST_PASSWORD_NO_REPLY=(str, ''),
-    EMAIL_HOST_USER_SUPPORT=(str, ''),
-    EMAIL_HOST_PASSWORD_SUPPORT=(str, ''),
-    EMAIL_HOST_USER_SECURITY=(str, ''),
-    EMAIL_HOST_PASSWORD_SECURITY=(str, ''),
-    DEFAULT_FROM_EMAIL=(str, ''),
-    EMAIL_SUBJECT_PREFIX=(str, '[Sudamall] '),
+    EMAIL_HOST_USER=(str, ""),
+    EMAIL_HOST_PASSWORD=(str, ""),
+    EMAIL_HOST_USER_NO_REPLY=(str, ""),
+    EMAIL_HOST_PASSWORD_NO_REPLY=(str, ""),
+    EMAIL_HOST_USER_SUPPORT=(str, ""),
+    EMAIL_HOST_PASSWORD_SUPPORT=(str, ""),
+    EMAIL_HOST_USER_SECURITY=(str, ""),
+    EMAIL_HOST_PASSWORD_SECURITY=(str, ""),
+    DEFAULT_FROM_EMAIL=(str, ""),
+    EMAIL_SUBJECT_PREFIX=(str, "[Sudamall] "),
     EMAIL_TIMEOUT=(int, 5),
-    FRONTEND_ACTIVATION_URL=(str, '')
+    FRONTEND_ACTIVATION_URL=(str, ""),
 )
 
 # Quick-start development (settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
-FRONTEND_ACTIVATION_URL = env('FRONTEND_ACTIVATION_URL')
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
+FRONTEND_ACTIVATION_URL = env("FRONTEND_ACTIVATION_URL")
 
 # Application definition
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'channels',
-    'channels_redis',
-    'accounts.apps.AccountsConfig',
-    'authentication.apps.AuthenticationConfig',
-    'stores.apps.StoresConfig',
-    'products.apps.ProductsConfig',
-    'notifications.apps.NotificationsConfig',
-    'search.apps.SearchConfig',
-    'chat.apps.ChatConfig',
-    'django_elasticsearch_dsl',
-    'rest_framework',
-    'django_celery_beat',
-    'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # For token blacklisting
-    'drf_spectacular',
-    'corsheaders',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "channels",
+    "channels_redis",
+    "accounts.apps.AccountsConfig",
+    "authentication.apps.AuthenticationConfig",
+    "stores.apps.StoresConfig",
+    "products.apps.ProductsConfig",
+    "notifications.apps.NotificationsConfig",
+    "search.apps.SearchConfig",
+    "chat.apps.ChatConfig",
+    "django_elasticsearch_dsl",
+    "rest_framework",
+    "django_celery_beat",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",  # For token blacklisting
+    "drf_spectacular",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Must be high in the list
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",  # Must be high in the list
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'api.urls'
+ROOT_URLCONF = "api.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [
-            os.path.join(BASE_DIR, 'media', 'email_templates'),
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [
+            os.path.join(BASE_DIR, "media", "email_templates"),
         ],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'api.wsgi.application'
+WSGI_APPLICATION = "api.wsgi.application"
 
-ASGI_APPLICATION = 'api.asgi.application'
+ASGI_APPLICATION = "api.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
@@ -140,46 +140,42 @@ CHANNEL_LAYERS = {
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME', 'myproject'),
-        'USER': os.getenv('DB_USER', 'myuser'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'mypassword'),
-        'HOST': os.getenv('DB_HOST', 'db'),
-        'PORT': os.getenv('DB_PORT', '3306'),
-        'TEST': {
-            'NAME': os.getenv('MYSQL_TEST_DB', 'test_myproject'),
-        }
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.getenv("DB_NAME", "myproject"),
+        "USER": os.getenv("DB_USER", "myuser"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "mypassword"),
+        "HOST": os.getenv("DB_HOST", "db"),
+        "PORT": os.getenv("DB_PORT", "3306"),
+        "TEST": {
+            "NAME": os.getenv("MYSQL_TEST_DB", "test_myproject"),
+        },
     }
 }
 
 # Use SQLite for tests in local development
 # This allows for faster test runs without needing a MySQL server.
-if 'test' in sys.argv or 'test_coverage' in sys.argv:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
+if "test" in sys.argv or "test_coverage" in sys.argv:
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
     }
 
-if 'test' in sys.argv or 'pytest' in sys.argv:
+if "test" in sys.argv or "pytest" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
 
 
 ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': os.getenv("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
+    "default": {
+        "hosts": os.getenv("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
     },
 }
 
 
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv("REDIS_DATABASE_URL", "redis://redis:6379"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     }
 }
 
@@ -189,16 +185,16 @@ CACHES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -206,9 +202,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -218,20 +214,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 #### CELERY CONFIGURATION ####
 # Broker URL for Redis (Celery)
-CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
 
 # Store Celery task results in Redis (Optional)
-CELERY_RESULT_BACKEND = env('REDIS_DATABASE_URL')
+CELERY_RESULT_BACKEND = env("REDIS_DATABASE_URL")
 
 # Import task modules for the django project app
 CELERY_IMPORTS = (
@@ -241,22 +237,24 @@ CELERY_IMPORTS = (
 )
 
 # Set Celery to use the same time zone as Django
-CELERY_TIMEZONE = 'UTC'
+CELERY_TIMEZONE = "UTC"
 CELERY_ENABLE_UTC = True
 
 # Optional: Serialization formats
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 
 # Enable events (for Flower monitoring, optional)
 CELERY_SEND_EVENTS = True
 
 # Schedule the Celery task to delete expired tokens every minute
 CELERY_BEAT_SCHEDULE = {
-    'clean_expired_blacklisted_tokens_every_minute': {
-        'task': 'users.celery_tasks.clean_expired_blacklisted_tokens',
-        'schedule': crontab(minute='*',),  # Runs at the start of every hour
+    "clean_expired_blacklisted_tokens_every_minute": {
+        "task": "users.celery_tasks.clean_expired_blacklisted_tokens",
+        "schedule": crontab(
+            minute="*",
+        ),  # Runs at the start of every hour
     },
 }
 
@@ -265,71 +263,71 @@ CELERY_TRACK_STARTED = True
 
 #### Email Configuration ####
 # Email settings for sending notifications
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env('EMAIL_PORT')
-EMAIL_USE_TLS = env('EMAIL_USE_TLS')
-EMAIL_USE_SSL = env('EMAIL_USE_SSL')
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS")
+EMAIL_USE_SSL = env("EMAIL_USE_SSL")
 
-EMAIL_HOST_USER_NO_REPLY = env('EMAIL_HOST_USER_NO_REPLY')
-EMAIL_HOST_PASSWORD_NO_REPLY = env('EMAIL_HOST_PASSWORD_NO_REPLY')
+EMAIL_HOST_USER_NO_REPLY = env("EMAIL_HOST_USER_NO_REPLY")
+EMAIL_HOST_PASSWORD_NO_REPLY = env("EMAIL_HOST_PASSWORD_NO_REPLY")
 
-EMAIL_HOST_USER_SUPPORT = env('EMAIL_HOST_USER_SUPPORT')
-EMAIL_HOST_PASSWORD_SUPPORT = env('EMAIL_HOST_PASSWORD_SUPPORT')
+EMAIL_HOST_USER_SUPPORT = env("EMAIL_HOST_USER_SUPPORT")
+EMAIL_HOST_PASSWORD_SUPPORT = env("EMAIL_HOST_PASSWORD_SUPPORT")
 
-EMAIL_HOST_USER_SECURITY = env('EMAIL_HOST_USER_SECURITY')
-EMAIL_HOST_PASSWORD_SECURITY = env('EMAIL_HOST_PASSWORD_SECURITY')
+EMAIL_HOST_USER_SECURITY = env("EMAIL_HOST_USER_SECURITY")
+EMAIL_HOST_PASSWORD_SECURITY = env("EMAIL_HOST_PASSWORD_SECURITY")
 
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
-EMAIL_SUBJECT_PREFIX = env('EMAIL_SUBJECT_PREFIX')
-EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+EMAIL_SUBJECT_PREFIX = env("EMAIL_SUBJECT_PREFIX")
+EMAIL_TIMEOUT = env("EMAIL_TIMEOUT")
 
 
 #### CORS Configuration ####
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
     "https://sudamall.ddns.net",
-    "https://sudamall.me",           # <-- new domain
+    "https://sudamall.me",  # <-- new domain
     "http://localhost:5173",
     "http://sudamall.ddns.net:5174",
-    "http://sudamall.me:5174",       # <-- dev port for new domain
+    "http://sudamall.me:5174",  # <-- dev port for new domain
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://sudamall\.ddns\.net$",
-    r"^https://sudamall\.me$",       # <-- new domain regex
+    r"^https://sudamall\.me$",  # <-- new domain regex
     r"^http://localhost:\d+$",
     r"^http://sudamall\.ddns\.net:5174$",
-    r"^http://sudamall\.me:5174$",   # <-- dev port regex for new domain
+    r"^http://sudamall\.me:5174$",  # <-- dev port regex for new domain
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
 # Important for credentialed requests
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 # Ensure session and CSRF cookies work cross-origin
-SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://sudamall.ddns.net",
-    "https://sudamall.me",           # <-- new domain
+    "https://sudamall.me",  # <-- new domain
     "http://localhost:5173",
     "http://sudamall.ddns.net:5174",
-    "http://sudamall.me:5174",       # <-- dev port for new domain
+    "http://sudamall.me:5174",  # <-- dev port for new domain
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -337,301 +335,299 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 ####  Logging Configuration ####
 # Create a 'logs' directory in your project root
-LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # The logging configuration dictionary
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,  # Let Django & other loggers continue
-
-    'formatters': {
-        'verbose': {
-            'format': '[{asctime}] {levelname} {name} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,  # Let Django & other loggers continue
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} {message}",
+            "style": "{",
         },
-        'json': {
-            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
-            'fmt': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s",
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',  # Or 'json' for JSON logs
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOGS_DIR, 'django.log'),
-            'maxBytes': 5 * 1024 * 1024,  # 5MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-        },
-        'celery': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(LOGS_DIR, 'celery.log'),
-            'maxBytes': 5 * 1024 * 1024,
-            'backupCount': 5,
-            'formatter': 'verbose',
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
         },
     },
-
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",  # Or 'json' for JSON logs
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "django.log"),
+            "maxBytes": 5 * 1024 * 1024,  # 5MB
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+        "celery": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(LOGS_DIR, "celery.log"),
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
     },
-
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
         },
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'WARNING',  # Set to DEBUG for SQL queries
-            'propagate': False,
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Set to DEBUG for SQL queries
+            "propagate": False,
         },
-        'celery': {
-            'handlers': ['file'],
-            'level': 'INFO',
-            'propagate': False,
+        "celery": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": False,
         },
-        'email': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed email logs
-            'propagate': False,
+        "email": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed email logs
+            "propagate": False,
         },
-        'signals': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed signal logs
-            'propagate': False,
+        "signals": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed signal logs
+            "propagate": False,
         },
-        'authentication_views': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "authentication_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'authentication_serializers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "authentication_serializers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'authentication_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "authentication_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'authentication_services': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "authentication_services": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'celery_tasks.authentication': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "celery_tasks.authentication": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'accounts_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "accounts_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'acoounts_tasks': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "acoounts_tasks": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'accounts_views': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "accounts_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'accounts_serializers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "accounts_serializers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'accounts_utils': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "accounts_utils": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'stores_models': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "stores_models": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'stores_views': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "stores_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'stores_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "stores_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'stores_serializers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "stores_serializers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'products_models': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "products_models": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'products_views': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "products_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'products_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "products_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'products_serializers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "products_serializers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'notifications_models': {
-           'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "notifications_models": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'search_views': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "search_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'notifications_views': {
-            'handlers': ['file'],
-             'level': 'DEBUG',  # Set to DEBUG for detailed logs
-             'propagate': False,
+        "notifications_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'search_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "search_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'notifications_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "notifications_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'notifications_serializers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "notifications_serializers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'search_consumers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "search_consumers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'chat_consumers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "chat_consumers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'chat_views': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "chat_views": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'chat_tests': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "chat_tests": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'chat_serializers': {
-            'handlers': ['file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
+        "chat_serializers": {
+            "handlers": ["file"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
         },
-        'middlewares': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logs
-            'propagate': False,
-        }
+        "middlewares": {
+            "handlers": ["file", "console"],
+            "level": "DEBUG",  # Set to DEBUG for detailed logs
+            "propagate": False,
+        },
     },
 }
 
 
-
 #### Rest Framework Configuration ####
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,  # Adjust as needed
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',  # For web browsable API (dev only)
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,  # Adjust as needed
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",  # For web browsable API (dev only)
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',  # Browsable API for dev only
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",  # Browsable API for dev only
     ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.ScopedRateThrottle', # For custom throttling scopes
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",  # For custom throttling scopes
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '10/minute',         # 10 requests per minute for anonymous users
-        'user': '100/hour',          # 100 requests per hour for authenticated users
-        'password_resert': '100/hour',  # 5 requests per hour for password reset
-        'newsletter-subscription': '10/day',  # 10 requests per day for newsletter subscription
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "10/minute",  # 10 requests per minute for anonymous users
+        "user": "100/hour",  # 100 requests per hour for authenticated users
+        "password_resert": "100/hour",  # 5 requests per hour for password reset
+        "newsletter-subscription": "10/day",  # 10 requests per day for newsletter subscription
     },
 }
 
 #### Spectacular Configuration ####
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'API Documentation',
-    'DESCRIPTION': 'API documentation for the Django project.',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,  # Disable schema serving in production
-    'SCHEMA_PATH_PREFIX': '/api/v1',  # Adjust as needed
-    'COMPONENT_SPLIT_REQUEST': True,  # Split request body into components
+    "TITLE": "API Documentation",
+    "DESCRIPTION": "API documentation for the Django project.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,  # Disable schema serving in production
+    "SCHEMA_PATH_PREFIX": "/api/v1",  # Adjust as needed
+    "COMPONENT_SPLIT_REQUEST": True,  # Split request body into components
     # 'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_schema'],
 }
 
 # Simple JWT settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Adjust as needed
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,  # requires blacklist app
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # Adjust as needed
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,  # requires blacklist app
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 # The custom user model that will handel the outh
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = "accounts.User"
 
 # Google OAuth2 settings
-GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI')
-GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = env("GOOGLE_REDIRECT_URI")
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET")
 
 ##### Media Settings ####
 MEDIA_URL = "/media/"  # Public URL for accessing media files
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")  # Directory where uploaded files will be stored
+MEDIA_ROOT = os.path.join(
+    BASE_DIR, "media"
+)  # Directory where uploaded files will be stored
 
 #### Static Files Settings ####
-STATIC_URL = '/static/'  # URL to access static files
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Directory where static files
+STATIC_URL = "/static/"  # URL to access static files
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Directory where static files
 
 #### Phone Number Settings ####
 # Default region for phone numbers
 PHONENUMBER_DEFAULT_REGION = "SD"  # Sudan, change as needed
+ELASTICSEARCH_DSL_AUTOSYNC = False

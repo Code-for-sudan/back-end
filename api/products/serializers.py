@@ -53,6 +53,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "owner_id",
             "store",
             "created_at",
+            "reserved_quantity",
         ]
         extra_kwargs = {
             "product_name": {"required": True},
@@ -93,13 +94,12 @@ class ProductSerializer(serializers.ModelSerializer):
         sizes = attrs.get("sizes", [])
         has_sizes = attrs.get("has_sizes")
         has_available = "available_quantity" in attrs
-
         # Validate sizes
         validated_sizes = SizeSerializer(many=True).run_validation(sizes)
         attrs["sizes"] = validated_sizes
 
         if has_sizes:
-            if not validated_sizes:
+            if not validated_sizes and not self.partial:
                 self.logger.error(
                     "At least one size must be provided when 'has_sizes' is True."
                 )
@@ -107,7 +107,7 @@ class ProductSerializer(serializers.ModelSerializer):
                     "At least one size must be provided when 'has_sizes' is True."
                 )
         else:
-            if not has_available:
+            if not has_available and not self.partial:
                 self.logger.error(
                     "Product must have 'available_quantity' when has_sizes is False."
                 )
@@ -155,3 +155,26 @@ class ProductSerializer(serializers.ModelSerializer):
             self.logger.error("The image is too large. Max size: 5MB.")
             raise serializers.ValidationError("The image is too large. Max size: 5MB.")
         return image
+
+    def update(self, instance, validated_data):
+        tags_data = validated_data.pop("tags", None)
+        sizes_data = validated_data.pop("sizes", None)
+        print(self.initial_data.get("sizes", None))
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if tags_data is not None:
+            instance.tags.clear()
+            for tag_name in tags_data:
+                tag, _ = Tag.objects.get_or_create(name=tag_name)
+                instance.tags.add(tag)
+
+        if sizes_data is not None:
+            # Delete all existing sizes related to this product
+            instance.sizes.all().delete()
+            for size_data in sizes_data:
+                Size.objects.create(product=instance, reserved_quantity=0, **size_data)
+
+        return instance

@@ -36,15 +36,25 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Product.objects.all()  # Get all products initially
+    def get_permissions(self):
+        # Allow unauthenticated access for list and retrieve actions
+        if self.action in ["list", "retrieve"]:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+    queryset = Product.objects.all()  
 
     def get_queryset(self):
-        """Override to filter by category if specified."""
+        """Override to filter by category and optionally sort by most recent."""
         queryset = self.queryset
         category = self.request.query_params.get("category")
+        sort = self.request.query_params.get("sort")  
+
         if category:
             queryset = queryset.filter(category=category)
+
+        if sort == "recent":
+            queryset = queryset.order_by("-created_at")  
+
         return queryset
 
     @extend_schema(
@@ -104,19 +114,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductSerializer(product).data, status=status.HTTP_200_OK)
 
     @extend_schema(
-        request=ProductSerializer,
-        responses={
-            200: OpenApiResponse(
-                response=ProductSerializer, description="Product updated successfully."
-            ),
-            400: OpenApiResponse(
-                description="Product update failed or validation error."
-            ),
-            404: OpenApiResponse(description="Product not found."),
-        },
-        summary="Update Product",
-    )
-    @extend_schema(
         responses={
             204: OpenApiResponse(description="Product deleted successfully."),
             403: OpenApiResponse(
@@ -142,5 +139,29 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
         product.picture.delete(save=False)
         product.delete()
+        logger.info(f"Product {product.id} deleted by user {request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT,
         )
+
+    def update(self, request, *args, **kwargs):
+        product = self.get_object()
+        data = request.data.copy()
+        serializer = self.get_serializer(product, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_product = serializer.save()
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to update product %s without permission.",
+                request.user.id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to update this product."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        logger.info(f"Product {updated_product.id} updated by user {request.user.id}")
+        response = {
+            "message": "Product created successfully",
+            "product": ProductSerializer(updated_product).data,
+        }
+        return Response(response, status=status.HTTP_201_CREATED)
