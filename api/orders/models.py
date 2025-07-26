@@ -76,6 +76,7 @@ class Order(models.Model):
     payment_key = models.CharField(max_length=100, null=True, blank=True)
     payment_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    payment_expires_at = models.DateTimeField(null=True, blank=True, help_text="Payment deadline for under_paying orders")
     
     # Notes and additional info
     customer_notes = models.TextField(blank=True, help_text="Customer order notes")
@@ -107,6 +108,22 @@ class Order(models.Model):
     @property
     def is_delivered(self):
         return self.status == 'arrived'
+    
+    @property
+    def is_payment_expired(self):
+        """Check if payment time limit has been exceeded"""
+        if self.status != 'under_paying' or not self.payment_expires_at:
+            return False
+        return timezone.now() > self.payment_expires_at
+    
+    @property
+    def payment_time_remaining(self):
+        """Get remaining time for payment in seconds"""
+        if self.status != 'under_paying' or not self.payment_expires_at:
+            return 0
+        
+        remaining = self.payment_expires_at - timezone.now()
+        return max(0, int(remaining.total_seconds()))
     
     class Meta:
         ordering = ['-created_at']

@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'products.apps.ProductsConfig',
     'orders.apps.OrdersConfig',
     'carts.apps.CartsConfig',
+    'payments.apps.PaymentsConfig',
     'notifications.apps.NotificationsConfig',
     'search.apps.SearchConfig',
     'chat.apps.ChatConfig',

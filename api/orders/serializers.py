@@ -58,11 +58,18 @@ class OrderStatusUpdateSerializer(serializers.Serializer):
 
 
 class PaymentConfirmationSerializer(serializers.Serializer):
-    """Serializer for payment confirmation"""
-    payment_hash = serializers.CharField(max_length=100)
-    payment_key = serializers.CharField(max_length=100)
-    transaction_id = serializers.CharField(max_length=100, required=False)
-    payment_gateway_response = serializers.JSONField(required=False)
+    """Serializer for payment confirmation - Updated to work with payments app"""
+    payment_id = serializers.UUIDField()
+    
+    def validate_payment_id(self, value):
+        try:
+            from payments.models import Payment
+            payment = Payment.objects.get(payment_id=value)
+            if payment.status != 'completed':
+                raise serializers.ValidationError("Payment has not been completed")
+            return value
+        except Payment.DoesNotExist:
+            raise serializers.ValidationError("Payment not found")
 
 
 class OrderTrackingSerializer(serializers.ModelSerializer):
