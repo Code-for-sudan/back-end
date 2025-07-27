@@ -41,19 +41,35 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
-    queryset = Product.objects.all()  
+    queryset = Product.objects.alive()
 
     def get_queryset(self):
-        """Override to filter by category and optionally sort by most recent."""
+        """Override to filter by category and optionally sort by price, recent, or both. Only alive products."""
         queryset = self.queryset
         category = self.request.query_params.get("category")
-        sort = self.request.query_params.get("sort")  
+        sort = self.request.query_params.get("sort")
 
         if category:
             queryset = queryset.filter(category=category)
 
-        if sort == "recent":
-            queryset = queryset.order_by("-created_at")  
+        # sort param can be: 'recent', 'price', '-price', 'price,-created_at', etc. (comma-separated list)
+        if sort:
+            field_map = {
+                "recent": "-created_at",
+                "-recent": "created_at",
+            }
+            valid_fields = set(f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
+            sort_fields = []
+            for field in sort.split(","):
+                field = field.strip()
+                mapped = field_map.get(field)
+                if mapped:
+                    sort_fields.append(mapped)
+                elif field.lstrip("-") in valid_fields:
+                    sort_fields.append(field)
+                # else: ignore unknown fields
+            if sort_fields:
+                queryset = queryset.order_by(*sort_fields)
 
         return queryset
 
@@ -137,11 +153,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to delete this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        product.picture.delete(save=False)
         product.delete()
-        logger.info(f"Product {product.id} deleted by user {request.user.id}")
-        return Response(status=status.HTTP_204_NO_CONTENT,
-        )
+        logger.info(f"Product {product.id} soft-deleted by user {request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         product = self.get_object()

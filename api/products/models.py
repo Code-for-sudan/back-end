@@ -19,6 +19,20 @@ class Tag(models.Model):
         return str(self.name)
 
 
+class ProductQuerySet(models.QuerySet):
+    def delete(self):
+        return super().update(is_deleted=True)
+
+    def hard_delete(self):
+        return super().delete()
+
+    def alive(self):
+        return self.filter(is_deleted=False)
+
+    def dead(self):
+        return self.filter(is_deleted=True)
+
+
 class Product(models.Model):
     logger = logging.getLogger(__name__)
     """
@@ -68,6 +82,19 @@ class Product(models.Model):
     properties = models.JSONField(blank=True, null=True)
     tags = models.ManyToManyField(Tag, related_name="products", through="ProductTag")
     picture = models.ImageField(upload_to="products/")
+    is_deleted = models.BooleanField(default=False)
+
+
+    objects = ProductQuerySet.as_manager()
+
+    def delete(self, using=None, keep_parents=False, hard=False):
+        if hard:
+            return super().delete(using=using, keep_parents=keep_parents)
+        self.is_deleted = True
+        self.save(update_fields=["is_deleted"])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        return super().delete(using=using, keep_parents=keep_parents)
 
     def __str__(self):
         return str(self.product_name)
