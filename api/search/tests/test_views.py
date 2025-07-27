@@ -34,10 +34,10 @@ class ProductSearchViewTests(TestCase):
 
         # Create users
         self.business_user = User.objects.create_user(
-            email="business@example.com", password="testpass123"
+            email="business@example.com", password="testpass123", is_active=True,
         )
         self.other_user = User.objects.create_user(
-            email="other@example.com", password="testpass123"
+            email="other@example.com", password="testpass123", is_active=True,
         )
 
         # Create stores
