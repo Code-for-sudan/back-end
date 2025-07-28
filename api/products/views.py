@@ -1,11 +1,9 @@
-import json
 import logging
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Product, Size, Tag
+from .models import Product
 from .serializers import ProductSerializer
-from stores.models import Store
 from django.utils.timezone import now
 logger = logging.getLogger("products_views")
 
@@ -135,9 +133,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             product = self.get_queryset().prefetch_related(
                 "sizes").get(pk=kwargs["pk"])
         except Product.DoesNotExist:
-            return Response({"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        return Response(ProductSerializer(product).data, status=status.HTTP_200_OK)
+            return Response({"detail": "Product not found."},
+                            status=status.HTTP_404_NOT_FOUND)
+        user = self.request.user
+        product_data = ProductSerializer(product).data
+        if user is not None:
+            is_favourite = user.favourite_products.filter(
+                pk=product.pk).exists()
+            product_data["is_favourite"] = is_favourite
+        return Response(product_data, status=status.HTTP_200_OK)
 
     @extend_schema(
         responses={
@@ -190,3 +194,22 @@ class ProductViewSet(viewsets.ModelViewSet):
             "product": ProductSerializer(updated_product).data,
         }
         return Response(response, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        responses={200: ProductSerializer(many=True)},
+        summary="List Products",
+        description="Get all products with an `is_favourite` flag if the user is authenticated.",
+    )
+    def list(self, request, *args, **kwargs):
+        products = self.get_queryset().prefetch_related("sizes")
+        serialized_products = ProductSerializer(products, many=True).data
+
+        # If user is authenticated, add is_favourite flag
+        if request.user.is_authenticated:
+            favourite_ids = set(
+                request.user.favourite_products.values_list("id", flat=True)
+            )
+            for product_data in serialized_products:
+                product_data["is_favourite"] = product_data["id"] in favourite_ids
+
+        return Response(serialized_products, status=status.HTTP_200_OK)
