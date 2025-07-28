@@ -6,7 +6,9 @@ from products.models import Product
 from products.serializers import ProductSerializer
 import logging
 
+
 logger = logging.getLogger('products_tests')
+
 
 class ProductSerializerTests(TestCase):
     """
@@ -37,54 +39,76 @@ class ProductSerializerTests(TestCase):
             name='Test Store',
             location='Test Location'
         )
-        self.valid_data = {
+        self.valid_data_without_size = {
             'product_name': 'Test Product',
             'product_description': 'A great product.',
             'price': '19.99',
             'category': 'Electronics',
             'picture': self.create_test_image(),
-            'quantity': 10,
             'color': 'Red',
-            'size': 'M',
+            'has_sizes': False,
+            'available_quantity': 10,
+        }
+        self.valid_data_with_size = {
+            'product_name': 'Test Product',
+            'product_description': 'A great product.',
+            'price': '19.99',
+            'category': 'Electronics',
+            'picture': self.create_test_image(),
+            'color': 'Red',
+            'has_sizes': True,
+            'sizes': [{"size": "M", "available_quantity": 5}, {"size": "L", "available_quantity": 3}],
         }
 
-    def test_serializer_with_valid_data(self):
-        data = self.valid_data.copy()
+    def test_serializer_with_valid_data_without_size(self):
+        data = self.valid_data_without_size.copy()
         data['picture'] = self.create_test_image()
         serializer = ProductSerializer(data=data)
         logger.info(f"Validating serializer with valid data: {data}")
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        logger.info("Serializer is valid with all required and optional fields.")
+        logger.info(
+            "Serializer is valid with all required and optional fields.")
+
+    def test_serializer_with_valid_data_with_size(self):
+        data = self.valid_data_with_size.copy()
+        data['picture'] = self.create_test_image()
+        serializer = ProductSerializer(data=data)
+        logger.info(f"Validating serializer with valid data: {data}")
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        logger.info(
+            "Serializer is valid with all required and optional fields.")
 
     def test_serializer_missing_required_field(self):
-        data = self.valid_data.copy()
+        data = self.valid_data_without_size.copy()
         data.pop('product_name')
         data['picture'] = self.create_test_image()
         serializer = ProductSerializer(data=data)
-        logger.info(f"Validating serializer with missing required field 'product_name': {data}")
+        logger.info(
+            f"Validating serializer with missing required field 'product_name': {data}")
         self.assertFalse(serializer.is_valid())
         logger.info(f"Serializer errors: {serializer.errors}")
         self.assertIn('product_name', serializer.errors)
 
     def test_serializer_optional_fields(self):
-        data = self.valid_data.copy()
+        data = self.valid_data_without_size.copy()
         data.pop('color')
-        data.pop('size')
         data['picture'] = self.create_test_image()
         serializer = ProductSerializer(data=data)
-        logger.info(f"Validating serializer with optional fields omitted: {data}")
+        logger.info(
+            f"Validating serializer with optional fields omitted: {data}")
         self.assertTrue(serializer.is_valid(), serializer.errors)
         logger.info("Serializer is valid without optional fields.")
 
     def test_create_product(self):
-        data = self.valid_data.copy()
+        data = self.valid_data_without_size.copy()
         data['picture'] = self.create_test_image()
         serializer = ProductSerializer(data=data)
         logger.info(f"Creating product with data: {data}")
         self.assertTrue(serializer.is_valid(), serializer.errors)
         product = serializer.save(owner_id=self.user, store=self.store)
         logger.info(f"Product created: {product}")
-        self.assertEqual(product.product_name, self.valid_data['product_name'])
+        self.assertEqual(product.product_name,
+                         self.valid_data_without_size['product_name'])
         self.assertEqual(product.owner_id, self.user)
         self.assertEqual(product.store, self.store)
         self.assertTrue(product.picture.name.startswith('products/test_image'))

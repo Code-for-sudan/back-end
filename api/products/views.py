@@ -96,10 +96,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        serializer = self.get_serializer(data=data)
-        if not serializer.is_valid():
-            logger.error(f"Product creation failed: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = self.request.user
         business_owner = getattr(user, "business_owner_profile", None)
@@ -111,6 +107,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            logger.error(f"Product creation failed: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         product = serializer.save(owner_id=user, store=store)
         logger.info(
             f"Product created successfully: {product.id} by user {user.id}")
@@ -189,4 +189,4 @@ class ProductViewSet(viewsets.ModelViewSet):
             "message": "Product updated successfully",
             "product": ProductSerializer(updated_product).data,
         }
-        return Response(response, status=status.HTTP_201_CREATED)
+        return Response(response, status=status.HTTP_200_OK)
