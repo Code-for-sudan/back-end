@@ -1,4 +1,8 @@
-import os, random, hashlib, logging, secrets
+import os
+import random
+import hashlib
+import logging
+import secrets
 from datetime import timedelta
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
@@ -9,6 +13,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 # Create a models
 logger = logging.getLogger('accounts_models')
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     """"
@@ -60,15 +65,22 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)  # Use email instead of username
     first_name = models.CharField(max_length=50, default="Unknown")
     last_name = models.CharField(max_length=50, default="Unknown")
-    profile_picture = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
-    phone_number = PhoneNumberField(blank=True, null=True, unique=True, db_index=True)
-    whatsapp_number = PhoneNumberField(blank=True, null=True, unique=True, db_index=True)
-    otp = models.CharField(max_length=64, blank=True, null=True, db_index=True)  # Store hashed OTP
-    otp_expires_at = models.DateTimeField(blank=True, null=True, db_index=True)  # Expiration time
+    profile_picture = models.ImageField(
+        upload_to="profile_pics/", blank=True, null=True)
+    phone_number = PhoneNumberField(
+        blank=True, null=True, unique=True, db_index=True)
+    whatsapp_number = PhoneNumberField(
+        blank=True, null=True, unique=True, db_index=True)
+    otp = models.CharField(max_length=64, blank=True,
+                           null=True, db_index=True)  # Store hashed OTP
+    otp_expires_at = models.DateTimeField(
+        blank=True, null=True, db_index=True)  # Expiration time
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)  # Required for admin access
-    is_store_owner = models.BooleanField(default=False)  # Indicates if the user is a store owner
-    s_subscribed = models.BooleanField(default=False, help_text="Is the user subscribed to the newsletter?")
+    # Indicates if the user is a store owner
+    is_store_owner = models.BooleanField(default=False)
+    s_subscribed = models.BooleanField(
+        default=False, help_text="Is the user subscribed to the newsletter?")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     account_type = models.CharField(
@@ -77,32 +89,40 @@ class User(AbstractBaseUser, PermissionsMixin):
         default='buyer',
         help_text="Type of account: 'seller' or 'buyer'."
     )
-    gender = models.CharField( # Only one option can be selected here
+    gender = models.CharField(  # Only one option can be selected here
         max_length=1,
         choices=GENDER_CHOICES,
         null=True  # Default value (optional), coz men are awesome
     )
-    location = models.CharField(max_length=255, blank=True, null=True)  # Optional location field
+    # Optional location field
+    location = models.CharField(max_length=255, blank=True, null=True)
     total_spent = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0.00,
         help_text="Total amount spent by the user in the store."
     )
+    favourite_products = models.ManyToManyField(
+        'products.Product',
+        blank=True,
+        related_name='favourited_by')
     # No password field is not explicitly defined
     # because it is inherited from Django's AbstractBaseUser class,
     # which provides the password field and related methods
     # for handling passwords securely.
 
     # Set the user groups and permissions for the user model
-    groups = models.ManyToManyField(Group, related_name="custom_user_groups", blank=True)
-    user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions", blank=True)
+    groups = models.ManyToManyField(
+        Group, related_name="custom_user_groups", blank=True)
+    user_permissions = models.ManyToManyField(
+        Permission, related_name="custom_user_permissions", blank=True)
 
     # Set the user manager model
     objects = UserManager()
-    # Those line for the create superuser command 
+    # Those line for the create superuser command
     USERNAME_FIELD = 'email'  # Set email as the unique identifier
-    REQUIRED_FIELDS = ['first_name', 'last_name']  # Required when creating superusers
+    # Required when creating superusers
+    REQUIRED_FIELDS = ['first_name', 'last_name']
 
     @property
     def last_cart(self):
@@ -118,7 +138,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         """
 
         otp_code = str(secrets.randbelow(900000) + 100000)  # 6-digit OTP
-        hashed_otp = hashlib.sha256(otp_code.encode()).hexdigest()  # Hash OTP for security
+        hashed_otp = hashlib.sha256(
+            otp_code.encode()).hexdigest()  # Hash OTP for security
         self.otp = hashed_otp
         self.otp_expires_at = now() + timedelta(minutes=5)  # OTP expires in 5 minutes
         self.save()
@@ -144,7 +165,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         if not otp_input:
             logger.info("OTP input is empty.")
             return False
-        
+
         # Chech the opt code time
         if not self.otp_expires_at or now() > self.otp_expires_at:
             logger.info("OTP has expired.")
@@ -182,8 +203,10 @@ class BusinessOwner(models.Model):
 
     # Extend the user model to create a business owner profile
     # TODO: Add more fields to the business owner profile
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='business_owner_profile')
-    store = models.OneToOneField(Store, on_delete=models.CASCADE, related_name='owner')
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name='business_owner_profile')
+    store = models.OneToOneField(
+        Store, on_delete=models.CASCADE, related_name='owner')
 
     def __str__(self):
         return f"{self.user.first_name} ({self.user.email})"
@@ -209,11 +232,13 @@ class Cart(models.Model):
         ('completed', 'Completed'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='carts')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='carts')
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='active')
     total_spent = models.FloatField(default=0.0)
     last_purchase_date = models.DateTimeField(null=True, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
