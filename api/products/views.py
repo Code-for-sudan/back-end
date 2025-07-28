@@ -6,7 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import Product, Size, Tag
 from .serializers import ProductSerializer
 from stores.models import Store
-
+from django.utils.timezone import now
 logger = logging.getLogger("products_views")
 
 
@@ -36,6 +36,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
+
     def get_permissions(self):
         # Allow unauthenticated access for list and retrieve actions
         if self.action in ["list", "retrieve"]:
@@ -51,14 +52,22 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         if category:
             queryset = queryset.filter(category=category)
-
+        has_offer = self.request.query_params.get("has_offer")
+        if has_offer and has_offer.lower() == "true":
+            queryset = queryset.filter(
+                offer__start_date__lte=now(),
+                offer__end_date__gte=now()
+            )
         # sort param can be: 'recent', 'price', '-price', 'price,-created_at', etc. (comma-separated list)
         if sort:
             field_map = {
                 "recent": "-created_at",
                 "-recent": "created_at",
+                "price": "current_price",
+                "-price": "-current_price",
             }
-            valid_fields = set(f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
+            valid_fields = set(
+                f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
             sort_fields = []
             for field in sort.split(","):
                 field = field.strip()
@@ -103,7 +112,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
 
         product = serializer.save(owner_id=user, store=store)
-        logger.info(f"Product created successfully: {product.id} by user {user.id}")
+        logger.info(
+            f"Product created successfully: {product.id} by user {user.id}")
         response = {
             "message": "Product created successfully",
             "product": ProductSerializer(product).data,
@@ -120,10 +130,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         },
         summary="Retrieve Product",
     )
-
     def retrieve(self, request, *args, **kwargs):
         try:
-            product = self.get_queryset().prefetch_related("sizes").get(pk=kwargs["pk"])
+            product = self.get_queryset().prefetch_related(
+                "sizes").get(pk=kwargs["pk"])
         except Product.DoesNotExist:
             return Response({"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -139,7 +149,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         },
         summary="Delete Product",
     )
-
     def destroy(self, request, *args, **kwargs):
         product = self.get_object()
         # Check if the current user is the owner
@@ -154,7 +163,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
         product.delete()
-        logger.info(f"Product {product.id} soft-deleted by user {request.user.id}")
+        logger.info(
+            f"Product {product.id} soft-deleted by user {request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
@@ -173,9 +183,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to update this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        logger.info(f"Product {updated_product.id} updated by user {request.user.id}")
+        logger.info(
+            f"Product {updated_product.id} updated by user {request.user.id}")
         response = {
-            "message": "Product created successfully",
+            "message": "Product updated successfully",
             "product": ProductSerializer(updated_product).data,
         }
         return Response(response, status=status.HTTP_201_CREATED)

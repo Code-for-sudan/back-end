@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import models
 from stores.models import Store
 from django.core.exceptions import ValidationError
+from django.utils.timezone import now
 
 
 class Category(models.Model):
@@ -76,14 +77,16 @@ class Product(models.Model):
     owner_id = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="products"
     )
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="products")
+    store = models.ForeignKey(
+        Store, on_delete=models.CASCADE, related_name="products")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=100)
     properties = models.JSONField(blank=True, null=True)
-    tags = models.ManyToManyField(Tag, related_name="products", through="ProductTag")
+    tags = models.ManyToManyField(
+        Tag, related_name="products", through="ProductTag")
     picture = models.ImageField(upload_to="products/")
     is_deleted = models.BooleanField(default=False)
-
 
     objects = ProductQuerySet.as_manager()
 
@@ -98,7 +101,17 @@ class Product(models.Model):
 
     def __str__(self):
         return str(self.product_name)
-
+    @property
+    def current_price(self):
+        """
+        Returns the offer price if there is an active offer,
+        otherwise returns the regular product price.
+        """
+        offer = getattr(self, "offer", None)  # Safe access
+        if offer and offer.is_active:
+            return offer.offer_price
+        return self.price
+    
     @property
     def store_name(self):
         return self.store.name
@@ -107,37 +120,63 @@ class Product(models.Model):
     def store_location(self):
         return self.store.location
 
-
     def clean(self):
         if self.has_sizes:
             if self.reserved_quantity is not None:
-                self.logger.error("reserved_quantity must be null when has_sizes is True.")
+                self.logger.error(
+                    "reserved_quantity must be null when has_sizes is True.")
                 raise ValidationError(
                     {"reserved_quantity": "must be null when has_sizes is True."}
                 )
             if self.available_quantity is not None:
-                self.logger.error("available_quantity must be null when has_sizes is True.")
+                self.logger.error(
+                    "available_quantity must be null when has_sizes is True.")
                 raise ValidationError(
                     {"available_quantity": "must be null when has_sizes is True."}
                 )
         else:
             if self.reserved_quantity is None:
-                self.logger.error("reserved_quantity cannot be null when has_sizes is False.")
+                self.logger.error(
+                    "reserved_quantity cannot be null when has_sizes is False.")
                 raise ValidationError(
                     {"reserved_quantity": "Cannot be null when has_sizes is False."}
                 )
             if self.available_quantity is None:
-                self.logger.error("available_quantity cannot be null when has_sizes is False.")
+                self.logger.error(
+                    "available_quantity cannot be null when has_sizes is False.")
                 raise ValidationError(
                     {"available_quantity": "Cannot be null when has_sizes is False."}
                 )
-    
+
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
 
+
+class Offer(models.Model):
+    """
+    Represents a product offer with a discounted price for a limited time.
+    """
+    product = models.OneToOneField(
+        Product, on_delete=models.CASCADE, related_name="offer")
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    offer_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_active(self):
+        """Return True if the current date is within the offer period."""
+        current_time = now()
+        print(f"DEBUG: start_date={self.start_date} ({type(self.start_date)}), end_date={self.end_date} ({type(self.end_date)})")
+        return self.start_date <= current_time <= self.end_date
+
+
 class Size(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="sizes")
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="sizes")
     size = models.CharField(max_length=50)
     available_quantity = models.IntegerField()
     reserved_quantity = models.BigIntegerField()
