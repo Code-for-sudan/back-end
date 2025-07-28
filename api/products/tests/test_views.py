@@ -99,7 +99,7 @@ class ProductViewSetTests(APITestCase):
 
     def test_update_product(self):
         product = Product.objects.create(
-            owner_id=self.user, store=self.store, **self.valid_data_without_size,reserved_quantity=0
+            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
         )
         url = reverse('product-detail', args=[product.id])
         update_data = {"product_name": "Updated Product"}
@@ -181,3 +181,72 @@ class ProductViewSetTests(APITestCase):
         logger.info(
             f"Create Product Unauthenticated Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_retrieve_product_with_favourite(self):
+        """Check if `is_favourite` is correctly set for a single product."""
+        product = Product.objects.create(
+            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
+        )
+        # Add product to favourites
+        self.user.favourite_products.add(product)
+
+        url = reverse('product-detail', args=[product.id])
+        response = self.client.get(url)
+        logger.info(
+            f"Retrieve Product with Favourite Response: {response.status_code} - {response.data}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('is_favourite', response.data)
+        self.assertTrue(response.data['is_favourite'])
+
+    def test_retrieve_product_without_favourite(self):
+        """Check if `is_favourite` is False when product is not favourited."""
+        product = Product.objects.create(
+            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
+        )
+        url = reverse('product-detail', args=[product.id])
+        response = self.client.get(url)
+        logger.info(
+            f"Retrieve Product without Favourite Response: {response.status_code} - {response.data}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('is_favourite', response.data)
+        self.assertFalse(response.data['is_favourite'])
+
+    def test_list_products_with_favourites(self):
+        """Check if `is_favourite` is set for all products in list."""
+        product1 = Product.objects.create(
+            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
+        )
+        product2 = Product.objects.create(
+            owner_id=self.user, store=self.store, product_name='Another Product',
+            product_description='Another desc', price='29.99', category='Clothing',
+            color='Blue', has_sizes=False, available_quantity=3,
+            picture=self.create_test_image(), reserved_quantity=0
+        )
+        self.user.favourite_products.add(product1)
+
+        response = self.client.get(self.base_url)
+        logger.info(
+            f"List Products with Favourites Response: {response.status_code} - {response.data}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 2)
+        # Check if is_favourite exists for all
+        ids = {p['id']: p for p in response.data}
+        self.assertTrue(ids[product1.id]['is_favourite'])
+        self.assertFalse(ids[product2.id]['is_favourite'])
+
+    def test_list_products_without_authentication(self):
+        """Check if `is_favourite` is NOT included when user is unauthenticated."""
+        product = Product.objects.create(
+            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
+        )
+        self.client.force_authenticate(user=None)
+        response = self.client.get(self.base_url)
+        logger.info(
+            f"List Products without Auth Response: {response.status_code} - {response.data}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+        self.assertNotIn('is_favourite', response.data[0])
