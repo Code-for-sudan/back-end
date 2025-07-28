@@ -10,6 +10,7 @@ from accounts.models import BusinessOwner
 
 logger = logging.getLogger('search_tests')
 
+
 class ProductSearchViewTests(TestCase):
     """
     Test suite for the ProductSearchView with role-based Elasticsearch filtering.
@@ -28,6 +29,7 @@ class ProductSearchViewTests(TestCase):
     validated using real indexed products (manually updated via ProductDocument).
     JWT tokens are used for authentication.
     """
+
     def setUp(self):
         self.client = APIClient()
         User = get_user_model()
@@ -59,10 +61,11 @@ class ProductSearchViewTests(TestCase):
             product_description="Apple smartphone",
             price=999.99,
             category="Electronics",
-            picture="https://example.com/iphone15.jpg",
-            quantity=5,
+            picture="https://example.com/images/iphone15.jpg",
+            available_quantity=10,
+            reserved_quantity=0,
             color="Black",
-            size="6.1",
+            has_sizes=False,
             owner_id=self.business_user,
             store=self.business_store,
         )
@@ -71,14 +74,14 @@ class ProductSearchViewTests(TestCase):
             product_description="Samsung smartphone",
             price=899.99,
             category="Electronics",
-            picture="https://example.com/galaxy.jpg",
-            quantity=4,
-            color="Gray",
-            size="6.3",
+            picture="https://example.com/images/galaxys24.jpg",
+            available_quantity=8,
+            reserved_quantity=0,
+            color="Silver",
+            has_sizes=False,
             owner_id=self.other_user,
             store=self.other_store,
         )
-
         # Index in Elasticsearch
         ProductDocument().update(self.p1)
         ProductDocument().update(self.p2)
@@ -116,12 +119,19 @@ class ProductSearchViewTests(TestCase):
         self.assertEqual(response.data.get('message'), "Search query is empty")
 
     def test_search_invalid_page(self):
-        response = self.client.get('/api/v1/search/products/', {'q': 'iPhone', 'p': 0})
+        response = self.client.get(
+            '/api/v1/search/products/', {'q': 'iPhone', 'p': 0})
+        logger.info(
+            f"Search invalid page response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data.get('message'), "Page number must be greater than 0.")
+        self.assertEqual(response.data.get('message'),
+                         "Page number must be greater than 0.")
 
     def test_search_no_results(self):
-        response = self.client.get('/api/v1/search/products/', {'q': 'nonexistentproduct', 'p': 1})
+        response = self.client.get(
+            '/api/v1/search/products/', {'q': 'NonExistentProduct', 'p': 1})
+        logger.info(
+            f"Search no results response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get('results'), [])
         self.assertEqual(response.data.get('total'), 0)

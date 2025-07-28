@@ -4,13 +4,13 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import Product
 from .serializers import ProductSerializer
-from stores.models import Store
+from django.utils.timezone import now
+logger = logging.getLogger("products_views")
 
-logger = logging.getLogger('products_views')
 
 @extend_schema(
     description="Product CRUD operations. Supports listing, creating, retrieving, updating, and deleting products.",
-    summary="Product CRUD"
+    summary="Product CRUD",
 )
 class ProductViewSet(viewsets.ModelViewSet):
     """
@@ -32,152 +32,189 @@ class ProductViewSet(viewsets.ModelViewSet):
     Returns:
         Response: A DRF Response object with a message, product data, and appropriate status code.
     """
+
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Product.objects.all()  # Get all products initially
+
+    def get_permissions(self):
+        # Allow unauthenticated access for list and retrieve actions
+        if self.action in ["list", "retrieve"]:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+    queryset = Product.objects.alive()
 
     def get_queryset(self):
-        """Override to filter by category if specified."""
+        """Override to filter by category and optionally sort by price, recent, or both. Only alive products."""
         queryset = self.queryset
-        category = self.request.query_params.get('category')
+        category = self.request.query_params.get("category")
+        sort = self.request.query_params.get("sort")
+
         if category:
             queryset = queryset.filter(category=category)
+        has_offer = self.request.query_params.get("has_offer")
+        if has_offer and has_offer.lower() == "true":
+            queryset = queryset.filter(
+                offer__start_date__lte=now(),
+                offer__end_date__gte=now()
+            )
+        # sort param can be: 'recent', 'price', '-price', 'price,-created_at', etc. (comma-separated list)
+        if sort:
+            field_map = {
+                "recent": "-created_at",
+                "-recent": "created_at",
+                "price": "current_price",
+                "-price": "-current_price",
+            }
+            valid_fields = set(
+                f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
+            sort_fields = []
+            for field in sort.split(","):
+                field = field.strip()
+                mapped = field_map.get(field)
+                if mapped:
+                    sort_fields.append(mapped)
+                elif field.lstrip("-") in valid_fields:
+                    sort_fields.append(field)
+                # else: ignore unknown fields
+            if sort_fields:
+                queryset = queryset.order_by(*sort_fields)
+
         return queryset
 
     @extend_schema(
         request=ProductSerializer,
         responses={
             201: OpenApiResponse(
-                response=ProductSerializer,
-                description='Product created successfully.'
+                response=ProductSerializer, description="Product created successfully."
             ),
             400: OpenApiResponse(
-                description='Product creation failed or validation error.'
+                description="Product creation failed or validation error."
             ),
         },
-        summary="Create Product"
+        summary="Create Product",
     )
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            user = self.request.user
-            business_owner = getattr(user, 'business_owner_profile', None)
-            store = business_owner.store if business_owner else None
-            # Check if business_owner exists and store exists and is saved
-            if not business_owner or not store or not getattr(store, 'pk', None):
-                logger.error(f"Product creation failed: No store found for user {user.id}")
-                return Response(
-                    {"message": "No store found for this user."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            product = serializer.save(owner_id=user, store=store)
-            logger.info(f"Product created successfully: Product ID {product.id} by User ID {user.id}")
-            response_data = {
-                "message": "Product created successfully",
-                "product": {
-                    "product_id": product.id,
-                    "product_name": product.product_name,
-                    "product_description": product.product_description,
-                    "price": product.price,
-                    "category": product.category,
-                    "picture": product.picture.url if product.picture else None,
-                    "color": product.color,
-                    "size": product.size,
-                    "quantity": product.quantity,
-                    "store_name": product.store_name,
-                    "owner_id": str(product.owner_id.id),
-                    "created_at": product.created_at,
-                }
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        else:
+        data = request.data.copy()
+
+        user = self.request.user
+        business_owner = getattr(user, "business_owner_profile", None)
+        store = business_owner.store if business_owner else None
+
+        if not business_owner or not store:
+            return Response(
+                {"message": "No store found for this user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
             logger.error(f"Product creation failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        product = serializer.save(owner_id=user, store=store)
+        logger.info(
+            f"Product created successfully: {product.id} by user {user.id}")
+        response = {
+            "message": "Product created successfully",
+            "product": ProductSerializer(product).data,
+        }
+        return Response(response, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         responses={
             200: OpenApiResponse(
                 response=ProductSerializer,
-                description='Product retrieved successfully.'
+                description="Product retrieved successfully.",
             ),
-            404: OpenApiResponse(
-                description='Product not found.'
-            ),
+            404: OpenApiResponse(description="Product not found."),
         },
-        summary="Retrieve Product"
+        summary="Retrieve Product",
     )
     def retrieve(self, request, *args, **kwargs):
-        product = self.get_object()
-        response_data = {
-            "product_id": product.id,
-            "product_name": product.product_name,
-            "product_description": product.product_description,
-            "price": product.price,
-            "category": product.category,
-            "picture": product.picture.url if product.picture else None,
-            "color": product.color,
-            "size": product.size,
-            "quantity": product.quantity,
-            "store_name": product.store_name,
-            "owner_id": str(product.owner_id.id),
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
+        try:
+            product = self.get_queryset().prefetch_related(
+                "sizes").get(pk=kwargs["pk"])
+        except Product.DoesNotExist:
+            return Response({"detail": "Product not found."},
+                            status=status.HTTP_404_NOT_FOUND)
 
-    @extend_schema(
-        request=ProductSerializer,
-        responses={
-            200: OpenApiResponse(
-                response=ProductSerializer,
-                description='Product updated successfully.'
-            ),
-            400: OpenApiResponse(
-                description='Product update failed or validation error.'
-            ),
-            404: OpenApiResponse(
-                description='Product not found.'
-            ),
-        },
-        summary="Update Product"
-    )
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        if serializer.is_valid():
-            product = serializer.save()
-            response_data = {
-                "message": "Product updated successfully",
-                "product": {
-                    "product_id": product.id,
-                    "product_name": product.product_name,
-                    "product_description": product.product_description,
-                    "price": product.price,
-                    "category": product.category,
-                    "quantity": product.quantity,
-                    "picture": product.picture.url if product.picture else None,
-                    "color": product.color,
-                    "size": product.size,
-                    "owner_id": str(product.owner_id.id),
-                    "store_name": product.store_name,
-                }
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
+        product_data = ProductSerializer(product).data
+        if request.user.is_authenticated:
+            product_data["is_favourite"] = request.user.favourite_products.filter(
+                pk=product.pk
+            ).exists()
         else:
-            logger.error(f"Product update failed: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            product_data["is_favourite"] = False
+
+        return Response(product_data, status=status.HTTP_200_OK)
 
     @extend_schema(
         responses={
-            204: OpenApiResponse(
-                description='Product deleted successfully.'
+            204: OpenApiResponse(description="Product deleted successfully."),
+            403: OpenApiResponse(
+                description="You do not have permission to delete this product."
             ),
-            404: OpenApiResponse(
-                description='Product not found.'
-            ),
+            404: OpenApiResponse(description="Product not found."),
         },
-        summary="Delete Product"
+        summary="Delete Product",
     )
     def destroy(self, request, *args, **kwargs):
         product = self.get_object()
+        # Check if the current user is the owner
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to delete product %s without permission.",
+                request.user.id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to delete this product."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         product.delete()
-        return Response({"message": "Product deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        logger.info(
+            f"Product {product.id} soft-deleted by user {request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def update(self, request, *args, **kwargs):
+        product = self.get_object()
+        data = request.data.copy()
+        serializer = self.get_serializer(product, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_product = serializer.save()
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to update product %s without permission.",
+                request.user.id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to update this product."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        logger.info(
+            f"Product {updated_product.id} updated by user {request.user.id}")
+        response = {
+            "message": "Product updated successfully",
+            "product": ProductSerializer(updated_product).data,
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        responses={200: ProductSerializer(many=True)},
+        summary="List Products",
+        description="Get all products with an `is_favourite` flag if the user is authenticated.",
+    )
+    def list(self, request, *args, **kwargs):
+        products = self.get_queryset().prefetch_related("sizes")
+        serialized_products = ProductSerializer(products, many=True).data
+
+        if request.user.is_authenticated:
+            favourite_ids = set(
+                request.user.favourite_products.values_list("id", flat=True)
+            )
+            for product_data in serialized_products:
+                product_data["is_favourite"] = product_data["id"] in favourite_ids
+        else:
+            for product_data in serialized_products:
+                product_data["is_favourite"] = False
+
+        return Response(serialized_products, status=status.HTTP_200_OK)
