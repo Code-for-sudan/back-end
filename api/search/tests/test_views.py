@@ -8,21 +8,23 @@ from search.documents import ProductDocument
 
 logger = logging.getLogger('search_tests')
 
+
 class ProductSearchViewTests(TestCase):
     """
     Test suite for the ProductSearchView.
 
     This class tests the product search API endpoint with various scenarios:
-    
-    - test_search_with_query: 
+
+    - test_search_with_query:
         Ensures that searching with a valid query (e.g., 'iPhone') returns the correct product(s) and a 200 OK status.
-    - test_search_empty_query: 
+    - test_search_empty_query:
         Ensures that searching with an empty query returns a message indicating the query is empty and a 200 OK status.
-    - test_search_invalid_page: 
+    - test_search_invalid_page:
         Ensures that providing an invalid page number (e.g., 0) returns a 400 BAD REQUEST and an appropriate error message.
-    - test_search_no_results: 
+    - test_search_no_results:
         Ensures that searching for a non-existent product returns an empty results list, total=0, and a 200 OK status.
     """
+
     def setUp(self):
         self.client = APIClient()
         User = get_user_model()
@@ -42,9 +44,10 @@ class ProductSearchViewTests(TestCase):
             price=999.99,
             category="Electronics",
             picture="https://example.com/images/iphone15.jpg",
-            quantity=10,
+            available_quantity=10,
+            reserved_quantity=0,
             color="Black",
-            size="6.1 inch",
+            has_sizes=False,
             owner_id=self.user,
             store=self.store
         )
@@ -54,9 +57,10 @@ class ProductSearchViewTests(TestCase):
             price=899.99,
             category="Electronics",
             picture="https://example.com/images/galaxys24.jpg",
-            quantity=8,
+            available_quantity=8,
+            reserved_quantity=0,
             color="Silver",
-            size="6.2 inch",
+            has_sizes=False,
             owner_id=self.user,
             store=self.store
         )
@@ -66,9 +70,10 @@ class ProductSearchViewTests(TestCase):
             price=12.50,
             category="Kitchen",
             picture="https://example.com/images/mug.jpg",
-            quantity=100,
+            available_quantity=100,
+            reserved_quantity=0,
             color=None,
-            size=None,
+            has_sizes=False,
             owner_id=self.user,
             store=self.store
         )
@@ -78,26 +83,36 @@ class ProductSearchViewTests(TestCase):
         ProductDocument().update(p3)
 
     def test_search_with_query(self):
-        response = self.client.get('/api/v1/search/products/', {'q': 'iPhone', 'p': 1})
-        logger.info(f"Search with query response: {response.status_code} - {response.data}")
+        response = self.client.get(
+            '/api/v1/search/products/', {'q': 'iPhone', 'p': 1})
+        logger.info(
+            f"Search with query response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(any("iPhone" in prod['product_name'] for prod in response.data.get('results', [])))
+        self.assertTrue(any("iPhone" in prod['product_name']
+                        for prod in response.data.get('results', [])))
 
     def test_search_empty_query(self):
-        response = self.client.get('/api/v1/search/products/', {'q': '', 'p': 1})
-        logger.info(f"Search empty query response: {response.status_code} - {response.data}")
+        response = self.client.get(
+            '/api/v1/search/products/', {'q': '', 'p': 1})
+        logger.info(
+            f"Search empty query response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get('message'), "Search query is empty")
 
     def test_search_invalid_page(self):
-        response = self.client.get('/api/v1/search/products/', {'q': 'iPhone', 'p': 0})
-        logger.info(f"Search invalid page response: {response.status_code} - {response.data}")
+        response = self.client.get(
+            '/api/v1/search/products/', {'q': 'iPhone', 'p': 0})
+        logger.info(
+            f"Search invalid page response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data.get('message'), "Page number must be greater than 0.")
+        self.assertEqual(response.data.get('message'),
+                         "Page number must be greater than 0.")
 
     def test_search_no_results(self):
-        response = self.client.get('/api/v1/search/products/', {'q': 'NonExistentProduct', 'p': 1})
-        logger.info(f"Search no results response: {response.status_code} - {response.data}")
+        response = self.client.get(
+            '/api/v1/search/products/', {'q': 'NonExistentProduct', 'p': 1})
+        logger.info(
+            f"Search no results response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get('results'), [])
         self.assertEqual(response.data.get('total'), 0)
