@@ -66,8 +66,8 @@ class ProductSearchViewTests(TestCase):
             reserved_quantity=0,
             color="Black",
             has_sizes=False,
-            owner_id=self.user,
-            store=self.store
+            owner_id=self.business_user,
+            store=self.business_store,
         )
         self.p2 = Product.objects.create(
             product_name="Galaxy S24",
@@ -79,8 +79,8 @@ class ProductSearchViewTests(TestCase):
             reserved_quantity=0,
             color="Silver",
             has_sizes=False,
-            owner_id=self.user,
-            store=self.store
+            owner_id=self.other_user,
+            store=self.other_store,
         )
         # Index in Elasticsearch
         ProductDocument().update(self.p1)
