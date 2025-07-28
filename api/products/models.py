@@ -45,7 +45,6 @@ class Product(models.Model):
         product_name (CharField): The name of the product (max length 255).
         product_description (TextField): A detailed textual description of the product.
         price (DecimalField): The price of the product (maximum 10 digits, 2 decimal places).
-        category (ForeignKey): Reference to the Category to which the product belongs.
         picture (ImageField): Image of the product, uploaded to the 'products/' directory.
         color (CharField): Optional color of the product (max length 50).
         size (CharField): Optional size of the product (max length 50).
@@ -101,6 +100,7 @@ class Product(models.Model):
 
     def __str__(self):
         return str(self.product_name)
+
     @property
     def current_price(self):
         """
@@ -111,7 +111,7 @@ class Product(models.Model):
         if offer and offer.is_active:
             return offer.offer_price
         return self.price
-    
+
     @property
     def store_name(self):
         return self.store.name
@@ -153,6 +153,97 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProductHistory(models.Model):
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, related_name="history", null=True)
+    product_name = models.CharField(max_length=255)
+    product_description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    current_price = models.DecimalField(max_digits=10, decimal_places=2)
+    color = models.CharField(max_length=50, blank=True, null=True)
+    brand = models.CharField(max_length=100, blank=True, null=True)
+    has_sizes: models.BooleanField = models.BooleanField(default=False)
+    sizes = models.JSONField(blank=True, null=True)
+    owner_full_name = models.CharField(max_length=255, blank=True, null=True)
+    owner_email = models.EmailField(blank=True, null=True)
+    owner_phone = models.CharField(max_length=20, blank=True, null=True)
+    category = models.CharField(max_length=100)
+    properties = models.JSONField(blank=True, null=True)
+    picture = models.ImageField(upload_to="history/products/")
+    is_deleted = models.BooleanField(default=False)
+    store_name = models.CharField(max_length=255, blank=True, null=True)
+    store_location = models.CharField(max_length=255, blank=True, null=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def create_from_product(cls, product: Product):
+        """
+        Create and save a ProductHistory record from a Product instance.
+        """
+        owner = product.owner_id
+        store = product.store
+        sizes = []
+        if product.has_sizes:
+            sizes = list(product.sizes.values_list("size", flat=True))
+        history = cls.objects.create(
+            product=product,
+            product_name=product.product_name,
+            product_description=product.product_description,
+            price=product.price,
+            current_price=product.current_price,
+            color=product.color,
+            brand=product.brand,
+            has_sizes=product.has_sizes,
+            sizes=sizes,
+            owner_full_name=getattr(owner, "get_full_name", lambda: None)(),
+            owner_email=getattr(owner, "email", None),
+            owner_phone=getattr(owner, "phone_number", None),
+            category=product.category,
+            properties=product.properties,
+            picture=product.picture,
+            is_deleted=product.is_deleted,
+            store_name=store.name if store else None,
+            store_location=store.location if store else None,
+        )
+        return history
+
+    def has_product_changed(self, product: Product) -> bool:
+
+        # Compare key fields
+        fields_to_check = [
+            "product_name", "product_description", "price", "current_price",
+            "color", "brand", "has_sizes", "category", "properties",
+            "picture", "is_deleted", "store_name", "store_location"
+        ]
+
+        for field in fields_to_check:
+            
+            if getattr(product, field) != getattr(self, field):
+                return True
+        # Compare owner-related fields
+        owner = product.owner_id
+
+        owner_full_name = getattr(owner, "get_full_name", lambda: None)()
+        if self.owner_full_name != owner_full_name:
+            return True
+
+        owner_email = getattr(owner, "email", None)
+        if self.owner_email != owner_email:
+            return True
+
+        owner_phone = getattr(owner, "phone_number", None)
+        if self.owner_phone != owner_phone:
+            return True
+
+        # Compare sizes (only names)
+        product_sizes = list(product.sizes.values_list("size", flat=True))
+        history_sizes = getattr(self, "sizes", []) or []
+        if sorted(product_sizes) != sorted(history_sizes):
+            return True
+
+        return False
+
+
 class Offer(models.Model):
     """
     Represents a product offer with a discounted price for a limited time.
@@ -170,7 +261,8 @@ class Offer(models.Model):
     def is_active(self):
         """Return True if the current date is within the offer period."""
         current_time = now()
-        print(f"DEBUG: start_date={self.start_date} ({type(self.start_date)}), end_date={self.end_date} ({type(self.end_date)})")
+        print(
+            f"DEBUG: start_date={self.start_date} ({type(self.start_date)}), end_date={self.end_date} ({type(self.end_date)})")
         return self.start_date <= current_time <= self.end_date
 
 
