@@ -135,12 +135,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         except Product.DoesNotExist:
             return Response({"detail": "Product not found."},
                             status=status.HTTP_404_NOT_FOUND)
-        user = self.request.user
+
         product_data = ProductSerializer(product).data
-        if user is not None:
-            is_favourite = user.favourite_products.filter(
-                pk=product.pk).exists()
-            product_data["is_favourite"] = is_favourite
+        if request.user.is_authenticated:
+            product_data["is_favourite"] = request.user.favourite_products.filter(
+                pk=product.pk
+            ).exists()
+        else:
+            product_data["is_favourite"] = False
+
         return Response(product_data, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -204,12 +207,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = self.get_queryset().prefetch_related("sizes")
         serialized_products = ProductSerializer(products, many=True).data
 
-        # If user is authenticated, add is_favourite flag
         if request.user.is_authenticated:
             favourite_ids = set(
                 request.user.favourite_products.values_list("id", flat=True)
             )
             for product_data in serialized_products:
                 product_data["is_favourite"] = product_data["id"] in favourite_ids
+        else:
+            for product_data in serialized_products:
+                product_data["is_favourite"] = False
 
         return Response(serialized_products, status=status.HTTP_200_OK)

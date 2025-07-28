@@ -238,15 +238,21 @@ class ProductViewSetTests(APITestCase):
         self.assertFalse(ids[product2.id]['is_favourite'])
 
     def test_list_products_without_authentication(self):
-        """Check if `is_favourite` is NOT included when user is unauthenticated."""
+        """Check if `is_favourite` is False when user is unauthenticated."""
         product = Product.objects.create(
-            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
+            owner_id=self.user,
+            store=self.store,
+            **self.valid_data_without_size,
+            reserved_quantity=0
         )
         self.client.force_authenticate(user=None)
         response = self.client.get(self.base_url)
         logger.info(
-            f"List Products without Auth Response: {response.status_code} - {response.data}")
+            f"List Products without Auth Response: {response.status_code} - {response.data}"
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
-        self.assertNotIn('is_favourite', response.data[0])
+        self.assertIn('is_favourite', response.data[0])
+        self.assertFalse(response.data[0]['is_favourite'])
+
