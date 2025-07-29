@@ -216,7 +216,8 @@ class ProductViewSetTests(APITestCase):
     def test_list_products_with_favourites(self):
         """Check if `is_favourite` is set for all products in list."""
         product1 = Product.objects.create(
-            owner_id=self.user, store=self.store, **self.valid_data_without_size, reserved_quantity=0
+            owner_id=self.user, store=self.store,
+            **self.valid_data_without_size, reserved_quantity=0
         )
         product2 = Product.objects.create(
             owner_id=self.user, store=self.store, product_name='Another Product',
@@ -228,12 +229,13 @@ class ProductViewSetTests(APITestCase):
 
         response = self.client.get(self.base_url)
         logger.info(
-            f"List Products with Favourites Response: {response.status_code} - {response.data}")
+            f"List Products with Favourites Response: {response.status_code} - {response.data}"
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 2)
-        # Check if is_favourite exists for all
-        ids = {p['id']: p for p in response.data}
+        results = response.data['results'] if 'results' in response.data else response.data
+        self.assertGreaterEqual(len(results), 2)
+        ids = {p['id']: p for p in results}
         self.assertTrue(ids[product1.id]['is_favourite'])
         self.assertFalse(ids[product2.id]['is_favourite'])
 
@@ -252,9 +254,10 @@ class ProductViewSetTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 1)
-        self.assertIn('is_favourite', response.data[0])
-        self.assertFalse(response.data[0]['is_favourite'])
+        results = response.data['results'] if 'results' in response.data else response.data
+        self.assertGreaterEqual(len(results), 1)
+        self.assertIn('is_favourite', results[0])
+        self.assertFalse(results[0]['is_favourite'])
 
     def test_update_product_from_non_owner(self):
         """Ensure a user who does not own the product cannot update it."""
@@ -363,18 +366,22 @@ class DeleteProductSizeViewTests(APITestCase):
     def test_delete_size_success(self):
         """Test deleting a size successfully by the owner."""
         response = self.client.delete(self.url(self.product.id, self.size1.id))
-        logger.info(f"Delete Size Success Response: {response.status_code} - {response.data}")
+        logger.info(
+            f"Delete Size Success Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+        self.assertFalse(Size.objects.filter(
+            id=self.size1.id, is_deleted=False).exists())
 
     def test_delete_size_unauthorized_user(self):
         """Test that a non-owner user cannot delete a size."""
         self.client.force_authenticate(user=self.other_user)
         response = self.client.delete(self.url(self.product.id, self.size1.id))
-        logger.info(f"Delete Size Unauthorized Response: {response.status_code} - {response.data}")
+        logger.info(
+            f"Delete Size Unauthorized Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("detail", response.data)
-        self.assertTrue(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+        self.assertTrue(Size.objects.filter(
+            id=self.size1.id, is_deleted=False).exists())
 
     def test_delete_size_only_size_left(self):
         """Test that deleting the last size is not allowed if product has_sizes=True."""
@@ -382,10 +389,12 @@ class DeleteProductSizeViewTests(APITestCase):
         self.size2.delete()
 
         response = self.client.delete(self.url(self.product.id, self.size1.id))
-        logger.info(f"Delete Only Size Response: {response.status_code} - {response.data}")
+        logger.info(
+            f"Delete Only Size Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Cannot delete the only size", response.data["detail"])
-        self.assertTrue(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+        self.assertTrue(Size.objects.filter(
+            id=self.size1.id, is_deleted=False).exists())
 
     def test_delete_size_with_reserved_quantity(self):
         """Test that deleting a size with reserved_quantity > 0 is blocked."""
@@ -393,21 +402,27 @@ class DeleteProductSizeViewTests(APITestCase):
         self.size1.save()
 
         response = self.client.delete(self.url(self.product.id, self.size1.id))
-        logger.info(f"Delete Size with Reserved Quantity Response: {response.status_code} - {response.data}")
+        logger.info(
+            f"Delete Size with Reserved Quantity Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("reserved stock", response.data["detail"])
-        self.assertTrue(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+        self.assertTrue(Size.objects.filter(
+            id=self.size1.id, is_deleted=False).exists())
 
     def test_delete_nonexistent_size(self):
         """Test deleting a non-existent size returns 404."""
         non_existing_size_id = 9999
-        response = self.client.delete(self.url(self.product.id, non_existing_size_id))
-        logger.info(f"Delete Non-existent Size Response: {response.status_code}")
+        response = self.client.delete(
+            self.url(self.product.id, non_existing_size_id))
+        logger.info(
+            f"Delete Non-existent Size Response: {response.status_code}")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_size_of_nonexistent_product(self):
         """Test deleting a size for a non-existent product returns 404."""
         non_existing_product_id = 9999
-        response = self.client.delete(self.url(non_existing_product_id, self.size1.id))
-        logger.info(f"Delete Size of Non-existent Product Response: {response.status_code}")
+        response = self.client.delete(
+            self.url(non_existing_product_id, self.size1.id))
+        logger.info(
+            f"Delete Size of Non-existent Product Response: {response.status_code}")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
