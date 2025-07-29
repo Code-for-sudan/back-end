@@ -134,7 +134,7 @@ class ProductViewSetTests(APITestCase):
         url = reverse('product-detail', args=[product.id])
         response = self.client.delete(url)
         logger.info(f"Delete Product Response: {response.status_code}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(Product.objects.filter(id=product.id).exists())
         self.assertTrue(Product.objects.get(id=product.id).is_deleted)
 

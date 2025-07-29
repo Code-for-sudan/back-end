@@ -267,5 +267,5 @@ class DeleteProductSizeView(APIView):
 
         return Response(
             {"message": f"Size '{size.size}' deleted successfully."},
-            status=status.HTTP_200_OK
+            status=status.HTTP_204_NO_CONTENT
         )
