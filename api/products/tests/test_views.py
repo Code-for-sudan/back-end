@@ -256,3 +256,49 @@ class ProductViewSetTests(APITestCase):
         self.assertIn('is_favourite', response.data[0])
         self.assertFalse(response.data[0]['is_favourite'])
 
+    def test_update_product_from_non_owner(self):
+        """Ensure a user who does not own the product cannot update it."""
+        # Create another user (non-owner)
+        another_user = User.objects.create_user(
+            email='another@example.com',
+            password='testpass123',
+            first_name='Another',
+            last_name='User'
+        )
+        another_store = Store.objects.create(
+            name='Another Store',
+            location='Another Location'
+        )
+        BusinessOwner.objects.create(user=another_user, store=another_store)
+
+        # Create a product owned by self.user
+        product = Product.objects.create(
+            owner_id=self.user,
+            store=self.store,
+            **self.valid_data_without_size,
+            reserved_quantity=0
+        )
+
+        # Authenticate as another_user
+        self.client.force_authenticate(user=another_user)
+
+        url = reverse('product-detail', args=[product.id])
+        update_data = {"product_name": "Malicious Update"}
+
+        response = self.client.patch(url, update_data, format='json')
+        logger.info(
+            f"Update Product from Non-Owner Response: {response.status_code} - {response.data}"
+        )
+
+        # Assert forbidden response
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('detail', response.data)
+        self.assertEqual(
+            response.data['detail'],
+            "You do not have permission to update this product."
+        )
+
+        # Verify product is unchanged
+        product.refresh_from_db()
+        self.assertEqual(product.product_name,
+                         self.valid_data_without_size['product_name'])

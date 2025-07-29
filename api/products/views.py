@@ -176,10 +176,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         product = self.get_object()
-        data = request.data.copy()
-        serializer = self.get_serializer(product, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        updated_product = serializer.save()
         if product.owner_id != request.user:
             logger.critical(
                 "User %s attempted to update product %s without permission.",
@@ -190,6 +186,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to update this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        data = request.data.copy()
+        serializer = self.get_serializer(product, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_product = serializer.save()
         logger.info(
             f"Product {updated_product.id} updated by user {request.user.id}")
         response = {
