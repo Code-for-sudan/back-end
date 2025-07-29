@@ -1,8 +1,10 @@
 import logging
 from rest_framework import viewsets, permissions, status
+from rest_framework.views import APIView
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Product
+from .models import Product, Size
 from .serializers import ProductSerializer
 from django.utils.timezone import now
 logger = logging.getLogger("products_views")
@@ -176,10 +178,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         product = self.get_object()
-        data = request.data.copy()
-        serializer = self.get_serializer(product, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        updated_product = serializer.save()
         if product.owner_id != request.user:
             logger.critical(
                 "User %s attempted to update product %s without permission.",
@@ -190,6 +188,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to update this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        data = request.data.copy()
+        serializer = self.get_serializer(product, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_product = serializer.save()
         logger.info(
             f"Product {updated_product.id} updated by user {request.user.id}")
         response = {
@@ -218,3 +220,52 @@ class ProductViewSet(viewsets.ModelViewSet):
                 product_data["is_favourite"] = False
 
         return Response(serialized_products, status=status.HTTP_200_OK)
+
+
+class DeleteProductSizeView(APIView):
+    """
+    Deletes a size of a specific product by product_id and size_id.
+    Only the product owner can perform this action.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, product_id, size_id):
+        product = get_object_or_404(Product, pk=product_id)
+
+        # Check if the current user is the owner of the product
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to delete size %s of product %s without permission.",
+                request.user.id,
+                size_id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to modify this product."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        size = get_object_or_404(Size, pk=size_id, product=product)
+
+        # If product uses sizes, don't delete the last one
+        total_sizes = product.sizes.count()
+        if product.has_sizes and total_sizes == 1:
+            return Response(
+                {"detail": "Cannot delete the only size for this product."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Prevent deletion if reserved_quantity > 0
+        if size.reserved_quantity > 0:
+            return Response(
+                {"detail": "Cannot delete a size with reserved stock."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Perform a soft delete
+        size.delete()
+
+        return Response(
+            {"message": f"Size '{size.size}' deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )

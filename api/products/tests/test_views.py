@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import User
 from stores.models import Store
-from products.models import Product
+from products.models import Product, Size
 from accounts.models import BusinessOwner
 
 
@@ -256,3 +256,158 @@ class ProductViewSetTests(APITestCase):
         self.assertIn('is_favourite', response.data[0])
         self.assertFalse(response.data[0]['is_favourite'])
 
+    def test_update_product_from_non_owner(self):
+        """Ensure a user who does not own the product cannot update it."""
+        # Create another user (non-owner)
+        another_user = User.objects.create_user(
+            email='another@example.com',
+            password='testpass123',
+            first_name='Another',
+            last_name='User'
+        )
+        another_store = Store.objects.create(
+            name='Another Store',
+            location='Another Location'
+        )
+        BusinessOwner.objects.create(user=another_user, store=another_store)
+
+        # Create a product owned by self.user
+        product = Product.objects.create(
+            owner_id=self.user,
+            store=self.store,
+            **self.valid_data_without_size,
+            reserved_quantity=0
+        )
+
+        # Authenticate as another_user
+        self.client.force_authenticate(user=another_user)
+
+        url = reverse('product-detail', args=[product.id])
+        update_data = {"product_name": "Malicious Update"}
+
+        response = self.client.patch(url, update_data, format='json')
+        logger.info(
+            f"Update Product from Non-Owner Response: {response.status_code} - {response.data}"
+        )
+
+        # Assert forbidden response
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('detail', response.data)
+        self.assertEqual(
+            response.data['detail'],
+            "You do not have permission to update this product."
+        )
+
+        # Verify product is unchanged
+        product.refresh_from_db()
+        self.assertEqual(product.product_name,
+                         self.valid_data_without_size['product_name'])
+
+
+class DeleteProductSizeViewTests(APITestCase):
+    def setUp(self):
+        # Create a user and store
+        self.user = User.objects.create_user(
+            email='owner@example.com',
+            password='testpass123',
+            first_name='Owner',
+            last_name='User'
+        )
+        self.store = Store.objects.create(
+            name='Test Store',
+            location='Test Location'
+        )
+        self.business_owner = BusinessOwner.objects.create(
+            user=self.user,
+            store=self.store
+        )
+
+        # Create another user (not owner)
+        self.other_user = User.objects.create_user(
+            email='other@example.com',
+            password='otherpass123'
+        )
+
+        # Authenticate as owner by default
+        self.client.force_authenticate(user=self.user)
+
+        # Create product and sizes
+        self.product = Product.objects.create(
+            owner_id=self.user,
+            store=self.store,
+            product_name='Test Product',
+            product_description='A great product.',
+            price='19.99',
+            category='Electronics',
+            color='Red',
+            has_sizes=True
+        )
+
+        self.size1 = Size.objects.create(
+            product=self.product,
+            size="M",
+            available_quantity=5,
+            reserved_quantity=0
+        )
+        self.size2 = Size.objects.create(
+            product=self.product,
+            size="L",
+            available_quantity=3,
+            reserved_quantity=0
+        )
+
+        self.url = lambda p_id, s_id: reverse(
+            'delete-product-size', args=[p_id, s_id]
+        )
+
+    def test_delete_size_success(self):
+        """Test deleting a size successfully by the owner."""
+        response = self.client.delete(self.url(self.product.id, self.size1.id))
+        logger.info(f"Delete Size Success Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+
+    def test_delete_size_unauthorized_user(self):
+        """Test that a non-owner user cannot delete a size."""
+        self.client.force_authenticate(user=self.other_user)
+        response = self.client.delete(self.url(self.product.id, self.size1.id))
+        logger.info(f"Delete Size Unauthorized Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("detail", response.data)
+        self.assertTrue(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+
+    def test_delete_size_only_size_left(self):
+        """Test that deleting the last size is not allowed if product has_sizes=True."""
+        # Remove other size first
+        self.size2.delete()
+
+        response = self.client.delete(self.url(self.product.id, self.size1.id))
+        logger.info(f"Delete Only Size Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot delete the only size", response.data["detail"])
+        self.assertTrue(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+
+    def test_delete_size_with_reserved_quantity(self):
+        """Test that deleting a size with reserved_quantity > 0 is blocked."""
+        self.size1.reserved_quantity = 2
+        self.size1.save()
+
+        response = self.client.delete(self.url(self.product.id, self.size1.id))
+        logger.info(f"Delete Size with Reserved Quantity Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("reserved stock", response.data["detail"])
+        self.assertTrue(Size.objects.filter(id=self.size1.id, is_deleted=False).exists())
+
+    def test_delete_nonexistent_size(self):
+        """Test deleting a non-existent size returns 404."""
+        non_existing_size_id = 9999
+        response = self.client.delete(self.url(self.product.id, non_existing_size_id))
+        logger.info(f"Delete Non-existent Size Response: {response.status_code}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_size_of_nonexistent_product(self):
+        """Test deleting a size for a non-existent product returns 404."""
+        non_existing_product_id = 9999
+        response = self.client.delete(self.url(non_existing_product_id, self.size1.id))
+        logger.info(f"Delete Size of Non-existent Product Response: {response.status_code}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
