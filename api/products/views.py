@@ -207,7 +207,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         products = self.get_queryset().prefetch_related("sizes")
-        serialized_products = ProductSerializer(products, many=True).data
+        # Apply DRF pagination
+        page = self.paginate_queryset(products)
+        if page is not None:
+            serialized_products = ProductSerializer(page, many=True).data
+        else:
+            serialized_products = ProductSerializer(products, many=True).data
 
         if request.user.is_authenticated:
             favourite_ids = set(
@@ -218,6 +223,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         else:
             for product_data in serialized_products:
                 product_data["is_favourite"] = False
+
+        if page is not None:
+            return self.get_paginated_response(serialized_products)
 
         return Response(serialized_products, status=status.HTTP_200_OK)
 
