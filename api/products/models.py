@@ -93,6 +93,7 @@ class Product(models.Model):
         if hard:
             return super().delete(using=using, keep_parents=keep_parents)
         self.is_deleted = True
+        self.sizes.all().update(is_deleted=True, deleted_at=now())
         self.save(update_fields=["is_deleted"])
 
     def hard_delete(self, using=None, keep_parents=False):
@@ -217,7 +218,7 @@ class ProductHistory(models.Model):
         ]
 
         for field in fields_to_check:
-            
+
             if getattr(product, field) != getattr(self, field):
                 return True
         # Compare owner-related fields
@@ -266,12 +267,33 @@ class Offer(models.Model):
         return self.start_date <= current_time <= self.end_date
 
 
+class SizeManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class Size(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="sizes")
     size = models.CharField(max_length=50)
     available_quantity = models.IntegerField()
     reserved_quantity = models.BigIntegerField()
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    objects = SizeManager()
+    all_objects = models.Manager()
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete the size."""
+        self.is_deleted = True
+        self.deleted_at = now()
+        self.save()
+
+    def restore(self):
+        """Restore a soft-deleted size."""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
     def __str__(self):
         return f"{self.product.product_name} - {self.size}"  # type: ignore
