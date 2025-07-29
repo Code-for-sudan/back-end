@@ -276,13 +276,26 @@ class ProductSerializer(serializers.ModelSerializer):
             for tag_name in tags_data:
                 tag, _ = Tag.objects.get_or_create(name=tag_name)
                 instance.tags.add(tag)
-
+        # update sizes
         if sizes_data is not None:
-            # Delete all existing sizes related to this product
-            instance.sizes.all().delete()
+            existing_sizes = {s.size: s for s in instance.sizes.all()} 
             for size_data in sizes_data:
-                Size.objects.create(
-                    product=instance, reserved_quantity=0, **size_data)
+                size_name = size_data.get("size")
+                available_quantity = size_data.get("available_quantity", 0)
+
+                if size_name in existing_sizes:
+                    # Update existing size
+                    size = existing_sizes[size_name]
+                    size.available_quantity = available_quantity
+                    size.save()
+                else:
+                    # Create a new size
+                    Size.objects.create(
+                        product=instance,
+                        size=size_name,
+                        available_quantity=available_quantity,
+                        reserved_quantity=0
+                    )
 
         # Delete existing offer if it exists
         if offer_data is not None:

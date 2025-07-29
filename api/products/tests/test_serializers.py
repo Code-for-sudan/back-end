@@ -1,8 +1,8 @@
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
-from accounts.models import User
+from accounts.models import BusinessOwner, User
 from stores.models import Store
-from products.models import Product
+from products.models import Product, Size
 from products.serializers import ProductSerializer
 import logging
 
@@ -112,3 +112,123 @@ class ProductSerializerTests(TestCase):
         self.assertEqual(product.owner_id, self.user)
         self.assertEqual(product.store, self.store)
         self.assertTrue(product.picture.name.startswith('products/test_image'))
+
+
+class ProductSerializerSizeTests(TestCase):
+    def setUp(self):
+        # Create a test user and store
+        self.user = User.objects.create_user(
+            email='owner@example.com',
+            password='testpass123',
+            first_name='Owner',
+            last_name='User'
+        )
+        self.store = Store.objects.create(
+            name='Test Store', location='Test Location')
+        self.business_owner = BusinessOwner.objects.create(
+            user=self.user, store=self.store)
+
+        # Create a product
+        self.product = Product.objects.create(
+            product_name='T-Shirt',
+            product_description='Basic T-shirt',
+            price='19.99',
+            category='Clothing',
+            owner_id=self.user,
+            store=self.store,
+            has_sizes=True,
+        )
+
+        # Create initial sizes
+        Size.objects.create(product=self.product, size='S',
+                            available_quantity=10, reserved_quantity=2)
+        Size.objects.create(product=self.product, size='M',
+                            available_quantity=5, reserved_quantity=1)
+
+    def test_update_existing_size_quantity(self):
+        """Updating a product with an existing size should update its available_quantity."""
+        serializer = ProductSerializer(
+            instance=self.product,
+            data={
+                'sizes': [
+                    # Update existing size
+                    {'size': 'S', 'available_quantity': 20},
+                ]
+            },
+            partial=True
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        updated_size = Size.objects.get(product=self.product, size='S')
+        self.assertEqual(updated_size.available_quantity, 20)
+        logger.info(
+            f"Updated size S available_quantity to {updated_size.available_quantity}")
+
+    def test_create_new_size(self):
+        """Updating a product with a new size should create the new size with reserved_quantity=0."""
+        serializer = ProductSerializer(
+            instance=self.product,
+            data={
+                'sizes': [
+                    {'size': 'L', 'available_quantity': 15},  # New size
+                ]
+            },
+            partial=True
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        self.assertTrue(Size.objects.filter(
+            product=self.product, size='L').exists())
+        new_size = Size.objects.get(product=self.product, size='L')
+        self.assertEqual(new_size.reserved_quantity, 0)
+        logger.info(
+            f"Created new size L with reserved_quantity={new_size.reserved_quantity}")
+
+    def test_mixed_update_and_create_sizes(self):
+        """Updating with a mix of existing and new sizes should update and create correctly."""
+        serializer = ProductSerializer(
+            instance=self.product,
+            data={
+                'sizes': [
+                    {'size': 'M', 'available_quantity': 12},  # Update existing
+                    {'size': 'XL', 'available_quantity': 7},  # New size
+                ]
+            },
+            partial=True
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        updated_size = Size.objects.get(product=self.product, size='M')
+        new_size = Size.objects.get(product=self.product, size='XL')
+
+        self.assertEqual(updated_size.available_quantity, 12)
+        self.assertEqual(new_size.available_quantity, 7)
+        logger.info(f"Updated size M and created size XL")
+
+    def test_missing_sizes_are_unchanged(self):
+        """
+        Sizes not included in the update payload should remain unchanged.
+        """
+        serializer = ProductSerializer(
+            instance=self.product,
+            data={
+                'sizes': [
+                    {'size': 'M', 'available_quantity': 20},  # Only update M
+                ]
+            },
+            partial=True
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        # Size S should remain unchanged
+        size_s = Size.objects.get(product=self.product, size='S')
+        self.assertEqual(size_s.available_quantity, 10)
+        self.assertEqual(size_s.reserved_quantity, 2)
+
+        updated_size_m = Size.objects.get(product=self.product, size='M')
+        self.assertEqual(updated_size_m.available_quantity, 20)
+        logger.info(f"Size S unchanged, size M updated")
