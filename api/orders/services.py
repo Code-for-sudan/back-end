@@ -219,25 +219,15 @@ class OrderService:
                     size = order.product_variation['size']
                 
                 try:
-                    # First unreserve the stock
-                    StockService.unreserve_stock(order.product.id, order.quantity, size=size)
+                    # Convert reserved stock to actual sale using StockService
+                    size = None
+                    if order.product_variation and 'size' in order.product_variation:
+                        size = order.product_variation['size']
                     
-                    # Now deduct from available stock
-                    if order.product.has_sizes and size:
-                        from products.models import Size
-                        size_obj = Size.objects.select_for_update().get(
-                            product=order.product, 
-                            size=size
-                        )
-                        if size_obj.available_quantity < order.quantity:
-                            raise ValidationError(f"Insufficient stock for {order.product.product_name} (Size: {size})")
-                        size_obj.available_quantity -= order.quantity
-                        size_obj.save()
-                    else:
-                        if order.product.available_quantity < order.quantity:
-                            raise ValidationError(f"Insufficient stock for {order.product.product_name}")
-                        order.product.available_quantity -= order.quantity
-                        order.product.save()
+                    # Use StockService to handle the stock conversion
+                    # First unreserve the stock, then confirm the sale
+                    StockService.unreserve_stock(order.product.id, order.quantity, size=size)
+                    StockService.confirm_stock_sale(order.product.id, order.quantity, size=size)
                     
                     # Update order status
                     order.payment_status = 'completed'
@@ -277,25 +267,14 @@ class OrderService:
                 size = order.product_variation['size']
             
             try:
-                # Unreserve the stock
-                StockService.unreserve_stock(order.product.id, order.quantity, size=size)
+                # Convert reserved stock to actual sale using StockService
+                size = None
+                if order.product_variation and 'size' in order.product_variation:
+                    size = order.product_variation['size']
                 
-                # Now deduct from available stock
-                if order.product.has_sizes and size:
-                    from products.models import Size
-                    size_obj = Size.objects.select_for_update().get(
-                        product=order.product, 
-                        size=size
-                    )
-                    if size_obj.available_quantity < order.quantity:
-                        raise ValidationError("Insufficient stock available")
-                    size_obj.available_quantity -= order.quantity
-                    size_obj.save()
-                else:
-                    if order.product.available_quantity < order.quantity:
-                        raise ValidationError("Insufficient stock available")
-                    order.product.available_quantity -= order.quantity
-                    order.product.save()
+                # Use StockService to handle the stock conversion
+                StockService.unreserve_stock(order.product.id, order.quantity, size=size)
+                StockService.confirm_stock_sale(order.product.id, order.quantity, size=size)
                 
             except Exception as e:
                 raise ValidationError(f"Stock processing failed: {str(e)}")
