@@ -15,6 +15,9 @@ class StockService:
         """Reserve stock for a product, optionally with size specification"""
         try:
             product = Product.objects.select_for_update().get(pk=product_id)
+        except Product.DoesNotExist:
+            logger.error(f"Product {product_id} not found.")
+            raise ValidationError(f"Product {product_id} not found.")
 
         if product.has_sizes:
             if not size:

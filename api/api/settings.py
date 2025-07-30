@@ -85,7 +85,6 @@ INSTALLED_APPS = [
     'notifications.apps.NotificationsConfig',
     'search.apps.SearchConfig',
     'chat.apps.ChatConfig',
-    'django_elasticsearch_dsl',
     'rest_framework',
     'django_celery_beat',
     'rest_framework_simplejwt',
@@ -93,6 +92,10 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
 ]
+
+# Only add Elasticsearch if not testing
+if not ('test' in sys.argv or 'pytest' in sys.modules):
+    INSTALLED_APPS.append('django_elasticsearch_dsl')
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be high in the list
@@ -169,11 +172,23 @@ if 'test' in sys.argv or 'pytest' in sys.argv:
     CELERY_TASK_EAGER_PROPAGATES = True
 
 
+# Elasticsearch configuration
 ELASTICSEARCH_DSL = {
     'default': {
         'hosts': os.getenv("ELASTICSEARCH_URL", "elasticsearch://elasticsearch:9200")
     },
 }
+
+# Disable Elasticsearch for testing
+if 'test' in sys.argv or 'pytest' in sys.modules:
+    ELASTICSEARCH_DSL = {
+        'default': {
+            'hosts': None  # Disable Elasticsearch during testing
+        },
+    }
+    # Also disable the django_elasticsearch_dsl app during testing
+    ELASTICSEARCH_DSL_AUTOSYNC = False
+    ELASTICSEARCH_DSL_AUTO_REFRESH = False
 
 
 CACHES = {

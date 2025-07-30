@@ -1,53 +1,218 @@
-# Payment System Documentation
+# Payments App Documentation
 
 ## Overview
-The payment system provides a comprehensive solution for handling payments in both test and production environments. It supports multiple payment gateways, payment tracking, refunds, and webhook processing with complete transaction simulation capabilities for development.
+The payments app manages all payment processing for the Sudamall e-commerce platform. It supports multiple payment gateways, handles payment workflows, manages payment attempts, provides payment security, and integrates with order processing.
 
-## Architecture
+---
 
-### Core Components
-- **PaymentGateway**: Configuration for different payment providers
-- **Payment**: Main payment records with status tracking
-- **PaymentAttempt**: Individual payment processing attempts
-- **Refund**: Refund tracking and management
-- **PaymentService**: Business logic for payment processing
+## 🏗️ Architecture
 
-### Database Schema
+### Core Models
 
 #### PaymentGateway Model
+**File:** `models.py`
+
 ```python
 class PaymentGateway(models.Model):
-    name = models.CharField(max_length=50, unique=True)  # stripe, paypal, etc.
+    """
+    Configuration for different payment gateways.
+    """
+    
+    # Gateway Identification
+    gateway_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
     display_name = models.CharField(max_length=100)
+    
+    # Gateway Configuration
     is_active = models.BooleanField(default=True)
-    is_test_mode = models.BooleanField(default=False)
-    api_key = models.CharField(max_length=255)
-    secret_key = models.CharField(max_length=255)
+    is_sandbox = models.BooleanField(default=False)
+    
+    # API Configuration
+    api_key = models.CharField(max_length=255, blank=True)
+    secret_key = models.CharField(max_length=255, blank=True)
+    merchant_id = models.CharField(max_length=100, blank=True)
     webhook_secret = models.CharField(max_length=255, blank=True)
+    
+    # Gateway Settings
     supported_currencies = models.JSONField(default=list)
-    gateway_fee_percentage = models.DecimalField(max_digits=5, decimal_places=4, default=0.0000)
-    gateway_fee_fixed = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    config = models.JSONField(default=dict)  # Gateway-specific configuration
+    min_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    max_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Processing Configuration
+    auto_capture = models.BooleanField(default=True)
+    supports_refunds = models.BooleanField(default=True)
+    supports_partial_refunds = models.BooleanField(default=True)
+    
+    # Fee Configuration
+    fixed_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    percentage_fee = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    
+    # Additional Settings
+    timeout_seconds = models.IntegerField(default=300)  # 5 minutes
+    retry_attempts = models.IntegerField(default=3)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
 ```
 
 #### Payment Model
+**File:** `models.py`
+
 ```python
 class Payment(models.Model):
-    payment_id = models.CharField(max_length=100, unique=True)
-    payment_hash = models.CharField(max_length=100, db_index=True)  # Links multiple orders
-    gateway = models.ForeignKey(PaymentGateway, on_delete=models.CASCADE)
+    """
+    Main payment model for tracking all payment transactions.
+    """
     
-    # Amount details
+    # Payment Status Choices
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+        ('refunded', 'Refunded'),
+        ('partially_refunded', 'Partially Refunded'),
+        ('expired', 'Expired'),
+    ]
+    
+    # Payment Identification
+    payment_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Related Objects
+    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payments')
+    gateway = models.ForeignKey(PaymentGateway, on_delete=models.CASCADE)
+    customer = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
+    
+    # Payment Details
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default='USD')
-    gateway_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    currency = models.CharField(max_length=3, default='SDG')
+    
+    # Gateway-specific Information
+    gateway_transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    gateway_reference = models.CharField(max_length=255, blank=True, null=True)
+    gateway_response = models.JSONField(default=dict, blank=True)
+    
+    # Payment Status
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    failure_reason = models.TextField(blank=True, null=True)
+    
+    # Payment Methods
+    payment_method = models.CharField(max_length=50, blank=True)  # card, mobile_money, bank_transfer
+    payment_details = models.JSONField(default=dict, blank=True)  # Store payment-specific data
+    
+    # Processing Information
+    processing_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     net_amount = models.DecimalField(max_digits=10, decimal_places=2)
     
-    # Status tracking
-    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
-    payment_method = models.CharField(max_length=50)
+    # Timing Information
+    initiated_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
     
-    # External references
+    # Refund Information
+    refunded_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    refund_reason = models.TextField(blank=True, null=True)
+    
+    # Security and Audit
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, null=True)
+    
+    # Additional Data
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['customer', '-created_at']),
+            models.Index(fields=['status', 'gateway']),
+            models.Index(fields=['gateway_transaction_id']),
+            models.Index(fields=['expires_at']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        """Calculate net amount before saving."""
+        if not self.net_amount:
+            self.net_amount = self.amount - self.processing_fee
+        super().save(*args, **kwargs)
+    
+    @property
+    def is_expired(self):
+        """Check if payment has expired."""
+        if self.expires_at and timezone.now() > self.expires_at:
+            return True
+        return False
+    
+    @property
+    def can_be_refunded(self):
+        """Check if payment can be refunded."""
+        return (
+            self.status == 'completed' and
+            self.gateway.supports_refunds and
+            self.refunded_amount < self.amount
+        )
+    
+    def calculate_refundable_amount(self):
+        """Calculate the amount that can be refunded."""
+        return self.amount - self.refunded_amount
+```
+
+#### PaymentAttempt Model
+**File:** `models.py`
+
+```python
+class PaymentAttempt(models.Model):
+    """
+    Track individual payment attempts for a payment.
+    """
+    
+    ATTEMPT_STATUS_CHOICES = [
+        ('initiated', 'Initiated'),
+        ('processing', 'Processing'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('timeout', 'Timeout'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='attempts')
+    attempt_number = models.PositiveIntegerField()
+    
+    status = models.CharField(max_length=20, choices=ATTEMPT_STATUS_CHOICES, default='initiated')
+    
+    # Gateway Response
+    gateway_response = models.JSONField(default=dict, blank=True)
+    error_code = models.CharField(max_length=50, blank=True, null=True)
+    error_message = models.TextField(blank=True, null=True)
+    
+    # Timing
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Request/Response Data
+    request_data = models.JSONField(default=dict, blank=True)
+    response_data = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        unique_together = ['payment', 'attempt_number']
+        ordering = ['-started_at']
+```
+
+**Key Features:**
+- ✅ Multi-gateway payment processing
+- ✅ Secure payment handling
+- ✅ Payment attempt tracking
+- ✅ Refund management
+- ✅ Payment expiration handling
+- ✅ Comprehensive audit trail
     gateway_transaction_id = models.CharField(max_length=255, blank=True)
     gateway_response = models.JSONField(default=dict)
     

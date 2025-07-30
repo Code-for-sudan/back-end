@@ -1,53 +1,7 @@
-# Orders System Documentation
+# Orders App Documentation
 
 ## Overview
-The orders system manages the complete order lifecycle from creation through delivery, with integrated payment timer functionality, stock management, and business workflow automation. Orders are created from cart checkout and progress through defined status transitions.
-
-## Architecture
-
-### Core Components
-- **Order**: Main order record with payment timer
-- **OrderService**: Business logic for order operations
-- **Payment Timer**: 15-minute payment window with automatic cleanup
-- **Stock Integration**: Conversion from reserved to actual stock usage
-- **Status Workflow**: Automated order progression
-
-### Database Schema
-
-#### Order Model
-```python
-class Order(models.Model):
-    # Order identification
-    order_id = models.CharField(max_length=100, unique=True)  # Auto-generated: ORD-ABC12345
-    user_id = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='orders')
-    
-    # Order status with workflow
-    status = models.CharField(max_length=20, choices=[
-        ('on_cart', 'On Cart'),              # Legacy - not used in new system
-        ('under_paying', 'Under Paying'),    # Payment window active (15 minutes)
-        ('pending', 'Pending'),              # Payment completed, awaiting processing
-        ('on_process', 'On Process'),        # Business owner processing order
-        ('on_shipping', 'On Shipping'),      # Order shipped, in transit
-        ('arrived', 'Arrived'),              # Order delivered successfully
-        ('cancelled', 'Cancelled'),          # Order cancelled (manual or auto)
-    ], default='under_paying')
-    
-    # Product information
-    product = models.ForeignKey('products.Product', on_delete=models.CASCADE, related_name='orders')
-    product_variation = models.JSONField(blank=True, null=True)  # Size, color, etc.
-    quantity = models.PositiveIntegerField(default=1)
-    
-    # Pricing
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    
-    # Address information
-    shipping_address = models.CharField(max_length=255)
-    
-    # Payment information
-    payment_method = models.CharField(max_length=20, choices=[
-        ('credit_card', 'Credit Card'),
-        ('after_delivery', 'Cash on Delivery'),
+The orders app manages the complete order lifecycle for the Sudamall e-commerce platform. It provides comprehensive order management with advanced features including product history tracking, payment integration, order status management, customer communications, and detailed analytics.
         ('bank_transfer', 'Bank Transfer'),
         ('mobile_money', 'Mobile Money'),
     ], default='credit_card')

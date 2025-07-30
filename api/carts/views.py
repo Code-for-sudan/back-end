@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from django.db import transaction
 from .services import CartService
 from .serializers import (
-    CartSerializer, AddToCartSerializer, UpdateCartItemSerializer,
+    CartSerializer, AddToCartSerializer, CartItemSerializer,
     CheckoutSingleItemSerializer, CheckoutFullCartSerializer,
     CartValidationSerializer, CheckoutResponseSerializer
 )
@@ -65,7 +65,7 @@ class UpdateCartItemView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def put(self, request, cart_item_id):
-        serializer = UpdateCartItemSerializer(data=request.data)
+        serializer = CartItemSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 cart_item = CartService.update_cart_item_quantity(
