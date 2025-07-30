@@ -118,6 +118,7 @@ jobs:
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
+          echo "FRONTEND_ACTIVATION_URL=${{ secrets.FRONTEND_ACTIVATION_URL }}" >> api/.env.prod
 
       - name: Deploy App
         run: |
