@@ -184,14 +184,12 @@ cython_debug/
 .env.test
 
 db.sqlite3
-media/*
 static/*
 *.log
 *.swp
 tmp.py
 *.env
 celerybeat-schedule
-media/
 log/
 .vscode/
 profile_pics/

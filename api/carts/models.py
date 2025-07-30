@@ -95,11 +95,49 @@ class CartItem(models.Model):
     
     @property
     def subtotal(self):
-        return self.product.price * self.quantity
+        return self.product.current_price * self.quantity
     
     @property
     def unit_price(self):
-        return self.product.price
+        return self.product.current_price
+    
+    def check_product_changes(self):
+        """Check if product has changed since added to cart"""
+        if not hasattr(self, '_original_price'):
+            # Store original price when item is first loaded
+            self._original_price = self.product.current_price
+            return {'changed': False}
+        
+        current_price = self.product.current_price
+        price_diff = abs(float(current_price) - float(self._original_price))
+        
+        changes = {
+            'changed': price_diff > 0.01,  # More than 1 cent difference
+            'price_change': price_diff if price_diff > 0.01 else 0,
+            'old_price': self._original_price,
+            'new_price': current_price
+        }
+        
+        return changes
+    
+    def update_for_product_changes(self):
+        """Update cart item if product has changed"""
+        changes = self.check_product_changes()
+        if changes['changed']:
+            # Log the change
+            import logging
+            logger = logging.getLogger('cart_service')
+            logger.info(
+                f"Product price changed for cart item {self.id}: "
+                f"{changes['old_price']} -> {changes['new_price']}"
+            )
+            
+            # Update the stored price reference
+            self._original_price = changes['new_price']
+            self.updated_at = models.timezone.now()
+            self.save(update_fields=['updated_at'])
+            
+        return changes
     
     def get_variation_key(self):
         """Get a unique key for this product variation"""

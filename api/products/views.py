@@ -1,12 +1,12 @@
-import json
 import logging
 from rest_framework import viewsets, permissions, status
+from rest_framework.views import APIView
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Product, Size, Tag
+from .models import Product, Size
 from .serializers import ProductSerializer
-from stores.models import Store
-
+from django.utils.timezone import now
 logger = logging.getLogger("products_views")
 
 
@@ -36,24 +36,49 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
+
     def get_permissions(self):
         # Allow unauthenticated access for list and retrieve actions
         if self.action in ["list", "retrieve"]:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
-    queryset = Product.objects.all()  
+    queryset = Product.objects.alive()
 
     def get_queryset(self):
-        """Override to filter by category and optionally sort by most recent."""
+        """Override to filter by category and optionally sort by price, recent, or both. Only alive products."""
         queryset = self.queryset
         category = self.request.query_params.get("category")
-        sort = self.request.query_params.get("sort")  
+        sort = self.request.query_params.get("sort")
 
         if category:
             queryset = queryset.filter(category=category)
-
-        if sort == "recent":
-            queryset = queryset.order_by("-created_at")  
+        has_offer = self.request.query_params.get("has_offer")
+        if has_offer and has_offer.lower() == "true":
+            queryset = queryset.filter(
+                offer__start_date__lte=now(),
+                offer__end_date__gte=now()
+            )
+        # sort param can be: 'recent', 'price', '-price', 'price,-created_at', etc. (comma-separated list)
+        if sort:
+            field_map = {
+                "recent": "-created_at",
+                "-recent": "created_at",
+                "price": "current_price",
+                "-price": "-current_price",
+            }
+            valid_fields = set(
+                f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
+            sort_fields = []
+            for field in sort.split(","):
+                field = field.strip()
+                mapped = field_map.get(field)
+                if mapped:
+                    sort_fields.append(mapped)
+                elif field.lstrip("-") in valid_fields:
+                    sort_fields.append(field)
+                # else: ignore unknown fields
+            if sort_fields:
+                queryset = queryset.order_by(*sort_fields)
 
         return queryset
 
@@ -71,10 +96,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        serializer = self.get_serializer(data=data)
-        if not serializer.is_valid():
-            logger.error(f"Product creation failed: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = self.request.user
         business_owner = getattr(user, "business_owner_profile", None)
@@ -86,8 +107,13 @@ class ProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            logger.error(f"Product creation failed: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         product = serializer.save(owner_id=user, store=store)
-        logger.info(f"Product created successfully: {product.id} by user {user.id}")
+        logger.info(
+            f"Product created successfully: {product.id} by user {user.id}")
         response = {
             "message": "Product created successfully",
             "product": ProductSerializer(product).data,
@@ -104,14 +130,23 @@ class ProductViewSet(viewsets.ModelViewSet):
         },
         summary="Retrieve Product",
     )
-
     def retrieve(self, request, *args, **kwargs):
         try:
-            product = self.get_queryset().prefetch_related("sizes").get(pk=kwargs["pk"])
+            product = self.get_queryset().prefetch_related(
+                "sizes").get(pk=kwargs["pk"])
         except Product.DoesNotExist:
-            return Response({"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Product not found."},
+                            status=status.HTTP_404_NOT_FOUND)
 
-        return Response(ProductSerializer(product).data, status=status.HTTP_200_OK)
+        product_data = ProductSerializer(product).data
+        if request.user.is_authenticated:
+            product_data["is_favourite"] = request.user.favourite_products.filter(
+                pk=product.pk
+            ).exists()
+        else:
+            product_data["is_favourite"] = False
+
+        return Response(product_data, status=status.HTTP_200_OK)
 
     @extend_schema(
         responses={
@@ -123,7 +158,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         },
         summary="Delete Product",
     )
-
     def destroy(self, request, *args, **kwargs):
         product = self.get_object()
         # Check if the current user is the owner
@@ -137,18 +171,13 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to delete this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        product.picture.delete(save=False)
         product.delete()
-        logger.info(f"Product {product.id} deleted by user {request.user.id}")
-        return Response(status=status.HTTP_204_NO_CONTENT,
-        )
+        logger.info(
+            f"Product {product.id} soft-deleted by user {request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         product = self.get_object()
-        data = request.data.copy()
-        serializer = self.get_serializer(product, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        updated_product = serializer.save()
         if product.owner_id != request.user:
             logger.critical(
                 "User %s attempted to update product %s without permission.",
@@ -159,9 +188,92 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to update this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        logger.info(f"Product {updated_product.id} updated by user {request.user.id}")
+        data = request.data.copy()
+        serializer = self.get_serializer(product, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_product = serializer.save()
+        logger.info(
+            f"Product {updated_product.id} updated by user {request.user.id}")
         response = {
-            "message": "Product created successfully",
+            "message": "Product updated successfully",
             "product": ProductSerializer(updated_product).data,
         }
-        return Response(response, status=status.HTTP_201_CREATED)
+        return Response(response, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        responses={200: ProductSerializer(many=True)},
+        summary="List Products",
+        description="Get all products with an `is_favourite` flag if the user is authenticated.",
+    )
+    def list(self, request, *args, **kwargs):
+        products = self.get_queryset().prefetch_related("sizes")
+        # Apply DRF pagination
+        page = self.paginate_queryset(products)
+        if page is not None:
+            serialized_products = ProductSerializer(page, many=True).data
+        else:
+            serialized_products = ProductSerializer(products, many=True).data
+
+        if request.user.is_authenticated:
+            favourite_ids = set(
+                request.user.favourite_products.values_list("id", flat=True)
+            )
+            for product_data in serialized_products:
+                product_data["is_favourite"] = product_data["id"] in favourite_ids
+        else:
+            for product_data in serialized_products:
+                product_data["is_favourite"] = False
+
+        if page is not None:
+            return self.get_paginated_response(serialized_products)
+
+        return Response(serialized_products, status=status.HTTP_200_OK)
+
+
+class DeleteProductSizeView(APIView):
+    """
+    Deletes a size of a specific product by product_id and size_id.
+    Only the product owner can perform this action.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, product_id, size_id):
+        product = get_object_or_404(Product, pk=product_id)
+
+        # Check if the current user is the owner of the product
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to delete size %s of product %s without permission.",
+                request.user.id,
+                size_id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to modify this product."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        size = get_object_or_404(Size, pk=size_id, product=product)
+
+        # If product uses sizes, don't delete the last one
+        total_sizes = product.sizes.count()
+        if product.has_sizes and total_sizes == 1:
+            return Response(
+                {"detail": "Cannot delete the only size for this product."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Prevent deletion if reserved_quantity > 0
+        if size.reserved_quantity > 0:
+            return Response(
+                {"detail": "Cannot delete a size with reserved stock."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Perform a soft delete
+        size.delete()
+
+        return Response(
+            {"message": f"Size '{size.size}' deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )

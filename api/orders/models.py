@@ -42,6 +42,19 @@ class Order(models.Model):
 
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Product history tracking - store product state at order time
+    product_history = models.ForeignKey(
+        'products.ProductHistory', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Snapshot of product state when order was created"
+    )
+    
+    # Store product details at order time (fallback)
+    product_name_at_order = models.CharField(max_length=255, blank=True)
+    product_price_at_order = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -88,7 +101,59 @@ class Order(models.Model):
     def save(self, *args, **kwargs):
         if not self.order_id:
             self.order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+        
+        # Store product details at order time
+        if self.product and not self.product_name_at_order:
+            self.product_name_at_order = self.product.product_name
+            self.product_price_at_order = self.product.current_price
+            
         super().save(*args, **kwargs)
+    
+    def create_product_history_snapshot(self):
+        """Create a product history snapshot when order is confirmed"""
+        if self.product and not self.product_history:
+            from products.models import ProductHistory
+            self.product_history = ProductHistory.create_from_product(self.product)
+            self.save(update_fields=['product_history'])
+    
+    def get_product_name(self):
+        """Get product name, preferring historical data"""
+        if self.product_history:
+            return self.product_history.product_name
+        elif self.product_name_at_order:
+            return self.product_name_at_order
+        elif self.product:
+            return self.product.product_name
+        return "Unknown Product"
+    
+    def get_product_price(self):
+        """Get product price at time of order"""
+        if self.product_history:
+            return self.product_history.current_price
+        elif self.product_price_at_order:
+            return self.product_price_at_order
+        elif self.product:
+            return self.product.current_price
+        return self.unit_price
+    
+    def validate_product_consistency(self):
+        """Check if current product state matches order expectations"""
+        if not self.product:
+            return {'valid': False, 'reason': 'Product no longer exists'}
+        
+        current_price = self.product.current_price
+        order_price = self.get_product_price()
+        
+        # Allow small price differences (rounding)
+        price_diff = abs(float(current_price) - float(order_price))
+        if price_diff > 0.01:  # More than 1 cent difference
+            return {
+                'valid': False, 
+                'reason': f'Price changed from {order_price} to {current_price}',
+                'price_change': price_diff
+            }
+        
+        return {'valid': True}
     
     def __str__(self):
         return f"Order {self.order_id} - {self.user_id.email}"
