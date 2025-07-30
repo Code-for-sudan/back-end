@@ -298,7 +298,7 @@ class Size(models.Model):
     def __str__(self):
         return f"{self.product.product_name} - {self.size}"  # type: ignore
 
-
+# this model is unused should be removed in the future
 class ProductTag(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE)
