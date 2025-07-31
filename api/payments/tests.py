@@ -561,7 +561,8 @@ class PaymentIntegrationTest(TransactionTestCase):
             payment_data=test_data
         )
         
-        # Verify payment failed
+        # Refresh payment from database and verify it failed
+        payment.refresh_from_db()
         self.assertEqual(payment.status, 'failed')
         
         # Order should remain in under_paying status

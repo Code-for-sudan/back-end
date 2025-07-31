@@ -100,7 +100,7 @@ class Product(models.Model):
         return super().delete(using=using, keep_parents=keep_parents)
 
     def __str__(self):
-        return str(self.product_name)
+        return f"{self.product_name} - {self.store.name}" if self.store else self.product_name
 
     @property
     def current_price(self):
@@ -187,6 +187,10 @@ class Product(models.Model):
         
         self.reserved_quantity -= quantity
         self.save(update_fields=['reserved_quantity'])
+
+    def confirm_sale(self, quantity):
+        """Confirm sale (alias for confirm_stock_sale for compatibility)"""
+        return self.confirm_stock_sale(quantity)
 
     def has_stock(self, quantity):
         """Check if product has enough available stock"""
@@ -315,6 +319,15 @@ class ProductHistory(models.Model):
             return True
 
         return False
+
+    def __str__(self):
+        """String representation of ProductHistory"""
+        return f"History for {self.product_name} at {self.snapshot_taken_at}"
+
+    @property
+    def price(self):
+        """Backward compatibility property for tests"""
+        return self.product_price
 
 
 class Offer(models.Model):

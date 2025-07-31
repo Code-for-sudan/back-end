@@ -139,21 +139,64 @@ class Order(models.Model):
     def validate_product_consistency(self):
         """Check if current product state matches order expectations"""
         if not self.product:
-            return {'valid': False, 'reason': 'Product no longer exists'}
+            return {'valid': False, 'reason': 'Product no longer exists', 'changes': ['product_deleted']}
         
-        current_price = self.product.current_price
-        order_price = self.get_product_price()
+        changes = []
         
-        # Allow small price differences (rounding)
-        price_diff = abs(float(current_price) - float(order_price))
-        if price_diff > 0.01:  # More than 1 cent difference
+        # If we have product history, compare against it for comprehensive validation
+        if self.product_history:
+            # Check all important fields for changes
+            if self.product.product_name != self.product_history.product_name:
+                changes.append('product_name')
+            
+            if self.product.product_description != self.product_history.product_description:
+                changes.append('product_description')
+            
+            if self.product.category != self.product_history.category:
+                changes.append('category')
+            
+            # Check price (with tolerance for rounding)
+            current_price = float(self.product.current_price)
+            history_price = float(self.product_history.current_price)
+            if abs(current_price - history_price) > 0.01:
+                changes.append('price')
+            
+            if self.product.color != self.product_history.color:
+                changes.append('color')
+            
+            if self.product.brand != self.product_history.brand:
+                changes.append('brand')
+        else:
+            # Fallback to basic price comparison if no history
+            current_price = self.product.current_price
+            order_price = self.get_product_price()
+            
+            # Allow small price differences (rounding)
+            price_diff = abs(float(current_price) - float(order_price))
+            if price_diff > 0.01:  # More than 1 cent difference
+                changes.append('price')
+        
+        if changes:
+            if len(changes) == 1 and changes[0] == 'price':
+                # Maintain backward compatibility for price-only changes
+                if self.product_history:
+                    history_price = self.product_history.current_price
+                    current_price = self.product.current_price
+                else:
+                    history_price = self.get_product_price()
+                    current_price = self.product.current_price
+                
+                reason = f"Price changed from {history_price} to {current_price}"
+            else:
+                reason = f"Product has changed: {', '.join(changes)}"
+                
             return {
                 'valid': False, 
-                'reason': f'Price changed from {order_price} to {current_price}',
-                'price_change': price_diff
+                'reason': reason,
+                'changes': changes
             }
         
-        return {'valid': True}
+        return {'valid': True, 'changes': []}
     
     def __str__(self):
         return f"Order {self.order_id} - {self.user_id.email}"
@@ -168,7 +211,7 @@ class Order(models.Model):
     
     @property
     def can_be_cancelled(self):
-        return self.status in ['pending', 'on_process']
+        return self.status in ['on_cart', 'pending', 'on_process']
     
     @property
     def is_delivered(self):

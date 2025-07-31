@@ -2,9 +2,25 @@ import logging
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken # type: ignore
 from django.utils.timezone import now
 from celery import shared_task
+from .models import VerificationCode
 
 # Create a logger for this celery task module
 logger = logging.getLogger('celery_tasks.authentication')
+
+@shared_task
+def cleanup_expired_codes():
+    """
+    Clean up expired verification codes from the database.
+    """
+    try:
+        expired_codes = VerificationCode.objects.filter(expires_at__lt=now())
+        count = expired_codes.count()
+        expired_codes.delete()
+        logger.info(f"Cleaned up {count} expired verification codes")
+        return count
+    except Exception as e:
+        logger.error(f"Error cleaning up expired verification codes: {e}")
+        return 0
 
 @shared_task
 def clean_expired_blacklisted_tokens():

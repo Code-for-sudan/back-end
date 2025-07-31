@@ -64,6 +64,10 @@ class AuthenticationService:
             verification_code.is_used = True
             verification_code.save()
             
+            # Mark user as verified (active)
+            user.is_active = True
+            user.save()
+            
             return {
                 'success': True,
                 'message': 'Code verified successfully'
@@ -81,6 +85,8 @@ class AuthenticationService:
         return {
             'is_authenticated': user.is_authenticated if hasattr(user, 'is_authenticated') else False,
             'is_active': user.is_active,
+            'is_verified': user.is_active,  # Using is_active as is_verified equivalent
+            'can_login': user.is_active,
             'phone_verified': getattr(user, 'phone_verified', False),
             'email_verified': getattr(user, 'email_verified', False)
         }
@@ -91,11 +97,26 @@ class AuthenticationService:
         if not phone_number:
             return ""
         
+        # Convert PhoneNumber to string if needed
+        phone_str = str(phone_number)
+        
         # Keep first 3 and last 2 digits, mask the rest
-        if len(phone_number) > 5:
-            masked = phone_number[:3] + '*' * (len(phone_number) - 5) + phone_number[-2:]
+        if len(phone_str) > 5:
+            masked = phone_str[:3] + '*' * (len(phone_str) - 5) + phone_str[-2:]
             return masked
-        return phone_number
+        return phone_str
+
+
+def send_sms(phone_number, message):
+    """Send SMS function (placeholder for external service integration)"""
+    logger.info(f"SMS sent to {phone_number}: {message}")
+    return True
+
+
+def send_email(email, subject, message):
+    """Send email function (placeholder for external service integration)"""
+    logger.info(f"Email sent to {email} with subject '{subject}': {message}")
+    return True
 
 
 def authenticate_google_user(code: str, state: str):

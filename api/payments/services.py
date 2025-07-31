@@ -72,7 +72,7 @@ class PaymentService:
             
             # Create payment record
             payment = Payment.objects.create(
-                order_reference=primary_order.payment_hash,  # Use payment_hash as reference for multi-order payments
+                order_reference=primary_order.payment_hash or f"ORDER-{primary_order.id}",  # Use payment_hash or generate fallback
                 user=primary_order.user_id,
                 gateway=gateway,
                 amount=total_amount,

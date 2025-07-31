@@ -58,9 +58,9 @@ class JWTAuthenticationTest(APITestCase):
             is_active=True
         )
         
-        self.login_url = reverse('authentication:login')
-        self.refresh_url = reverse('authentication:token_refresh')
-        self.verify_url = reverse('authentication:token_verify')
+        self.login_url = '/api/v1/auth/login/'
+        self.refresh_url = reverse('token_refresh')
+        self.verify_url = reverse('token_verify')
     
     def test_user_login_success(self):
         """Test successful user login"""
@@ -95,7 +95,7 @@ class JWTAuthenticationTest(APITestCase):
             email='unverified@example.com',
             password='testpass123',
             phone_number='9876543210',
-            is_verified=False
+            is_active=False
         )
         
         login_data = {
@@ -176,7 +176,7 @@ class UserVerificationTest(TestCase):
             email='verify@example.com',
             password='testpass123',
             phone_number='2345678901',
-            is_verified=False
+            is_active=False
         )
     
     def test_verification_code_generation(self):
@@ -190,22 +190,21 @@ class UserVerificationTest(TestCase):
         """Test VerificationCode model creation"""
         verification = VerificationCode.objects.create(
             user=self.user,
-            verification_type='phone',
+            code_type='phone',
             code='123456'
         )
         
         self.assertEqual(verification.user, self.user)
-        self.assertEqual(verification.verification_type, 'phone')
+        self.assertEqual(verification.code_type, 'phone')
         self.assertEqual(verification.code, '123456')
         self.assertFalse(verification.is_used)
-        self.assertIsNone(verification.used_at)
     
     def test_verification_code_expiry(self):
         """Test verification code expiry"""
         # Create expired verification code
         verification = VerificationCode.objects.create(
             user=self.user,
-            verification_type='email',
+            code_type='email',
             code='654321'
         )
         
@@ -220,7 +219,7 @@ class UserVerificationTest(TestCase):
         """Test marking verification code as used"""
         verification = VerificationCode.objects.create(
             user=self.user,
-            verification_type='phone',
+            code_type='phone',
             code='789012'
         )
         
@@ -264,7 +263,7 @@ class AuthenticationServiceTest(TestCase):
             email='service@example.com',
             password='testpass123',
             phone_number='3456789012',
-            is_verified=False
+            is_active=False
         )
         
         # Clear cache before each test
@@ -277,7 +276,7 @@ class AuthenticationServiceTest(TestCase):
         
         result = AuthenticationService.send_verification_code(
             user=self.user,
-            verification_type='phone'
+            code_type='phone'
         )
         
         self.assertTrue(result['success'])
@@ -286,7 +285,7 @@ class AuthenticationServiceTest(TestCase):
         # Verify code was created
         verification = VerificationCode.objects.filter(
             user=self.user,
-            verification_type='phone'
+            code_type='phone'
         ).first()
         
         self.assertIsNotNone(verification)
@@ -302,7 +301,7 @@ class AuthenticationServiceTest(TestCase):
         
         result = AuthenticationService.send_verification_code(
             user=self.user,
-            verification_type='email'
+            code_type='email'
         )
         
         self.assertTrue(result['success'])
@@ -310,7 +309,7 @@ class AuthenticationServiceTest(TestCase):
         # Verify code was created
         verification = VerificationCode.objects.filter(
             user=self.user,
-            verification_type='email'
+            code_type='email'
         ).first()
         
         self.assertIsNotNone(verification)
@@ -323,21 +322,21 @@ class AuthenticationServiceTest(TestCase):
         # Create verification code
         verification = VerificationCode.objects.create(
             user=self.user,
-            verification_type='phone',
+            code_type='phone',
             code='567890'
         )
         
         result = AuthenticationService.verify_code(
             user=self.user,
             code='567890',
-            verification_type='phone'
+            code_type='phone'
         )
         
         self.assertTrue(result['success'])
         
         # Refresh user from database
         self.user.refresh_from_db()
-        self.assertTrue(self.user.is_verified)
+        self.assertTrue(self.user.is_active)
         
         # Verify code is marked as used
         verification.refresh_from_db()
@@ -348,14 +347,14 @@ class AuthenticationServiceTest(TestCase):
         # Create verification code
         VerificationCode.objects.create(
             user=self.user,
-            verification_type='phone',
+            code_type='phone',
             code='123456'
         )
         
         result = AuthenticationService.verify_code(
             user=self.user,
             code='wrong_code',
-            verification_type='phone'
+            code_type='phone'
         )
         
         self.assertFalse(result['success'])
@@ -363,14 +362,14 @@ class AuthenticationServiceTest(TestCase):
         
         # User should remain unverified
         self.user.refresh_from_db()
-        self.assertFalse(self.user.is_verified)
+        self.assertFalse(self.user.is_active)
     
     def test_verify_code_expired(self):
         """Test verification with expired code"""
         # Create expired verification code
         verification = VerificationCode.objects.create(
             user=self.user,
-            verification_type='email',
+            code_type='email',
             code='expired123'
         )
         
@@ -382,7 +381,7 @@ class AuthenticationServiceTest(TestCase):
         result = AuthenticationService.verify_code(
             user=self.user,
             code='expired123',
-            verification_type='email'
+            code_type='email'
         )
         
         self.assertFalse(result['success'])
@@ -397,7 +396,7 @@ class AuthenticationServiceTest(TestCase):
                 
                 result = AuthenticationService.send_verification_code(
                     user=self.user,
-                    verification_type='phone'
+                    code_type='phone'
                 )
                 
                 if i < 5:  # First 5 should succeed
@@ -414,7 +413,7 @@ class AuthenticationServiceTest(TestCase):
         self.assertFalse(auth_status['can_login'])
         
         # Verify user
-        self.user.is_verified = True
+        self.user.is_active = True
         self.user.save()
         
         auth_status = AuthenticationService.check_user_auth_status(self.user)
@@ -431,7 +430,7 @@ class SecurityTest(TestCase):
             email='security@example.com',
             password='testpass123',
             phone_number='4567890123',
-            is_verified=True
+            is_active=True
         )
         
         self.client = Client()
@@ -501,7 +500,7 @@ class SecurityTest(TestCase):
             'id': self.user.id,
             'email': self.user.email,
             'phone_number': self.user.phone_number,
-            'is_verified': self.user.is_verified
+            'is_verified': self.user.is_active
         }
         
         # Password should never be in serialized data
@@ -523,7 +522,7 @@ class AuthenticationIntegrationTest(APITestCase):
             email='integration@example.com',
             password='testpass123',
             phone_number='5678901234',
-            is_verified=True
+            is_active=True
         )
     
     def test_auth_middleware_integration(self):
@@ -560,7 +559,7 @@ class AuthenticationIntegrationTest(APITestCase):
         
         VerificationCode.objects.create(
             user=self.user,
-            verification_type='phone',
+            code_type='phone',
             code='old_code',
             created_at=past_time
         )

@@ -68,13 +68,18 @@ class ProductModelTest(TestCase):
             store=self.store,
             category='clothing',
             has_sizes=True,
-            sizes={'S': 10, 'M': 15, 'L': 12},
             picture='sized.jpg'
         )
         
+        # Create sizes for the product
+        from products.models import Size
+        Size.objects.create(product=product, size='S', available_quantity=10, reserved_quantity=0)
+        Size.objects.create(product=product, size='M', available_quantity=15, reserved_quantity=0)
+        Size.objects.create(product=product, size='L', available_quantity=12, reserved_quantity=0)
+        
         self.assertTrue(product.has_sizes)
-        self.assertEqual(product.sizes, {'S': 10, 'M': 15, 'L': 12})
-        self.assertEqual(product.available_quantity, 37)  # Sum of sizes
+        self.assertEqual(product.sizes.count(), 3)
+        self.assertEqual(product.get_total_stock(), 37)  # Sum of sizes
     
     def test_product_validation(self):
         """Test product field validation"""
@@ -145,22 +150,30 @@ class ProductModelTest(TestCase):
             owner_id=self.user,
             store=self.store,
             category='clothing',
-            has_sizes=True,
-            sizes={'S': 5, 'M': 10, 'L': 8},
-            reserved_sizes={'S': 1, 'M': 2, 'L': 0}
+            has_sizes=True
         )
         
+        # Create sizes for the product
+        from products.models import Size
+        Size.objects.create(product=product, size='S', available_quantity=4, reserved_quantity=1)  # Only 4 available for new reservations
+        Size.objects.create(product=product, size='M', available_quantity=8, reserved_quantity=2)  # 8 available for new reservations
+        Size.objects.create(product=product, size='L', available_quantity=8, reserved_quantity=0)
+        
         # Test size-specific stock
-        self.assertTrue(product.has_size_stock('M', 5))
-        self.assertFalse(product.has_size_stock('S', 5))  # Only 4 available (5-1)
+        size_s = product.sizes.get(size='S')
+        size_m = product.sizes.get(size='M')
+        size_l = product.sizes.get(size='L')
+        
+        self.assertTrue(size_m.has_stock(5))  # 8 available, asking for 5 -> True
+        self.assertFalse(size_s.has_stock(5))  # Only 4 available, asking for 5 -> False
         
         # Test size stock operations
-        product.reserve_size_stock('L', 3)
-        self.assertEqual(product.reserved_sizes['L'], 3)
+        size_l.reserve_stock(3)
+        self.assertEqual(size_l.reserved_quantity, 3)
         
-        product.confirm_size_sale('M', 1)
-        self.assertEqual(product.sizes['M'], 9)
-        self.assertEqual(product.reserved_sizes['M'], 1)
+        size_m.confirm_stock_sale(1)
+        size_m.refresh_from_db()
+        self.assertEqual(size_m.reserved_quantity, 1)  # Was 2, now 1
     
     def test_product_string_representation(self):
         """Test product string representation"""
@@ -170,7 +183,9 @@ class ProductModelTest(TestCase):
             price=Decimal('25.00'),
             owner_id=self.user,
             store=self.store,
-            category='test'
+            category='test',
+            available_quantity=10,
+            reserved_quantity=0
         )
         
         expected_str = f"String Test Product - {self.store.name}"
@@ -550,22 +565,27 @@ class ProductStockManagementTest(TransactionTestCase):
             owner_id=self.user,
             store=self.store,
             category='clothing',
-            has_sizes=True,
-            sizes={'S': 5, 'M': 10, 'L': 8, 'XL': 3},
-            reserved_sizes={'S': 0, 'M': 0, 'L': 0, 'XL': 0}
+            has_sizes=True
         )
         
+        # Create sizes for the product
+        from products.models import Size
+        size_s = Size.objects.create(product=product, size='S', available_quantity=5, reserved_quantity=0)
+        size_m = Size.objects.create(product=product, size='M', available_quantity=10, reserved_quantity=0)
+        size_l = Size.objects.create(product=product, size='L', available_quantity=8, reserved_quantity=0)
+        size_xl = Size.objects.create(product=product, size='XL', available_quantity=3, reserved_quantity=0)
+        
         # Test size reservations
-        product.reserve_size_stock('M', 4)
-        product.reserve_size_stock('L', 2)
+        size_m.reserve_stock(4)
+        size_l.reserve_stock(2)
         
         # Verify reservations
-        self.assertEqual(product.reserved_sizes['M'], 4)
-        self.assertEqual(product.reserved_sizes['L'], 2)
+        self.assertEqual(size_m.reserved_quantity, 4)
+        self.assertEqual(size_l.reserved_quantity, 2)
         
         # Test over-reservation
-        with self.assertRaises(ValueError):
-            product.reserve_size_stock('S', 6)  # Only 5 available
+        with self.assertRaises(ValidationError):
+            size_s.reserve_stock(6)  # Only 5 available
         
         # Test size sales
         product.confirm_size_sale('M', 2)
