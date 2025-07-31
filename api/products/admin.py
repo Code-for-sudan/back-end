@@ -58,7 +58,7 @@ class ProductAdmin(admin.ModelAdmin):
 @admin.register(ProductHistory)
 class ProductHistoryAdmin(admin.ModelAdmin):
     list_display = [
-        "id", "product_name", "current_price", "store_name", "recorded_at"
+        "id", "product_name", "current_price", "store_name", "snapshot_taken_at"
     ]
     search_fields = ["product_name", "store_name", "owner_email"]
     readonly_fields = [

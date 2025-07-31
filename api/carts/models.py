@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from .managers import CartManager, CartItemManager
 
 
@@ -134,7 +135,7 @@ class CartItem(models.Model):
             
             # Update the stored price reference
             self._original_price = changes['new_price']
-            self.updated_at = models.timezone.now()
+            self.updated_at = timezone.now()
             self.save(update_fields=['updated_at'])
             
         return changes

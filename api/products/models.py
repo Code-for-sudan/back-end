@@ -153,13 +153,72 @@ class Product(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
+    def reserve_stock(self, quantity):
+        """Reserve stock for this product"""
+        if self.has_sizes:
+            raise ValidationError("Cannot reserve stock on product with sizes. Use Size.reserve_stock() instead.")
+        
+        if self.available_quantity < quantity:
+            raise ValidationError(f"Insufficient stock. Available: {self.available_quantity}, Requested: {quantity}")
+        
+        self.available_quantity -= quantity
+        self.reserved_quantity += quantity
+        self.save(update_fields=['available_quantity', 'reserved_quantity'])
+
+    def unreserve_stock(self, quantity):
+        """Unreserve stock for this product"""
+        if self.has_sizes:
+            raise ValidationError("Cannot unreserve stock on product with sizes. Use Size.unreserve_stock() instead.")
+        
+        if self.reserved_quantity < quantity:
+            raise ValidationError(f"Cannot unreserve more than reserved. Reserved: {self.reserved_quantity}, Requested: {quantity}")
+        
+        self.reserved_quantity -= quantity
+        self.available_quantity += quantity
+        self.save(update_fields=['available_quantity', 'reserved_quantity'])
+
+    def confirm_stock_sale(self, quantity):
+        """Confirm stock sale (remove from reserved quantity)"""
+        if self.has_sizes:
+            raise ValidationError("Cannot confirm stock sale on product with sizes. Use Size.confirm_stock_sale() instead.")
+        
+        if self.reserved_quantity < quantity:
+            raise ValidationError(f"Cannot confirm more than reserved. Reserved: {self.reserved_quantity}, Requested: {quantity}")
+        
+        self.reserved_quantity -= quantity
+        self.save(update_fields=['reserved_quantity'])
+
+    def has_stock(self, quantity):
+        """Check if product has enough available stock"""
+        if self.has_sizes:
+            return sum(size.available_quantity for size in self.sizes.all()) >= quantity
+        return self.available_quantity >= quantity
+
+    def get_total_stock(self):
+        """Get total stock (available + reserved)"""
+        if self.has_sizes:
+            return sum(size.available_quantity + size.reserved_quantity for size in self.sizes.all())
+        return self.available_quantity + self.reserved_quantity
+
+    def get_available_stock(self):
+        """Get available stock"""
+        if self.has_sizes:
+            return sum(size.available_quantity for size in self.sizes.all())
+        return self.available_quantity
+
+    def get_reserved_stock(self):
+        """Get reserved stock"""
+        if self.has_sizes:
+            return sum(size.reserved_quantity for size in self.sizes.all())
+        return self.reserved_quantity
+
 
 class ProductHistory(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.SET_NULL, related_name="history", null=True)
     product_name = models.CharField(max_length=255)
     product_description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    product_price = models.DecimalField(max_digits=10, decimal_places=2)  # Changed from 'price'
     current_price = models.DecimalField(max_digits=10, decimal_places=2)
     color = models.CharField(max_length=50, blank=True, null=True)
     brand = models.CharField(max_length=100, blank=True, null=True)
@@ -174,7 +233,7 @@ class ProductHistory(models.Model):
     is_deleted = models.BooleanField(default=False)
     store_name = models.CharField(max_length=255, blank=True, null=True)
     store_location = models.CharField(max_length=255, blank=True, null=True)
-    recorded_at = models.DateTimeField(auto_now_add=True)
+    snapshot_taken_at = models.DateTimeField(auto_now_add=True)  # Changed from 'recorded_at'
 
     @classmethod
     def create_from_product(cls, product: Product):
@@ -190,7 +249,7 @@ class ProductHistory(models.Model):
             product=product,
             product_name=product.product_name,
             product_description=product.product_description,
-            price=product.price,
+            product_price=product.price,  # Updated field name
             current_price=product.current_price,
             color=product.color,
             brand=product.brand,
@@ -209,21 +268,34 @@ class ProductHistory(models.Model):
         return history
 
     def has_product_changed(self, product: Product) -> bool:
-
-        # Compare key fields
+        # Compare key fields - updated field name
         fields_to_check = [
-            "product_name", "product_description", "price", "current_price",
-            "color", "brand", "has_sizes", "category", "properties",
-            "picture", "is_deleted", "store_name", "store_location"
+            ("product_name", "product_name"),
+            ("product_description", "product_description"), 
+            ("product_price", "price"),  # Map history field to product field
+            ("current_price", "current_price"),
+            ("color", "color"),
+            ("brand", "brand"),
+            ("has_sizes", "has_sizes"),
+            ("category", "category"),
+            ("properties", "properties"),
+            ("picture", "picture"),
+            ("is_deleted", "is_deleted")
         ]
 
-        for field in fields_to_check:
-
-            if getattr(product, field) != getattr(self, field):
+        for history_field, product_field in fields_to_check:
+            if getattr(self, history_field) != getattr(product, product_field):
                 return True
+                
+        # Compare store fields
+        store = product.store
+        if self.store_name != (store.name if store else None):
+            return True
+        if self.store_location != (store.location if store else None):
+            return True
+            
         # Compare owner-related fields
         owner = product.owner_id
-
         owner_full_name = getattr(owner, "get_full_name", lambda: None)()
         if self.owner_full_name != owner_full_name:
             return True
@@ -294,6 +366,40 @@ class Size(models.Model):
         self.is_deleted = False
         self.deleted_at = None
         self.save()
+
+    def reserve_stock(self, quantity):
+        """Reserve stock for this size"""
+        if self.available_quantity < quantity:
+            raise ValidationError(f"Insufficient stock for size {self.size}. Available: {self.available_quantity}, Requested: {quantity}")
+        
+        self.available_quantity -= quantity
+        self.reserved_quantity += quantity
+        self.save(update_fields=['available_quantity', 'reserved_quantity'])
+
+    def unreserve_stock(self, quantity):
+        """Unreserve stock for this size"""
+        if self.reserved_quantity < quantity:
+            raise ValidationError(f"Cannot unreserve more than reserved for size {self.size}. Reserved: {self.reserved_quantity}, Requested: {quantity}")
+        
+        self.reserved_quantity -= quantity
+        self.available_quantity += quantity
+        self.save(update_fields=['available_quantity', 'reserved_quantity'])
+
+    def confirm_stock_sale(self, quantity):
+        """Confirm stock sale (remove from reserved quantity)"""
+        if self.reserved_quantity < quantity:
+            raise ValidationError(f"Cannot confirm more than reserved for size {self.size}. Reserved: {self.reserved_quantity}, Requested: {quantity}")
+        
+        self.reserved_quantity -= quantity
+        self.save(update_fields=['reserved_quantity'])
+
+    def has_stock(self, quantity):
+        """Check if size has enough available stock"""
+        return self.available_quantity >= quantity
+
+    def get_total_stock(self):
+        """Get total stock (available + reserved) for this size"""
+        return self.available_quantity + self.reserved_quantity
 
     def __str__(self):
         return f"{self.product.product_name} - {self.size}"  # type: ignore

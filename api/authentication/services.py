@@ -2,14 +2,100 @@
 import requests, logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from .utils import generate_jwt_tokens
+from .models import VerificationCode
 from accounts.models import BusinessOwner
 from stores.models import Store
+import random
+import string
 
 # Get the user model
 User = get_user_model()
 # Create the logger
 logger = logging.getLogger("authentication_services")
+
+
+class AuthenticationService:
+    """Service class for authentication operations"""
+    
+    @staticmethod
+    def send_verification_code(user, code_type='phone'):
+        """Send verification code to user"""
+        # Generate a 6-digit code
+        code = ''.join(random.choices(string.digits, k=6))
+        
+        # Create verification code record
+        verification_code = VerificationCode.objects.create(
+            user=user,
+            code=code,
+            code_type=code_type,
+            expires_at=timezone.now() + timezone.timedelta(minutes=15)
+        )
+        
+        # Here you would integrate with SMS/Email service
+        # For now, we'll just log it
+        logger.info(f"Verification code {code} sent to user {user.email}")
+        
+        return {
+            'success': True,
+            'message': 'Verification code sent successfully',
+            'code_id': verification_code.id
+        }
+    
+    @staticmethod
+    def verify_code(user, code, code_type='phone'):
+        """Verify the code provided by user"""
+        try:
+            verification_code = VerificationCode.objects.get(
+                user=user,
+                code=code,
+                code_type=code_type,
+                is_used=False
+            )
+            
+            if verification_code.is_expired():
+                return {
+                    'success': False,
+                    'message': 'Verification code has expired'
+                }
+            
+            # Mark code as used
+            verification_code.is_used = True
+            verification_code.save()
+            
+            return {
+                'success': True,
+                'message': 'Code verified successfully'
+            }
+            
+        except VerificationCode.DoesNotExist:
+            return {
+                'success': False,
+                'message': 'Invalid verification code'
+            }
+    
+    @staticmethod
+    def check_user_auth_status(user):
+        """Check authentication status of user"""
+        return {
+            'is_authenticated': user.is_authenticated if hasattr(user, 'is_authenticated') else False,
+            'is_active': user.is_active,
+            'phone_verified': getattr(user, 'phone_verified', False),
+            'email_verified': getattr(user, 'email_verified', False)
+        }
+    
+    @staticmethod
+    def mask_phone_number(phone_number):
+        """Mask phone number for privacy"""
+        if not phone_number:
+            return ""
+        
+        # Keep first 3 and last 2 digits, mask the rest
+        if len(phone_number) > 5:
+            masked = phone_number[:3] + '*' * (len(phone_number) - 5) + phone_number[-2:]
+            return masked
+        return phone_number
 
 
 def authenticate_google_user(code: str, state: str):

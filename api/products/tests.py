@@ -216,7 +216,9 @@ class ProductHistoryTest(TestCase):
         self.assertEqual(history.product_description, self.product.product_description)
         self.assertEqual(history.category, self.product.category)
         self.assertEqual(history.has_sizes, self.product.has_sizes)
-        self.assertEqual(history.sizes, self.product.sizes)
+        # Compare sizes as lists
+        expected_sizes = list(self.product.sizes.values_list("size", flat=True))
+        self.assertEqual(history.sizes, expected_sizes)
         self.assertIsNotNone(history.snapshot_taken_at)
     
     def test_product_change_detection(self):
@@ -225,14 +227,14 @@ class ProductHistoryTest(TestCase):
         history = ProductHistory.create_from_product(self.product)
         
         # No changes initially
-        self.assertFalse(history.has_product_changed())
+        self.assertFalse(history.has_product_changed(self.product))
         
         # Change product name
         self.product.product_name = 'Changed Product Name'
         self.product.save()
         
         # Should detect change
-        self.assertTrue(history.has_product_changed())
+        self.assertTrue(history.has_product_changed(self.product))
         
         # Change product price
         original_name = self.product.product_name
@@ -241,7 +243,7 @@ class ProductHistoryTest(TestCase):
         self.product.save()
         
         # Should detect price change
-        self.assertTrue(history.has_product_changed())
+        self.assertTrue(history.has_product_changed(self.product))
     
     def test_product_history_with_sizes(self):
         """Test ProductHistory with sized products"""
@@ -253,19 +255,27 @@ class ProductHistoryTest(TestCase):
             store=self.store,
             category='clothing',
             has_sizes=True,
-            sizes={'XS': 3, 'S': 8, 'M': 12, 'L': 10, 'XL': 5}
+            available_quantity=None,
+            reserved_quantity=None
         )
+        
+        # Create size objects for the product
+        from products.models import Size
+        Size.objects.create(product=sized_product, size='XS', available_quantity=3, reserved_quantity=0)
+        Size.objects.create(product=sized_product, size='S', available_quantity=8, reserved_quantity=0)
+        Size.objects.create(product=sized_product, size='M', available_quantity=12, reserved_quantity=0)
         
         history = ProductHistory.create_from_product(sized_product)
         
         self.assertTrue(history.has_sizes)
-        self.assertEqual(history.sizes, sized_product.sizes)
+        # Compare sizes as lists for sized products
+        expected_sizes = list(sized_product.sizes.values_list("size", flat=True))
+        self.assertEqual(history.sizes, expected_sizes)
         
-        # Change sizes and test detection
-        sized_product.sizes = {'XS': 2, 'S': 8, 'M': 15, 'L': 10, 'XL': 5}
-        sized_product.save()
+        # Change sizes and test detection - add a new size
+        Size.objects.create(product=sized_product, size='L', available_quantity=10, reserved_quantity=0)
         
-        self.assertTrue(history.has_product_changed())
+        self.assertTrue(history.has_product_changed(sized_product))
     
     def test_multiple_history_snapshots(self):
         """Test multiple history snapshots for same product"""
@@ -291,10 +301,10 @@ class ProductHistoryTest(TestCase):
         self.product.save()
         
         # First history should detect changes
-        self.assertTrue(history1.has_product_changed())
+        self.assertTrue(history1.has_product_changed(self.product))
         
         # Second history should detect name change but not price change
-        self.assertTrue(history2.has_product_changed())
+        self.assertTrue(history2.has_product_changed(self.product))
     
     def test_product_history_string_representation(self):
         """Test ProductHistory string representation"""

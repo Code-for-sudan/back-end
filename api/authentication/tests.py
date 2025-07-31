@@ -1,6 +1,28 @@
 """
 Comprehensive tests for Authentication app
-Tests JWT authentication, user verification, token management, and security
+Tests JWT authenticatio        self.unverified_user = User.objects.create_user(
+            email='unverifie        self.user = User.objects.create_user(
+            email='verification@example.com',
+        self.user = User.objects.create_user(
+            email='authservice@example.com',
+            password='testpass123',
+            phone_number='1234567890'
+               self.user = User.objects.create_user(
+            email='security@example.com',
+                 self.user = User.objects.create_user(
+            email='integration@example.com',
+            password='testpass123',
+            phone_number='1234567890',
+            is_active=True
+        )sword='testpass123',
+            phone_number='1234567890',
+            is_active=True
+        )  password='testpass123',
+            phone_number='1234567890'
+        )ple.com',
+            password='testpass123',
+            phone_number='0987654321'
+        )r verification, token management, and security
 """
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
@@ -33,7 +55,7 @@ class JWTAuthenticationTest(APITestCase):
             email='jwt@example.com',
             password='testpass123',
             phone_number='1234567890',
-            is_verified=True
+            is_active=True
         )
         
         self.login_url = reverse('authentication:login')
