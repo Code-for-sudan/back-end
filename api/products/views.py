@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Product, Size
+from .models import Offer, Product, Size
 from .serializers import ProductSerializer
 from django.utils.timezone import now
 logger = logging.getLogger("products_views")
@@ -275,5 +275,36 @@ class DeleteProductSizeView(APIView):
 
         return Response(
             {"message": f"Size '{size.size}' deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class DeleteProductOfferView(APIView):
+    """
+    Deletes the offer for a specific product by product_id.
+    Only the product owner can perform this action.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, product_id):
+        product = get_object_or_404(Product, pk=product_id)
+
+        # Check if the current user is the owner of the product
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to delete offer on product %s without permission.",
+                request.user.id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to modify this product."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        offer = get_object_or_404(Offer, product=product)
+        offer.delete()
+
+        return Response(
+            {"message": f"Offer on product '{product.product_name}' deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )
