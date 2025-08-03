@@ -262,8 +262,6 @@ class Offer(models.Model):
     def is_active(self):
         """Return True if the current date is within the offer period."""
         current_time = now()
-        print(
-            f"DEBUG: start_date={self.start_date} ({type(self.start_date)}), end_date={self.end_date} ({type(self.end_date)})")
         return self.start_date <= current_time <= self.end_date
 
 

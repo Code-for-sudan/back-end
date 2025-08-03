@@ -5,6 +5,7 @@ from typing import Literal
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from datetime import timedelta
+from django.utils.dateparse import parse_datetime
 
 
 class TestHelpers:
@@ -172,6 +173,8 @@ class TestHelpers:
         product_data["owner_id"] = owner
         product_data["store"] = store
 
+        if not product_data['has_sizes']:
+            product_data['reserved_quantity'] = 0
         # Create the base product
         product = Product.objects.create(**product_data)
 
@@ -189,8 +192,8 @@ class TestHelpers:
         if offer_data:
             Offer.objects.create(
                 product=product,
-                start_date=offer_data["start_date"],
-                end_date=offer_data["end_date"],
+                start_date=parse_datetime(offer_data["start_date"]),
+                end_date=parse_datetime(offer_data["end_date"]),
                 offer_price=offer_data["offer_price"],
             )
 
