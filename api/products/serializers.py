@@ -230,6 +230,9 @@ class ProductSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep["tags"] = [tag.name for tag in instance.tags.all()]
+        if instance.has_sizes:
+            rep.pop("available_quantity", None)
+            rep.pop("reserved_quantity", None)
         return rep
 
     def create(self, validated_data):
