@@ -233,6 +233,8 @@ class ProductSerializer(serializers.ModelSerializer):
         if instance.has_sizes:
             rep.pop("available_quantity", None)
             rep.pop("reserved_quantity", None)
+        else:
+            rep.pop("sizes")
         return rep
 
     def create(self, validated_data):
