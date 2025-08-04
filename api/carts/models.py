@@ -63,6 +63,14 @@ class CartItem(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1)
     
+    # Store the unit price at time of adding to cart for price comparison
+    unit_price_at_time = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        default=0.00,
+        help_text="Unit price when item was added to cart"
+    )
+    
     # Product variations - store size if product has sizes
     size = models.CharField(
         max_length=50, 
@@ -159,6 +167,9 @@ class CartItem(models.Model):
             raise ValidationError("Size cannot be specified for products without size variations")
     
     def save(self, *args, **kwargs):
+        # Set unit_price_at_time on creation
+        if not self.pk and not self.unit_price_at_time:
+            self.unit_price_at_time = self.product.current_price
         self.clean()
         super().save(*args, **kwargs)
     

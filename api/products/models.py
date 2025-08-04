@@ -155,6 +155,9 @@ class Product(models.Model):
 
     def reserve_stock(self, quantity):
         """Reserve stock for this product"""
+        if quantity <= 0:
+            raise ValidationError("Quantity must be positive.")
+            
         if self.has_sizes:
             raise ValidationError("Cannot reserve stock on product with sizes. Use Size.reserve_stock() instead.")
         
@@ -167,6 +170,9 @@ class Product(models.Model):
 
     def unreserve_stock(self, quantity):
         """Unreserve stock for this product"""
+        if quantity <= 0:
+            raise ValidationError("Quantity must be positive.")
+            
         if self.has_sizes:
             raise ValidationError("Cannot unreserve stock on product with sizes. Use Size.unreserve_stock() instead.")
         
@@ -179,6 +185,9 @@ class Product(models.Model):
 
     def confirm_stock_sale(self, quantity):
         """Confirm stock sale (remove from reserved quantity)"""
+        if quantity <= 0:
+            raise ValidationError("Quantity must be positive.")
+            
         if self.has_sizes:
             raise ValidationError("Cannot confirm stock sale on product with sizes. Use Size.confirm_stock_sale() instead.")
         
@@ -215,6 +224,39 @@ class Product(models.Model):
         if self.has_sizes:
             return sum(size.reserved_quantity for size in self.sizes.all())
         return self.reserved_quantity
+
+    def confirm_size_sale(self, size_name, quantity):
+        """Confirm sale for a specific size (remove from reserved quantity)"""
+        if not self.has_sizes:
+            raise ValidationError("Cannot confirm size sale on product without sizes.")
+        
+        try:
+            size_obj = self.sizes.get(size=size_name)
+            size_obj.confirm_stock_sale(quantity)
+        except Size.DoesNotExist:
+            raise ValidationError(f"Size '{size_name}' not found for this product.")
+
+    def reserve_size_stock(self, size_name, quantity):
+        """Reserve stock for a specific size"""
+        if not self.has_sizes:
+            raise ValidationError("Cannot reserve size stock on product without sizes.")
+        
+        try:
+            size_obj = self.sizes.get(size=size_name)
+            size_obj.reserve_stock(quantity)
+        except Size.DoesNotExist:
+            raise ValidationError(f"Size '{size_name}' not found for this product.")
+
+    def unreserve_size_stock(self, size_name, quantity):
+        """Unreserve stock for a specific size"""
+        if not self.has_sizes:
+            raise ValidationError("Cannot unreserve size stock on product without sizes.")
+        
+        try:
+            size_obj = self.sizes.get(size=size_name)
+            size_obj.unreserve_stock(quantity)
+        except Size.DoesNotExist:
+            raise ValidationError(f"Size '{size_name}' not found for this product.")
 
 
 class ProductHistory(models.Model):
@@ -290,14 +332,14 @@ class ProductHistory(models.Model):
         for history_field, product_field in fields_to_check:
             if getattr(self, history_field) != getattr(product, product_field):
                 return True
-                
+     
         # Compare store fields
         store = product.store
         if self.store_name != (store.name if store else None):
             return True
         if self.store_location != (store.location if store else None):
             return True
-            
+   
         # Compare owner-related fields
         owner = product.owner_id
         owner_full_name = getattr(owner, "get_full_name", lambda: None)()
