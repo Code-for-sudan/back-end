@@ -1,6 +1,7 @@
 import logging
 from django.conf import settings
 from django.db import models
+from accounts.models import User
 from stores.models import Store
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
@@ -81,12 +82,16 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=100)
+    classification = models.CharField(max_length=100, null=True)
     properties = models.JSONField(blank=True, null=True)
     tags = models.ManyToManyField(
         Tag, related_name="products", through="ProductTag")
     picture = models.ImageField(upload_to="products/")
     is_deleted = models.BooleanField(default=False)
-
+    favourited_by = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='favourite_products')
     objects = ProductQuerySet.as_manager()
 
     def delete(self, using=None, keep_parents=False, hard=False):
@@ -169,6 +174,7 @@ class ProductHistory(models.Model):
     owner_email = models.EmailField(blank=True, null=True)
     owner_phone = models.CharField(max_length=20, blank=True, null=True)
     category = models.CharField(max_length=100)
+    classification = models.CharField(max_length=100, null=True)
     properties = models.JSONField(blank=True, null=True)
     picture = models.ImageField(upload_to="history/products/")
     is_deleted = models.BooleanField(default=False)
@@ -200,6 +206,7 @@ class ProductHistory(models.Model):
             owner_email=getattr(owner, "email", None),
             owner_phone=getattr(owner, "phone_number", None),
             category=product.category,
+            classification=product.classification,
             properties=product.properties,
             picture=product.picture,
             is_deleted=product.is_deleted,
@@ -262,8 +269,6 @@ class Offer(models.Model):
     def is_active(self):
         """Return True if the current date is within the offer period."""
         current_time = now()
-        print(
-            f"DEBUG: start_date={self.start_date} ({type(self.start_date)}), end_date={self.end_date} ({type(self.end_date)})")
         return self.start_date <= current_time <= self.end_date
 
 
@@ -298,7 +303,7 @@ class Size(models.Model):
     def __str__(self):
         return f"{self.product.product_name} - {self.size}"  # type: ignore
 
-# this model is unused should be removed in the future
+
 class ProductTag(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE)

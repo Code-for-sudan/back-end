@@ -4,9 +4,10 @@ from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Product, Size
-from .serializers import ProductSerializer
+from products.models import Offer, Product, Size
+from products.serializers import ProductSerializer
 from django.utils.timezone import now
+from django.db.models import Case, When, F, DecimalField
 logger = logging.getLogger("products_views")
 
 
@@ -46,12 +47,16 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Override to filter by category and optionally sort by price, recent, or both. Only alive products."""
-        queryset = self.queryset
+        queryset = self.queryset.select_related(
+            'offer').prefetch_related('sizes')
         category = self.request.query_params.get("category")
+        classification = self.request.query_params.get("classification")
         sort = self.request.query_params.get("sort")
 
         if category:
             queryset = queryset.filter(category=category)
+        if classification:
+            queryset = queryset.filter(classification=classification)
         has_offer = self.request.query_params.get("has_offer")
         if has_offer and has_offer.lower() == "true":
             queryset = queryset.filter(
@@ -63,8 +68,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             field_map = {
                 "recent": "-created_at",
                 "-recent": "created_at",
-                "price": "current_price",
-                "-price": "-current_price",
+                "price": "current_price_",
+                "-price": "-current_price_",
             }
             valid_fields = set(
                 f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
@@ -78,6 +83,18 @@ class ProductViewSet(viewsets.ModelViewSet):
                     sort_fields.append(field)
                 # else: ignore unknown fields
             if sort_fields:
+                if 'current_price_' in sort_fields or '-current_price_' in sort_fields:
+                    queryset = queryset.annotate(
+                        current_price_=Case(
+                            When(
+                                offer__start_date__lte=now(),
+                                offer__end_date__gte=now(),
+                                then=F("offer__offer_price")
+                            ),
+                            default=F("price"),
+                            output_field=DecimalField()
+                        )
+                    )
                 queryset = queryset.order_by(*sort_fields)
 
         return queryset
@@ -96,7 +113,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-
         user = self.request.user
         business_owner = getattr(user, "business_owner_profile", None)
         store = business_owner.store if business_owner else None
@@ -132,8 +148,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         try:
-            product = self.get_queryset().prefetch_related(
-                "sizes").get(pk=kwargs["pk"])
+            product = self.get_queryset().get(pk=kwargs["pk"])
         except Product.DoesNotExist:
             return Response({"detail": "Product not found."},
                             status=status.HTTP_404_NOT_FOUND)
@@ -206,7 +221,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         description="Get all products with an `is_favourite` flag if the user is authenticated.",
     )
     def list(self, request, *args, **kwargs):
-        products = self.get_queryset().prefetch_related("sizes")
+        products = self.get_queryset()
         # Apply DRF pagination
         page = self.paginate_queryset(products)
         if page is not None:
@@ -275,5 +290,36 @@ class DeleteProductSizeView(APIView):
 
         return Response(
             {"message": f"Size '{size.size}' deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class DeleteProductOfferView(APIView):
+    """
+    Deletes the offer for a specific product by product_id.
+    Only the product owner can perform this action.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, product_id):
+        product = get_object_or_404(Product, pk=product_id)
+
+        # Check if the current user is the owner of the product
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to delete offer on product %s without permission.",
+                request.user.id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to modify this product."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        offer = get_object_or_404(Offer, product=product)
+        offer.delete()
+
+        return Response(
+            {"message": f"Offer on product '{product.product_name}' deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )

@@ -14,20 +14,22 @@ class OfferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Offer
         fields = [
-            "id",
             "start_date",
             "end_date",
             "offer_price",
-            "product",
             "is_active",
         ]
-        required_fields = ["start_date", "end_date", "offer_price", "product"]
-        read_only_fields = ["id", "is_active"]
+        required_fields = ["start_date", "end_date", "offer_price"]
+        read_only_fields = ["is_active"]
 
     def to_internal_value(self, data):
         data = data.copy()
-        data["start_date"] = parse_datetime(data["start_date"])
-        data["end_date"] = parse_datetime(data["end_date"])
+        start_date = data.get("start_date", None)
+        end_date = data.get("end_date", None)
+        if start_date:
+            data["start_date"] = parse_datetime(start_date)
+        if end_date:
+            data["end_date"] = parse_datetime(end_date)
         return super().to_internal_value(data)
 
     def validate(self, data):
@@ -41,7 +43,7 @@ class OfferSerializer(serializers.ModelSerializer):
         if data["start_date"] >= data["end_date"]:
             raise serializers.ValidationError(
                 "Start date must be before end date.")
-        if data['product'].price <= data['offer_price']:
+        if data.get("product") is not None and data['product'].price <= data['offer_price']:
             raise serializers.ValidationError(
                 "Offer price must be less than the original product price.")
         return data
@@ -82,9 +84,9 @@ class SizeSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
     sizes = SizeSerializer(many=True, required=False)
-    offer = OfferSerializer(required=False, allow_null=True)
     logger = logging.getLogger(__name__)
     current_price = serializers.SerializerMethodField()
+    offer = OfferSerializer(required=False)
 
     def get_current_price(self, obj):
         return str(obj.current_price)
@@ -112,6 +114,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "offer",
+            "classification"
         ]
         read_only_fields = [
             "id",
@@ -122,6 +125,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "reserved_quantity",
             'current_price',
             'is_deleted',
+            "offer"
         ]
         extra_kwargs = {
             "product_name": {"required": True},
@@ -188,11 +192,23 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         sizes = attrs.get("sizes", [])
+        offer = attrs.get("offer", None)
         has_sizes = attrs.get("has_sizes")
         has_available = "available_quantity" in attrs
-        # Validate sizes
+        # Validate offer
+        if offer:
+            OfferSerializer().run_validation(offer)
+        # Validate sizes'
         validated_sizes = SizeSerializer(many=True).run_validation(sizes)
         attrs["sizes"] = validated_sizes
+        # Validate uniqueness of size names (e.g. "M", "L", etc.)
+        seen_sizes = set()
+        for size in validated_sizes:
+            size_name = size.get("size")
+            if size_name in seen_sizes:
+                raise serializers.ValidationError(
+                    {"sizes": [f"Duplicate size '{size_name}' is not allowed."]})
+            seen_sizes.add(size_name)
 
         if has_sizes:
             if not validated_sizes and not self.partial:
@@ -215,6 +231,11 @@ class ProductSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep["tags"] = [tag.name for tag in instance.tags.all()]
+        if instance.has_sizes:
+            rep.pop("available_quantity", None)
+            rep.pop("reserved_quantity", None)
+        else:
+            rep.pop("sizes")
         return rep
 
     def create(self, validated_data):
@@ -278,7 +299,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 instance.tags.add(tag)
         # update sizes
         if sizes_data is not None:
-            existing_sizes = {s.size: s for s in instance.sizes.all()} 
+            existing_sizes = {s.size: s for s in instance.sizes.all()}
             for size_data in sizes_data:
                 size_name = size_data.get("size")
                 available_quantity = size_data.get("available_quantity", 0)
@@ -297,13 +318,14 @@ class ProductSerializer(serializers.ModelSerializer):
                         reserved_quantity=0
                     )
 
-        # Delete existing offer if it exists
+        # Handle offer
         if offer_data is not None:
-            if instance.offer:
+            if hasattr(instance, "offer") and instance.offer:
                 instance.offer.delete()
-            # Create a new offer
-            offer_data['product'] = instance.id
-            offer_serializer = OfferSerializer(data=offer_data)
-            offer_serializer.is_valid(raise_exception=True)
-            offer_serializer.save(product=instance)
+            if offer_data:  # offer_data is present and non-empty
+                offer_data['product'] = instance.id
+                offer_serializer = OfferSerializer(data=offer_data)
+                offer_serializer.is_valid(raise_exception=True)
+                offer_serializer.save(product=instance)
+
         return instance

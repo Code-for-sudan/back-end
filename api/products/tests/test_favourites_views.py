@@ -1,39 +1,18 @@
 from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from accounts.models import User
-from products.models import Product, Store
-from django.core.files.uploadedfile import SimpleUploadedFile
+from products.tests.test_helpers import TestHelpers
 
 
 class FavouritesViewTests(APITestCase):
 
     def setUp(self):
-        # Create a test user
-        self.user = User.objects.create_user(
-            email="testuser@example.com",
-            password="testpassword123"
-        )
+        self.user, self.store, self.business_owner = TestHelpers.create_seller()
 
-        # Create a store and product
-        self.store = Store.objects.create(
-            name="Test Store",
-            location="Test Location"
-        )
-
-        self.product = Product.objects.create(
-            product_name="Test Product",
-            product_description="Description",
-            price=50.0,
-            color="Blue",
-            brand="BrandX",
-            available_quantity=5,
-            reserved_quantity=0,
-            has_sizes=False,
-            owner_id=self.user,
-            store=self.store,
-            category="CategoryX",
-            picture=self.create_test_image(),
+        self.product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
         )
 
         # Login user
@@ -41,16 +20,10 @@ class FavouritesViewTests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         # URLs
-        self.add_url = reverse('add-to-favourites', args=[self.product.id])
-        self.remove_url = reverse('remove-from-favourites', args=[self.product.id])
-        self.list_url = reverse('list-favourites')
-
-    def create_test_image(self):
-        return SimpleUploadedFile(
-            name='test_image.jpg',
-            content=b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xFF\xFF\xFF\x21\xF9\x04\x01\x0A\x00\x01\x00\x2C\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x4C\x01\x00\x3B',
-            content_type='image/jpeg'
-        )
+        self.add_url = reverse('set-favourite', args=[self.product.id])
+        self.remove_url = reverse(
+            'unset-favourite', args=[self.product.id])
+        self.list_url = reverse('favourites')
 
     def test_add_to_favourites(self):
         """Should add product to user's favourites."""
@@ -88,12 +61,12 @@ class FavouritesViewTests(APITestCase):
 
     def test_add_to_favourites_invalid_product(self):
         """Should return 404 if product does not exist."""
-        url = reverse('add-to-favourites', args=[9999])
+        url = reverse('set-favourite', args=[9999])
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_remove_from_favourites_invalid_product(self):
         """Should return 404 if product does not exist."""
-        url = reverse('remove-from-favourites', args=[9999])
+        url = reverse('unset-favourite', args=[9999])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

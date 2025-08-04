@@ -1,11 +1,51 @@
 import logging
 from django.test import TestCase
-from django.utils.timezone import now
-from products.models import Product, Size
-from stores.models import Store
-from accounts.models import User, BusinessOwner
+from products.models import Size
+from products.tests.test_helpers import TestHelpers
 
 logger = logging.getLogger('products_tests')
+
+
+class OfferTest(TestCase):
+    def setUp(self):
+        self.user, self.store, self.buisness_owner = TestHelpers.create_seller()
+        return super().setUp()
+
+    def test_active_offer(self):
+        data = TestHelpers.get_valid_product_data_without_sizes(price=10)
+        data = TestHelpers.add_offer_to_product_data(
+            data,
+            *TestHelpers.get_active_offer_dates(),
+            5
+        )
+        product = TestHelpers.creat_product(data, self.user, self.store)
+        self.assertIsNotNone(product.offer)
+        self.assertTrue(product.offer.is_active)
+        self.assertEqual(product.current_price, 5)
+
+    def test_expired_offer(self):
+        data = TestHelpers.get_valid_product_data_without_sizes(price=10)
+        data = TestHelpers.add_offer_to_product_data(
+            data,
+            *TestHelpers.get_expired_offer_dates(),
+            5
+        )
+        product = TestHelpers.creat_product(data, self.user, self.store)
+        self.assertIsNotNone(product.offer)
+        self.assertFalse(product.offer.is_active)
+        self.assertEqual(product.current_price, 10)
+
+    def test_future_offer(self):
+        data = TestHelpers.get_valid_product_data_without_sizes(price=10)
+        data = TestHelpers.add_offer_to_product_data(
+            data,
+            *TestHelpers.get_future_offer_dates(),
+            5
+        )
+        product = TestHelpers.creat_product(data, self.user, self.store)
+        self.assertIsNotNone(product.offer)
+        self.assertFalse(product.offer.is_active)
+        self.assertEqual(product.current_price, 10)
 
 
 class ProductSizeSoftDeleteTests(TestCase):
@@ -14,36 +54,22 @@ class ProductSizeSoftDeleteTests(TestCase):
     Covers:
         - Product soft deletion cascading to its sizes.
         - Product restoration restoring its sizes.
-        - Size individual soft deletion and restoration.
-        - bulk_soft_delete on SizeManager.
+        - Size individual soft deletion
     """
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            email='owner@example.com',
-            password='testpass123',
-            first_name='Owner',
-            last_name='User'
+        self.user, self.store, self.buisness_owner = TestHelpers.create_seller()
+        self.product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=[
+                    {"size": "S", "available_quantity": 19},
+                    {"size": "M", "available_quantity": 19},
+                    {"size": "L", "available_quantity": 19},
+                ]
+            ),
+            self.user,
+            self.store
         )
-        self.store = Store.objects.create(
-            name='Test Store', location='Test Location')
-        self.business_owner = BusinessOwner.objects.create(
-            user=self.user, store=self.store)
-
-        self.product = Product.objects.create(
-            product_name="Test Product",
-            product_description="A product to test soft deletion.",
-            price="29.99",
-            category="Test Category",
-            owner_id=self.user,
-            store=self.store,
-            has_sizes=True,
-        )
-
-        self.size1 = Size.objects.create(
-            product=self.product, size="M", available_quantity=5, reserved_quantity=0)
-        self.size2 = Size.objects.create(
-            product=self.product, size="L", available_quantity=3, reserved_quantity=0)
 
     def test_product_soft_delete_cascades_to_sizes(self):
         """Soft deleting a product should soft delete all its sizes."""
@@ -63,30 +89,33 @@ class ProductSizeSoftDeleteTests(TestCase):
         logger.info("Product soft delete cascade test passed.")
 
     def test_individual_size_soft_delete_and_restore(self):
-        """Soft deleting and restoring an individual size should work correctly."""
-        self.size1.delete()
-        self.size1.refresh_from_db()
+        """Soft deleting and restoring an individual size should work correctly via product.sizes."""
+        size = self.product.sizes.get(size="S")
+        size.delete()
+        size.refresh_from_db()
 
-        self.assertTrue(self.size1.is_deleted, "Size should be soft-deleted.")
-        self.assertIsNotNone(self.size1.deleted_at,
-                             "deleted_at should be set.")
+        self.assertTrue(size.is_deleted, "Size should be soft-deleted.")
+        self.assertIsNotNone(size.deleted_at, "deleted_at should be set.")
 
-        self.size1.restore()
-        self.size1.refresh_from_db()
-        self.assertFalse(self.size1.is_deleted, "Size should be restored.")
-        self.assertIsNone(self.size1.deleted_at,
-                          "deleted_at should be None after restore.")
+        size.restore()
+        size.refresh_from_db()
+        self.assertFalse(size.is_deleted, "Size should be restored.")
+        self.assertIsNone(
+            size.deleted_at, "deleted_at should be None after restore.")
 
         logger.info("Individual size soft delete/restore test passed.")
 
     def test_products_sizes_only_returns_non_deleted(self):
         """`product.sizes.all()` should only return non-deleted sizes."""
-        self.size1.delete()
+        size_to_delete = self.product.sizes.get(size="S")
+        size_to_delete.delete()
 
         sizes = self.product.sizes.all()
-        self.assertEqual(sizes.count(), 1,
+        self.assertEqual(sizes.count(), 2,
                          "Only non-deleted sizes should be returned.")
-        self.assertEqual(sizes.first().size, "L",
-                         "Remaining size should be L.")
+        returned_sizes = [s.size for s in sizes]
+        self.assertNotIn("S", returned_sizes, "Size 'S' should be excluded.")
+        self.assertIn("M", returned_sizes)
+        self.assertIn("L", returned_sizes)
 
         logger.info("product.sizes.all() excludes deleted sizes test passed.")

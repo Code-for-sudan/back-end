@@ -9,10 +9,29 @@ logger = logging.getLogger("stock_service")
 
 
 class StockService:
-
+    """
+    A static service class for handling stock operations including reservation
+    and unreservation of products and their size variants. All operations are
+    atomic to ensure data integrity in concurrent environments.
+    """
     @staticmethod
     @transaction.atomic
     def reserve_stock(product_id, quantity, size=None) -> Union[Product, Size]:
+        """
+        Reserve stock for a given product or its size variant.
+
+        Args:
+            product_id (int): ID of the product to reserve.
+            quantity (int): Quantity of stock to reserve.
+            size (str, optional): Size variant to reserve if the product has sizes.
+
+        Returns:
+            Union[Product, Size]: The updated Product or Size instance.
+
+        Raises:
+            ValidationError: If the size is required but not provided, or
+                             if insufficient stock is available.
+        """
         product = Product.objects.select_for_update().get(pk=product_id)
 
         if product.has_sizes:
@@ -43,6 +62,26 @@ class StockService:
     @staticmethod
     @transaction.atomic
     def unreserve_stock(product_id, quantity, size=None, returned=True) -> Union[Product, Size]:
+        """
+        Unreserve stock for a given product or its size variant.
+
+        Args:
+            product_id (int): ID of the product to unreserve.
+            quantity (int): Quantity of stock to unreserve.
+            size (str, optional): Size variant to unreserve if applicable.
+            returned (bool): Whether the stock is being returned to available stock
+            (should be false when sale is completed).
+
+        Returns:
+            Union[Product, Size]: The updated Product or Size instance.
+
+        Notes:
+            If the reserved quantity goes below zero, it will be reset to zero
+            and a warning will be logged.
+
+        Raises:
+            ValidationError: If the size is required but not provided.
+        """
         product = Product.objects.select_for_update().get(pk=product_id)
 
         if product.has_sizes:

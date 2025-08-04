@@ -102,10 +102,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=0.00,
         help_text="Total amount spent by the user in the store."
     )
-    favourite_products = models.ManyToManyField(
-        'products.Product',
-        blank=True,
-        related_name='favourited_by')
+
     # No password field is not explicitly defined
     # because it is inherited from Django's AbstractBaseUser class,
     # which provides the password field and related methods
