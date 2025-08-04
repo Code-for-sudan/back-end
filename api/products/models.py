@@ -81,6 +81,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=100)
+    classification = models.CharField(max_length=100, null=True)
     properties = models.JSONField(blank=True, null=True)
     tags = models.ManyToManyField(
         Tag, related_name="products", through="ProductTag")
@@ -169,6 +170,7 @@ class ProductHistory(models.Model):
     owner_email = models.EmailField(blank=True, null=True)
     owner_phone = models.CharField(max_length=20, blank=True, null=True)
     category = models.CharField(max_length=100)
+    classification = models.CharField(max_length=100, null=True)
     properties = models.JSONField(blank=True, null=True)
     picture = models.ImageField(upload_to="history/products/")
     is_deleted = models.BooleanField(default=False)
@@ -200,6 +202,7 @@ class ProductHistory(models.Model):
             owner_email=getattr(owner, "email", None),
             owner_phone=getattr(owner, "phone_number", None),
             category=product.category,
+            classification=product.classification,
             properties=product.properties,
             picture=product.picture,
             is_deleted=product.is_deleted,

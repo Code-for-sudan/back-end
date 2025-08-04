@@ -50,10 +50,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         queryset = self.queryset.select_related(
             'offer').prefetch_related('sizes')
         category = self.request.query_params.get("category")
+        classification = self.request.query_params.get("classification")
         sort = self.request.query_params.get("sort")
 
         if category:
             queryset = queryset.filter(category=category)
+        if classification:
+            queryset = queryset.filter(classification=classification)
         has_offer = self.request.query_params.get("has_offer")
         if has_offer and has_offer.lower() == "true":
             queryset = queryset.filter(

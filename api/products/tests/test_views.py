@@ -155,6 +155,26 @@ class ProductViewSetTests(APITestCase):
         product_ids = [p['id'] for p in response.data["results"]]
         self.assertIn(product.id, product_ids)
 
+    def test_filter_products_by_classification(self):
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                classification="Men"),
+            self.user,
+            self.store
+        )
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                classification="Women"),
+            self.user,
+            self.store
+        )
+        response = self.client.get(self.base_url, {"classification": "Men"})
+        logger.info(
+            f"Filter by Category Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for product in response.data['results']:
+            self.assertEqual(product["classification"], "Men")
+
     def test_filter_products_by_category(self):
         TestHelpers.creat_product(
             TestHelpers.get_valid_product_data_without_sizes(

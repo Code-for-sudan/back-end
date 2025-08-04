@@ -98,6 +98,7 @@ class TestHelpers:
             product_description='A great product.',
             price='19.99',
             category='Electronics',
+            classification="General",
             color='Red',
             available_quantity=10):
         return {
@@ -109,6 +110,7 @@ class TestHelpers:
             'color': color,
             'has_sizes': False,
             'available_quantity': available_quantity,
+            'classification': classification
         }
 
     @staticmethod
@@ -117,6 +119,7 @@ class TestHelpers:
         product_description='A great product.',
         price='19.99',
         category='Electronics',
+        classification="General",
         color='Red',
         sizes=None
     ):
@@ -128,6 +131,7 @@ class TestHelpers:
             'product_description': product_description,
             'price': price,
             'category': category,
+            'classification': classification,
             'picture': TestHelpers.create_test_image(),
             'color': color,
             'has_sizes': True,
