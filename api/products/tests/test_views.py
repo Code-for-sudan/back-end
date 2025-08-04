@@ -4,12 +4,9 @@ import logging
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import User
 from .test_helpers import TestHelpers
-from stores.models import Store
 from products.models import Offer, Product, Size
-from accounts.models import BusinessOwner
 
 
 logger = logging.getLogger('products_tests')

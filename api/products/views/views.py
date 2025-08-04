@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Offer, Product, Size
-from .serializers import ProductSerializer
+from products.models import Offer, Product, Size
+from products.serializers import ProductSerializer
 from django.utils.timezone import now
 from django.db.models import Case, When, F, DecimalField
 logger = logging.getLogger("products_views")
@@ -113,7 +113,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-
         user = self.request.user
         business_owner = getattr(user, "business_owner_profile", None)
         store = business_owner.store if business_owner else None

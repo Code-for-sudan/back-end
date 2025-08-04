@@ -1,6 +1,7 @@
 import logging
 from django.conf import settings
 from django.db import models
+from accounts.models import User
 from stores.models import Store
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
@@ -87,7 +88,10 @@ class Product(models.Model):
         Tag, related_name="products", through="ProductTag")
     picture = models.ImageField(upload_to="products/")
     is_deleted = models.BooleanField(default=False)
-
+    favourited_by = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='favourite_products')
     objects = ProductQuerySet.as_manager()
 
     def delete(self, using=None, keep_parents=False, hard=False):
