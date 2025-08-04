@@ -130,7 +130,8 @@ class ProductSerializerTests(TestCase):
         data['offer'].pop("start_date")
         serialzier = ProductSerializer(data=data)
         self.assertFalse(serialzier.is_valid())
-        self.assertIn("start_date", serialzier.errors)
+        self.assertIn('offer', serialzier.errors)
+        self.assertIn("start_date", serialzier.errors['offer'])
 
     def test_create_product_without_size(self):
         data = TestHelpers.get_valid_product_data_without_sizes()
@@ -311,7 +312,9 @@ class ProductSerializerTests(TestCase):
             product, data=updated_data, partial=True)
         self.assertTrue(serializer.is_valid(), serializer.errors)
         product = serializer.save()
-
+        product.refresh_from_db()
+        if hasattr(product, "offer") and product.offer:
+            product.offer.refresh_from_db()
         # Step 3: Validate the offer now exists
         self.assertIsNotNone(product.offer)
         self.assertEqual(product.offer.offer_price, Decimal('9.99'))

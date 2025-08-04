@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import logging
 from rest_framework.test import APITestCase
@@ -86,6 +87,29 @@ class ProductViewSetTests(APITestCase):
         self.assertEqual(response.data['product']
                          ['product_name'], "Updated Product")
 
+    def test_update_product_add_offer(self):
+        product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
+        )
+        url = reverse('product-detail', args=[product.id])
+        start_date, end_date = TestHelpers.get_active_offer_dates()
+        update_data = {"offer": {
+            "start_date": start_date,
+            "end_date": end_date,
+            "offer_price": 100
+        }}
+        response = self.client.patch(url, update_data, format='json')
+        logger.info(
+            f"Update Product Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            Decimal(response.data['product']['current_price']), Decimal(100))
+        self.assertIsNotNone(response.data['product']['offer'])
+        if response.data['product']['offer'] is not None:
+            self.assertTrue(response.data['product']['offer']['is_active'])
+
     def test_update_product_with_image(self):
         product = TestHelpers.creat_product(
             TestHelpers.get_valid_product_data_without_sizes(),
@@ -118,7 +142,7 @@ class ProductViewSetTests(APITestCase):
         self.assertTrue(Product.objects.get(id=product.id).is_deleted)
 
     def test_list_products(self):
-        TestHelpers.creat_product(
+        product = TestHelpers.creat_product(
             TestHelpers.get_valid_product_data_without_sizes(),
             self.user,
             self.store
@@ -127,7 +151,91 @@ class ProductViewSetTests(APITestCase):
         logger.info(
             f"List Products Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        product_ids = [p['id'] for p in response.data["results"]]
+        self.assertIn(product.id, product_ids)
+
+    def test_filter_products_by_category(self):
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                category="Clothing"),
+            self.user,
+            self.store
+        )
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                category="Electronics"),
+            self.user,
+            self.store
+        )
+        response = self.client.get(self.base_url, {"category": "Clothing"})
+        logger.info(
+            f"Filter by Category Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for product in response.data['results']:
+            self.assertEqual(product["category"], "Clothing")
+
+    def test_filter_products_with_active_offer(self):
+        # One with active offer
+        TestHelpers.creat_product(
+            TestHelpers.add_offer_to_product_data(
+                TestHelpers.get_valid_product_data_without_sizes(),
+                *TestHelpers.get_active_offer_dates(),
+                offer_price=9.99
+            ),
+            self.user,
+            self.store
+        )
+        # One without offer
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
+        )
+        response = self.client.get(self.base_url, {"has_offer": "true"})
+        logger.info(
+            f"Filter by has_offer Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            all(p.get("offer") and p["offer"]["is_active"] for p in response.data['results']))
+
+    def test_sort_products_by_price_ascending(self):
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(price="9.99"),
+            self.user,
+            self.store
+        )
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(price="19.99"),
+            self.user,
+            self.store
+        )
+        response = self.client.get(self.base_url, {"sort": "price"})
+        logger.info(
+            f"Sort by Price Asc Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        prices = [float(p["price"]) for p in response.data['results']]
+        self.assertEqual(prices, sorted(prices))
+
+    def test_sort_products_by_created_at_descending(self):
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
+        )
+        TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
+        )
+        response = self.client.get(self.base_url, {"sort": "-created_at"})
+        logger.info(
+            f"Sort by Created At Desc Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        timestamps = [p["created_at"] for p in response.data['results']]
+        self.assertEqual(timestamps, sorted(timestamps, reverse=True))
 
     def test_create_product_missing_required_field(self):
         """Test creation fails if a required field is missing."""

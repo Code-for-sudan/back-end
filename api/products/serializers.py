@@ -7,7 +7,6 @@ from django.utils.dateparse import parse_datetime
 
 
 class OfferSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(read_only=True)
     is_active = serializers.ReadOnlyField()
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
@@ -15,15 +14,13 @@ class OfferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Offer
         fields = [
-            "id",
             "start_date",
             "end_date",
             "offer_price",
-            "product",
             "is_active",
         ]
         required_fields = ["start_date", "end_date", "offer_price"]
-        read_only_fields = ["id", "is_active"]
+        read_only_fields = ["is_active"]
 
     def to_internal_value(self, data):
         data = data.copy()
@@ -89,6 +86,7 @@ class ProductSerializer(serializers.ModelSerializer):
     sizes = SizeSerializer(many=True, required=False)
     logger = logging.getLogger(__name__)
     current_price = serializers.SerializerMethodField()
+    offer = OfferSerializer(required=False)
 
     def get_current_price(self, obj):
         return str(obj.current_price)
@@ -115,6 +113,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "store",
             "created_at",
             "updated_at",
+            "offer"
         ]
         read_only_fields = [
             "id",
@@ -125,6 +124,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "reserved_quantity",
             'current_price',
             'is_deleted',
+            "offer"
         ]
         extra_kwargs = {
             "product_name": {"required": True},
