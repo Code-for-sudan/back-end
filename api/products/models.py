@@ -234,7 +234,7 @@ class ProductHistory(models.Model):
             "color", "brand", "has_sizes", "category", "properties",
             "picture", "is_deleted", "store_name", "store_location"
         ]
-
+        self.product.refresh_from_db()
         for field in fields_to_check:
 
             if getattr(self.product, field) != getattr(self, field):

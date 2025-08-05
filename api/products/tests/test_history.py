@@ -100,8 +100,8 @@ class ProductHistoryTests(TestCase):
 
         # 2. Change available_quantity (NOT tracked)
         self.product.available_quantity = 100
-        self.assertFalse(history.has_product_changed(
-            self.product), "Quantity change should not be detected")
+        self.assertFalse(history.has_product_changed(),
+                         "Quantity change should not be detected")
 
         # 3. Add a new size (tracked)
         self.product.has_sizes = True
@@ -110,8 +110,8 @@ class ProductHistoryTests(TestCase):
         self.product.save()
         self.product.sizes.create(
             size="M", available_quantity=5, reserved_quantity=0)
-        self.assertTrue(history.has_product_changed(
-            self.product), "Adding a new size should be detected")
+        self.assertTrue(history.has_product_changed(),
+                        "Adding a new size should be detected")
 
         # Update history to reflect new snapshot
         history = ProductHistory.create_from_product(self.product)
@@ -120,14 +120,14 @@ class ProductHistoryTests(TestCase):
         size_obj = self.product.sizes.first()
         size_obj.available_quantity = 999
         size_obj.save()
-        self.assertFalse(history.has_product_changed(
-            self.product), "Changing size quantity should not be detected")
+        self.assertFalse(history.has_product_changed(),
+                         "Changing size quantity should not be detected")
 
         # 5. Change owner name (tracked)
         self.user.first_name = "Changed"
         self.user.save()
-        self.assertTrue(history.has_product_changed(
-            self.product), "Owner name change should be detected")
+        self.assertTrue(history.has_product_changed(),
+                        "Owner name change should be detected")
 
 
 class ProductHistoryAsOfTests(TestCase):
