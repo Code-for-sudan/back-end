@@ -45,12 +45,13 @@ class Product(models.Model):
     Attributes:
         product_name (CharField): The name of the product (max length 255).
         product_description (TextField): A detailed textual description of the product.
-        price (DecimalField): The price of the product (maximum 10 digits, 2 decimal places).
+        price (DecimalField): The original price of the product (maximum 10 digits, 2 decimal places).
         picture (ImageField): Image of the product, uploaded to the 'products/' directory.
         color (CharField): Optional color of the product (max length 50).
-        size (CharField): Optional size of the product (max length 50).
-        available_quantity (PositiveIntegerField): The quantity of the product available in stock (0 or more).
-        reserved_quantity (BigIntegerField): The quantity currently reserved (optional).
+        available_quantity (int): Quantity currently available for purchase.
+        Only applicable when `has_sizes` is False.
+        reserved_quantity (int): Quantity reserved (e.g., items in carts awaiting payments)
+        and thus not available for sale. Only applicable when `has_sizes` is False.
         has_sizes (BooleanField): Indicates if the product has size variants.
         properties (JSONField): Optional custom properties (key-value structure) defined by the seller.
         owner (ForeignKey): Reference to the User who owns the product.
@@ -64,6 +65,8 @@ class Product(models.Model):
     Properties:
         store_name (str): Returns the name of the associated store.
         store_location (str): Returns the location of the associated store.
+        current_price (DecimalField): The effective price of the product
+        (i.e. offer price if an active offer exists else original price).
     """
 
     product_name = models.CharField(max_length=255)
@@ -160,6 +163,12 @@ class Product(models.Model):
 
 
 class ProductHistory(models.Model):
+    """
+    Stores historical snapshots of a product whenever it is updated.
+
+    This model is useful for tracking changes to important product details over time.
+    Each record represents the state of a product at a specific point.
+    """
     product = models.ForeignKey(
         Product, on_delete=models.SET_NULL, related_name="history", null=True)
     product_name = models.CharField(max_length=255)
@@ -215,8 +224,10 @@ class ProductHistory(models.Model):
         )
         return history
 
-    def has_product_changed(self, product: Product) -> bool:
-
+    def has_product_changed(self) -> bool:
+        """
+        Checks if product has changed since this history instance was taken.
+        """
         # Compare key fields
         fields_to_check = [
             "product_name", "product_description", "price", "current_price",
@@ -226,10 +237,10 @@ class ProductHistory(models.Model):
 
         for field in fields_to_check:
 
-            if getattr(product, field) != getattr(self, field):
+            if getattr(self.product, field) != getattr(self, field):
                 return True
         # Compare owner-related fields
-        owner = product.owner_id
+        owner = self.product.owner_id
 
         owner_full_name = getattr(owner, "get_full_name", lambda: None)()
         if self.owner_full_name != owner_full_name:
@@ -244,7 +255,7 @@ class ProductHistory(models.Model):
             return True
 
         # Compare sizes (only names)
-        product_sizes = list(product.sizes.values_list("size", flat=True))
+        product_sizes = list(self.product.sizes.values_list("size", flat=True))
         history_sizes = getattr(self, "sizes", []) or []
         if sorted(product_sizes) != sorted(history_sizes):
             return True
@@ -278,6 +289,15 @@ class SizeManager(models.Manager):
 
 
 class Size(models.Model):
+    """
+    Represents a specific size variant of a product.
+
+    Attributes:
+        size (str): The size label (e.g., 'S', 'M', 'L').
+        available_quantity (int): Quantity currently available for purchase.
+        reserved_quantity (int): Quantity reserved (e.g., items in carts awaiting payments)
+            and thus not available for sale.
+    """
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="sizes")
     size = models.CharField(max_length=50)

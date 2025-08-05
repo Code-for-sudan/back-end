@@ -3,7 +3,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from products.models import Offer, Product, Size
 from products.serializers import ProductSerializer
 from django.utils.timezone import now
@@ -12,7 +12,15 @@ logger = logging.getLogger("products_views")
 
 
 @extend_schema(
-    description="Product CRUD operations. Supports listing, creating, retrieving, updating, and deleting products.",
+    description="""
+    Product CRUD operations.
+
+    - **GET /products/**: List products (supports filters and sorting)
+    - **POST /products/**: Create a new product (authenticated only)
+    - **GET /products/{id}/**: Retrieve product with optional favourite info
+    - **PATCH /products/{id}/**: Update product (authenticated owner only)
+    - **DELETE /products/{id}/**: Delete product (soft delete by owner)
+    """,
     summary="Product CRUD",
 )
 class ProductViewSet(viewsets.ModelViewSet):
@@ -102,12 +110,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(
         request=ProductSerializer,
         responses={
-            201: OpenApiResponse(
-                response=ProductSerializer, description="Product created successfully."
-            ),
-            400: OpenApiResponse(
-                description="Product creation failed or validation error."
-            ),
+            201: OpenApiResponse(ProductSerializer, description="Product created successfully."),
+            400: OpenApiResponse(description="Validation error or user has no store."),
         },
         summary="Create Product",
     )
@@ -138,13 +142,11 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={
-            200: OpenApiResponse(
-                response=ProductSerializer,
-                description="Product retrieved successfully.",
-            ),
+            200: OpenApiResponse(ProductSerializer, description="Product retrieved successfully."),
             404: OpenApiResponse(description="Product not found."),
         },
         summary="Retrieve Product",
+        description="Retrieve a single product by ID. Adds `is_favourite` if user is authenticated.",
     )
     def retrieve(self, request, *args, **kwargs):
         try:
@@ -166,9 +168,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(
         responses={
             204: OpenApiResponse(description="Product deleted successfully."),
-            403: OpenApiResponse(
-                description="You do not have permission to delete this product."
-            ),
+            403: OpenApiResponse(description="You do not have permission to delete this product."),
             404: OpenApiResponse(description="Product not found."),
         },
         summary="Delete Product",
@@ -191,6 +191,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             f"Product {product.id} soft-deleted by user {request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        request=ProductSerializer,
+        responses={
+            200: OpenApiResponse(ProductSerializer, description="Product updated successfully."),
+            403: OpenApiResponse(description="User does not own the product."),
+            400: OpenApiResponse(description="Validation error."),
+        },
+        summary="Update Product",
+    )
     def update(self, request, *args, **kwargs):
         product = self.get_object()
         if product.owner_id != request.user:
@@ -218,7 +227,29 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(
         responses={200: ProductSerializer(many=True)},
         summary="List Products",
-        description="Get all products with an `is_favourite` flag if the user is authenticated.",
+        description="""
+        Get all products with support for:
+
+        - **category**: Filter by category name
+        - **classification**: Filter by classification
+        - **has_offer**: Filter by active offers (true/false)
+        - **sort**: Sort results (comma-separated fields, e.g. `-price,created_at`)
+        - **is_favourite**: Added to each product if user is authenticated
+        """,
+        parameters=[
+            OpenApiParameter(
+                name="category", required=False,
+                type=str, description="Filter by category name"),
+            OpenApiParameter(
+                name="classification", required=False,
+                type=str, description="Filter by classification"),
+            OpenApiParameter(
+                name="has_offer", required=False, type=bool,
+                description="Filter by active offer (true only)"),
+            OpenApiParameter(
+                name="sort", required=False, type=str,
+                description="Sort by fields like `price`, `-price`, `recent`, etc."),
+        ],
     )
     def list(self, request, *args, **kwargs):
         products = self.get_queryset()
@@ -252,6 +283,24 @@ class DeleteProductSizeView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        summary="Delete Product Size",
+        description="""
+        Deletes a size from a product.
+
+        - Only the **product owner** can perform this action.
+        - Fails if:
+            - The size does not exist for the product.
+            - The size is the only one available for a product with sizes.
+            - The size has a non-zero reserved quantity.
+        """,
+        responses={
+            204: OpenApiResponse(description="Size deleted successfully."),
+            400: OpenApiResponse(description="Cannot delete size due to validation (e.g., only size or has reserved stock)."),
+            403: OpenApiResponse(description="User does not have permission to modify this product."),
+            404: OpenApiResponse(description="Product or size not found."),
+        },
+    )
     def delete(self, request, product_id, size_id):
         product = get_object_or_404(Product, pk=product_id)
 
@@ -301,6 +350,20 @@ class DeleteProductOfferView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            204: OpenApiResponse(description="Offer deleted successfully."),
+            403: OpenApiResponse(description="User does not own this product."),
+            404: OpenApiResponse(description="Product or offer not found."),
+        },
+        summary="Delete Product Offer",
+        description="""
+        Deletes the offer associated with a product.
+
+        - Only the **product owner** can delete the offer.
+        - Fails if no active offer exists.
+        """,
+    )
     def delete(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id)
 

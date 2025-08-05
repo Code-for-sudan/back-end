@@ -4,7 +4,7 @@ from products.models import ProductHistory
 def create_product_history_if_changed(product):
     """Check if the latest history differs from the product and create a new record if needed."""
     last_history = product.history.order_by('-recorded_at').first()
-    if not last_history or last_history.has_product_changed(product):
+    if not last_history or last_history.has_product_changed():
         return ProductHistory.create_from_product(product)
     return None
 
