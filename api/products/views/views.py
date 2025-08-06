@@ -235,6 +235,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         - **category**: Filter by category name
         - **classification**: Filter by classification
+        - **store**: Filter by store id
         - **has_offer**: Filter by active offers (true/false)
         - **sort**: Sort results (comma-separated fields, e.g. `-price,created_at`)
         - **is_favourite**: Added to each product if user is authenticated
