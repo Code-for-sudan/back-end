@@ -59,13 +59,16 @@ class ProductViewSet(viewsets.ModelViewSet):
             'offer').prefetch_related('sizes')
         category = self.request.query_params.get("category")
         classification = self.request.query_params.get("classification")
+        store_id = self.request.query_params.get("store")
+        has_offer = self.request.query_params.get("has_offer")
         sort = self.request.query_params.get("sort")
 
         if category:
             queryset = queryset.filter(category=category)
         if classification:
             queryset = queryset.filter(classification=classification)
-        has_offer = self.request.query_params.get("has_offer")
+        if store_id:
+            queryset = queryset.filter(store=store_id)
         if has_offer and has_offer.lower() == "true":
             queryset = queryset.filter(
                 offer__start_date__lte=now(),

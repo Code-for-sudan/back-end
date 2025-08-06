@@ -170,6 +170,7 @@ class ProductViewSetTests(APITestCase):
         logger.info(
             f"Filter by Category Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data['results']), 1)
         for product in response.data['results']:
             self.assertEqual(product["classification"], "Men")
 
@@ -190,8 +191,33 @@ class ProductViewSetTests(APITestCase):
         logger.info(
             f"Filter by Category Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data['results']), 1)
         for product in response.data['results']:
             self.assertEqual(product["category"], "Clothing")
+
+    def test_filter_products_by_store(self):
+        other_user, other_store, _ = TestHelpers.create_seller(
+            email="other_seller@test.com",
+            store_name="other_store")
+        product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
+        )
+        other_store_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            other_user,
+            other_store
+        )
+        response = self.client.get(self.base_url, {"store": self.store.id})
+        logger.info(
+            f"Filter by Store Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data['results']
+        print(results, type(results))
+        ids = [p["id"] for p in results]
+        self.assertIn(product.id, ids)
+        self.assertNotIn(other_store_product.id, ids)
 
     def test_filter_products_with_active_offer(self):
         # One with active offer
