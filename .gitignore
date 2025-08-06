@@ -184,6 +184,7 @@ cython_debug/
 
 db.sqlite3
 static/*
+media/*
 *.log
 *.swp
 tmp.py
