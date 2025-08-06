@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from products.models import Product
+from products.serializers import ProductSerializer
 from .documents import ProductDocument
 from .serializers import ProductSearchSerializer
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
@@ -17,7 +18,7 @@ logger = logging.getLogger('search_views')
     ],
     responses={
         200: OpenApiResponse(
-            response=ProductSearchSerializer,  # <-- FIXED
+            response=ProductSearchSerializer,
             description='List of products matching the search query (paginated, 12 per page).'
         ),
         400: OpenApiResponse(
@@ -73,14 +74,19 @@ class ProductSearchView(APIView):
 
             product_ids = [hit.meta.id for hit in results]
             products = Product.objects.filter(id__in=product_ids)
-            serializer = ProductSearchSerializer(products, many=True)
+            product_data = ProductSerializer(products, many=True).data
 
-            logger.info(f"Search successful: query='{query}', page={page}, results={len(products)}")
-            return Response({
-                "results": serializer.data,
+            response_data = {
+                "results": product_data,
                 "page": page,
                 "total": total
-            }, status=status.HTTP_200_OK)
+            }
+
+            serializer = ProductSearchSerializer(response_data)
+
+            logger.info(f"Search successful: query='{query}', page={page}, results={len(products)}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
         except Exception as e:
             logger.error(f"Search error: {str(e)}", exc_info=True)
             return Response(

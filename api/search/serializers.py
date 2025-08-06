@@ -1,6 +1,8 @@
+from rest_framework import serializers
 from products.serializers import ProductSerializer
 
-class ProductSearchSerializer(ProductSerializer):
-    class Meta(ProductSerializer.Meta):
-        fields = ProductSerializer.Meta.fields
-        # depends on products serializer, customize as needed
+
+class ProductSearchSerializer(serializers.Serializer):
+    results = ProductSerializer(many=True)
+    page = serializers.IntegerField()
+    total = serializers.IntegerField()

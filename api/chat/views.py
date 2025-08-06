@@ -5,60 +5,32 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .models import ChatMessage
-from .serializers import ChatMessageSerializer
+from .serializers import ChatMessageSerializer, ChatHistorySerializer, ChatContactsSerializer
 from django.contrib.auth import get_user_model
 import logging
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 User = get_user_model()
 logger = logging.getLogger("chat_views")
 
-# TODO: Fixed the OpenAPI schema generation for the ChatHistoryView and ChatContactsView
-# @extend_schema(
-#     summary="Chat history between authenticated user and a customer",
-#     description="Retrieve the chat history (all messages) between the authenticated user and a specified customer. Returns user info for both parties and a list of serialized messages.",
-#     parameters=[
-#         OpenApiParameter(
-#             name="customer_id",
-#             type=OpenApiTypes.INT,
-#             location=OpenApiParameter.QUERY,
-#             required=True,
-#             description="ID of the customer to fetch chat history with"
-#         ),
-#     ],
-#     responses={
-#         200: OpenApiResponse(
-#             response={
-#                 "chat_between": {
-#                     "owner": {
-#                         "id": OpenApiTypes.INT,
-#                         "name": OpenApiTypes.STR,
-#                         "image_url": OpenApiTypes.STR
-#                     },
-#                     "customer": {
-#                         "id": OpenApiTypes.INT,
-#                         "name": OpenApiTypes.STR,
-#                         "image_url": OpenApiTypes.STR
-#                     }
-#                 },
-#                 "messages": [
-#                     {
-#                         "id": OpenApiTypes.INT,
-#                         "sender_id": OpenApiTypes.INT,
-#                         "receiver_id": OpenApiTypes.INT,
-#                         "message": OpenApiTypes.STR,
-#                         "timestamp": OpenApiTypes.STR,
-#                         "is_read": OpenApiTypes.BOOL
-#                     }
-#                 ]
-#             },
-#             description="Chat history and user info returned successfully."
-#         ),
-#         400: OpenApiResponse(description="customer_id is required."),
-#         404: OpenApiResponse(description="Customer not found."),
-#         500: OpenApiResponse(description="An error occurred while fetching chat history."),
-#     }
-# )
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="customer_id",
+            type=int,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description="ID of the customer to fetch chat history with.",
+        )
+    ],
+    responses={
+        200: OpenApiResponse(description="Chat history and user info retrieved successfully."),
+        400: OpenApiResponse(description="Missing or invalid customer_id."),
+        500: OpenApiResponse(description="Server error while retrieving chat history."),
+    },
+    summary="Get Chat History",
+    description="Returns the chat history between the authenticated user and the specified customer, including user info and messages.",
+)
 class ChatHistoryView(APIView):
     """
     Retrieve the chat history (all messages) between the authenticated user and a specified customer.
@@ -67,7 +39,6 @@ class ChatHistoryView(APIView):
     - Returns user info for both parties and a list of serialized messages.
     - 200: Success, chat history and user info.
     - 400: customer_id missing.
-    - 404: Customer not found.
     - 500: Server error.
     """
     permission_classes = [IsAuthenticated]
@@ -77,16 +48,19 @@ class ChatHistoryView(APIView):
         Handles GET requests to fetch chat history between the authenticated user and a customer.
         """
         try:
-            customer_id = request.GET.get("customer_id")
-            owner = request.user
+            serializer = ChatHistorySerializer(data=request.GET)
+            
+            if not serializer.is_valid():
+                logger.error(f"Validation error: {serializer.errors}")
+                return Response({"error":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not customer_id:
-                logger.warning("customer_id not provided in request.")
-                return Response({"error": "customer_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+            customer_id = serializer.validated_data['customer_id']
+            owner = request.user
 
             try:
                 customer = User.objects.get(id=customer_id)
             except User.DoesNotExist:
+                # already validated in serializer, this is just for safety
                 logger.error(f"Customer with id {customer_id} does not exist.")
                 return Response({"error": "Customer not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -116,31 +90,14 @@ class ChatHistoryView(APIView):
             logger.error(f"Error in ChatHistoryView.get: {e}")
             return Response({"error": "An error occurred while fetching chat history."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# @extend_schema(
-#     summary="Chat contacts for the authenticated user",
-#     description="Returns a list of users the authenticated user has chatted with, including unread message count, online status, last seen, and last message.",
-#     responses={
-#         200: OpenApiResponse(
-#             response={
-#                 "user_id": OpenApiTypes.INT,
-#                 "chats": [
-#                     {
-#                         "contact_id": OpenApiTypes.INT,
-#                         "contact_name": OpenApiTypes.STR,
-#                         "contact_img": OpenApiTypes.STR,
-#                         "last_message": OpenApiTypes.STR,
-#                         "timestamp": OpenApiTypes.STR,
-#                         "unread_count": OpenApiTypes.INT,
-#                         "online": OpenApiTypes.BOOL,
-#                         "last_seen": OpenApiTypes.STR
-#                     }
-#                 ]
-#             },
-#             description="List of chat contacts returned successfully."
-#         ),
-#         500: OpenApiResponse(description="An error occurred while fetching chat contacts."),
-#     }
-# )
+@extend_schema(
+    responses={
+        200: OpenApiResponse(description="List of chat contacts retrieved successfully."),
+        500: OpenApiResponse(description="Server error while retrieving chat contacts."),
+    },
+    summary="Get Chat Contacts",
+    description="Returns a list of contacts the authenticated user has chatted with, including unread message count, online status, last seen, and last message.",
+)
 class ChatContactsView(APIView):
     """
     Retrieve a list of chat contacts for the authenticated user.
@@ -185,9 +142,12 @@ class ChatContactsView(APIView):
 
             logger.info(f"Fetched chat contacts for user {user.id}.")
 
+            serializer = ChatContactsSerializer(data=list(contacts.values()), many=True)
+            serializer.is_valid(raise_exception=True)
+
             return Response({
                 "user_id": user.id,
-                "chats": list(contacts.values())
+                "chats": serializer.data
             })
         except Exception as e:
             logger.error(f"Error in ChatContactsView.get: {e}")
