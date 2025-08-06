@@ -45,6 +45,28 @@ jobs:
           echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> api/.env.prod
           echo "ELASTICSEARCH_URL=http://elasticsearch:9200" >> api/.env.prod
           echo "REDIS_DATABASE_URL=redis://redis:6379" >> api/.env.prod
+          echo "FRONTEND_ACTIVATION_URL=${{ secrets.FRONTEND_ACTIVATION_URL }}" >> api/.env.prod
+
+          echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> api/.env
+          echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> api/.env
+          echo "EMAIL_USE_TLS=${{ secrets.EMAIL_USE_TLS }}" >> api/.env
+          echo "EMAIL_USE_SSL=${{ secrets.EMAIL_USE_SSL }}" >> api/.env
+
+          echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> api/.env
+          echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> api/.env
+
+          echo "EMAIL_HOST_USER_NO_REPLY=${{ secrets.EMAIL_HOST_USER_NO_REPLY }}" >> api/.env
+          echo "EMAIL_HOST_PASSWORD_NO_REPLY=${{ secrets.EMAIL_HOST_PASSWORD_NO_REPLY }}" >> api/.env
+
+          echo "EMAIL_HOST_USER_SUPPORT=${{ secrets.EMAIL_HOST_USER_SUPPORT }}" >> api/.env
+          echo "EMAIL_HOST_PASSWORD_SUPPORT=${{ secrets.EMAIL_HOST_PASSWORD_SUPPORT }}" >> api/.env
+
+          echo "EMAIL_HOST_USER_SECURITY=${{ secrets.EMAIL_HOST_USER_SECURITY }}" >> api/.env
+          echo "EMAIL_HOST_PASSWORD_SECURITY=${{ secrets.EMAIL_HOST_PASSWORD_SECURITY }}" >> api/.env
+
+          echo "DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }}" >> api/.env
+          echo "EMAIL_SUBJECT_PREFIX=${{ secrets.EMAIL_SUBJECT_PREFIX }}" >> api/.env
+          echo "EMAIL_TIMEOUT=${{ secrets.EMAIL_TIMEOUT }}" >> api/.env
 
       - name: Build Docker containers
         run: docker compose -f api/docker-compose.prod.yml build
@@ -96,6 +118,7 @@ jobs:
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> api/.env.prod
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> api/.env.prod
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
+          echo "FRONTEND_ACTIVATION_URL=${{ secrets.FRONTEND_ACTIVATION_URL }}" >> api/.env.prod
 
       - name: Deploy App
         run: |

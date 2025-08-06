@@ -4,19 +4,40 @@ from .utils import send_email_with_attachments, delete_email_files
 from accounts.models import User
 
 @shared_task
-def send_email_task(subject, template_name, context, recipient_list, attachments=None):
+def send_email_task(
+    subject,
+    template_name,
+    context,
+    recipient_list,
+    attachments=None,
+    email_host_user=None,
+    email_host_password=None,
+    from_email=None
+):
     """
-    Sends an email with optional attachments asynchronously.
+    Sends an email with optional attachments asynchronously, supporting custom SMTP credentials.
     Args:
         subject (str): The subject of the email.
         template_name (str): The name of the email template to use.
         context (dict): Context data to render the template.
         recipient_list (list): List of recipient email addresses.
         attachments (list, optional): List of attachments to include in the email. Defaults to None.
+        email_host_user (str, optional): SMTP username for the email host. Defaults to None.
+        email_host_password (str, optional): SMTP password for the email host. Defaults to None.
+        from_email (str, optional): From email address. Defaults to None.
     Returns:
         Any: The result of the send_email_with_attachments function.
     """
-    return send_email_with_attachments(subject, template_name, context, recipient_list, attachments)
+    return send_email_with_attachments(
+        subject,
+        template_name,
+        context,
+        recipient_list,
+        attachments,
+        email_host_user=email_host_user,
+        email_host_password=email_host_password,
+        from_email=from_email
+    )
 
 
 @shared_task
@@ -42,11 +63,14 @@ def delete_email_task(html_path, plain_path, attachment_paths=None, image_paths=
 
 
 @shared_task
-def send_newsletter_task(template_id):
+def send_newsletter_task(template_id, email_host_user=None, email_host_password=None, from_email=None):
     """
-    Sends a newsletter email to all subscribed users using the specified email template.
+    Sends a newsletter email to all subscribed users using the specified email template and sender credentials.
     Args:
         template_id (int): The primary key of the EmailTemplate to use for the newsletter.
+        email_host_user (str, optional): SMTP username for the email host. Defaults to None.
+        email_host_password (str, optional): SMTP password for the email host. Defaults to None.
+        from_email (str, optional): From email address. Defaults to None.
     Behavior:
         - Retrieves the email template and its attachments by the given template_id.
         - Gathers the email addresses of all users who are subscribed.
@@ -67,5 +91,8 @@ def send_newsletter_task(template_id):
             template_name=template.name,
             context={},
             recipient_list=recipient_list,
-            attachments=[a.file.path for a in attachments]
+            attachments=[a.file.path for a in attachments],
+            email_host_user=email_host_user,
+            email_host_password=email_host_password,
+            from_email=from_email
         )

@@ -41,6 +41,12 @@ env = environ.Env(
     EMAIL_USE_SSL=(bool, False),
     EMAIL_HOST_USER=(str, ''),
     EMAIL_HOST_PASSWORD=(str, ''),
+    EMAIL_HOST_USER_NO_REPLY=(str, ''),
+    EMAIL_HOST_PASSWORD_NO_REPLY=(str, ''),
+    EMAIL_HOST_USER_SUPPORT=(str, ''),
+    EMAIL_HOST_PASSWORD_SUPPORT=(str, ''),
+    EMAIL_HOST_USER_SECURITY=(str, ''),
+    EMAIL_HOST_PASSWORD_SECURITY=(str, ''),
     DEFAULT_FROM_EMAIL=(str, ''),
     EMAIL_SUBJECT_PREFIX=(str, '[Sudamall] '),
     EMAIL_TIMEOUT=(int, 5),
@@ -102,8 +108,8 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-             os.path.join(BASE_DIR, 'media', 'email_templates', 'html'),
-            ],
+            os.path.join(BASE_DIR, 'media', 'email_templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -264,9 +270,16 @@ EMAIL_HOST = env('EMAIL_HOST')
 EMAIL_PORT = env('EMAIL_PORT')
 EMAIL_USE_TLS = env('EMAIL_USE_TLS')
 EMAIL_USE_SSL = env('EMAIL_USE_SSL')
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-# print(f'DEFAULT_FROM_EMAIL: {env("DEFAULT_FROM_EMAIL")}')
+
+EMAIL_HOST_USER_NO_REPLY = env('EMAIL_HOST_USER_NO_REPLY')
+EMAIL_HOST_PASSWORD_NO_REPLY = env('EMAIL_HOST_PASSWORD_NO_REPLY')
+
+EMAIL_HOST_USER_SUPPORT = env('EMAIL_HOST_USER_SUPPORT')
+EMAIL_HOST_PASSWORD_SUPPORT = env('EMAIL_HOST_PASSWORD_SUPPORT')
+
+EMAIL_HOST_USER_SECURITY = env('EMAIL_HOST_USER_SECURITY')
+EMAIL_HOST_PASSWORD_SECURITY = env('EMAIL_HOST_PASSWORD_SECURITY')
+
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 EMAIL_SUBJECT_PREFIX = env('EMAIL_SUBJECT_PREFIX')
 EMAIL_TIMEOUT = env('EMAIL_TIMEOUT')
@@ -406,7 +419,7 @@ LOGGING = {
             'propagate': False,
         },
         'celery': {
-            'handlers': ['celery'],
+            'handlers': ['file'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -451,32 +464,32 @@ LOGGING = {
             'propagate': False,
         },
         'acoounts_tasks': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'accounts_utils': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'stores_models': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'stores_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
@@ -486,17 +499,17 @@ LOGGING = {
             'propagate': False,
         },
         'stores_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'products_models': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'products_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
@@ -506,26 +519,27 @@ LOGGING = {
             'propagate': False,
         },
         'products_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_models': {
-           'handlers': ['file', 'console'],
+           'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'search_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'notifications_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
              'level': 'DEBUG',  # Set to DEBUG for detailed logs
              'propagate': False,
         },
         'search_tests': {
+
             'handlers': ['tests', 'console'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
@@ -536,7 +550,7 @@ LOGGING = {
             'propagate': False,
         },
         'notifications_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
@@ -551,7 +565,7 @@ LOGGING = {
             'propagate': False,
         },
         'chat_views': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
@@ -561,7 +575,7 @@ LOGGING = {
             'propagate': False,
         },
         'chat_serializers': {
-            'handlers': ['file', 'console'],
+            'handlers': ['file'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
@@ -597,9 +611,9 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle', # For custom throttling scopes
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '10/minute',         # 10 requests per minute for anonymous users
+        'anon': '50/minute',         # 10 requests per minute for anonymous users
         'user': '100/hour',          # 100 requests per hour for authenticated users
-        'password_resert': '5/hour',  # 5 requests per hour for password reset
+        'password_resert': '100/hour',  # 5 requests per hour for password reset
         'newsletter-subscription': '10/day',  # 10 requests per day for newsletter subscription
     },
 }

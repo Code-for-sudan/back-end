@@ -26,10 +26,10 @@ class UserSerializerTest(TestCase):
 
     def setUp(self):
         self.valid_user_data = {
-            'email': 'test@example.com',
+            'email': 'test@examplenetest.com',
             'first_name': 'John',
             'last_name': 'Doe',
-            'password': 'password123',
+            'password': 'password123@Q',
             'gender': 'M'
         }
 
@@ -100,14 +100,14 @@ class BusinessOwnerSignupTests(APITestCase):
             'email': 'owner@example.com',
             'first_name': 'Owner',
             'last_name': 'Test',
-            'password': 'ownerpass123',
+            'password': 'ownerpass123@O',
             'gender': 'F'
         }
         self.data = {
             'email': 'owner@example.com',
             'first_name': 'Owner',
             'last_name': 'Test',
-            'password': 'ownerpass123',
+            'password': 'ownerpass123@O',
             'gender': 'F',
             'store_name': 'My Store',
             'store_location': 'Khartoum',
