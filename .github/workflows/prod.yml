@@ -133,5 +133,7 @@ jobs:
             docker images -aq | xargs docker rmi -f || true
             # Now rebuild and start fresh
             docker compose -f docker-compose.prod.yml up --build -d
+            # Move Frontend files
+            docker cp /home/devops/Front-End/SudaMall-front/dist/. nginx:/usr/share/nginx/html/
           EOF
 
