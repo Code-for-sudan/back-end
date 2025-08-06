@@ -233,7 +233,9 @@ class TestHelpers:
         return Store.objects.create(name=name, location=location)
 
     @staticmethod
-    def create_business_owner(user, store):
+    def create_business_owner(user: User, store: Store):
+        user.is_store_owner = True
+        user.save(update_fields=['is_store_owner'])
         return BusinessOwner.objects.create(user=user, store=store)
 
     @staticmethod

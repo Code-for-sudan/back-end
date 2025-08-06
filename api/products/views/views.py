@@ -1,4 +1,5 @@
 import logging
+from rest_framework.decorators import action
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
@@ -45,6 +46,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
         # Allow unauthenticated access for list and retrieve actions
@@ -278,6 +280,29 @@ class ProductViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serialized_products)
 
         return Response(serialized_products, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="List authenticated user's products",
+        description="Returns a paginated list of products that belong to the authenticated seller's store. "
+                    "Includes support for filtering, searching, and ordering like the list products endpoint.",
+        responses={
+            200: OpenApiResponse(description="List of products owned by the authenticated seller."),
+            403: OpenApiResponse(description="This user is not a seller."),
+        },
+        tags=["products"]
+    )
+    @action(detail=False, methods=["get"], url_path="my-products", url_name="my-products")
+    def my_products(self, request):
+        user = request.user
+        if not user.account_type == 'seller':
+            return Response({"detail": "This user is not a seller."}, status=403)
+        qs = self.get_queryset().filter(owner_id=user.id)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
 
 
 class DeleteProductSizeView(APIView):

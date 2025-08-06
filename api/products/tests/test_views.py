@@ -214,7 +214,6 @@ class ProductViewSetTests(APITestCase):
             f"Filter by Store Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data['results']
-        print(results, type(results))
         ids = [p["id"] for p in results]
         self.assertIn(product.id, ids)
         self.assertNotIn(other_store_product.id, ids)
@@ -518,6 +517,42 @@ class ProductViewSetTests(APITestCase):
         product.refresh_from_db()
         self.assertEqual(product.product_name,
                          TestHelpers.get_valid_product_data_without_sizes()['product_name'])
+
+    def test_my_products(self):
+        other_user, other_store, _ = TestHelpers.create_seller(
+            email="other_seller@test.com",
+            store_name="other_store")
+        product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            self.user,
+            self.store
+        )
+        other_store_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(),
+            other_user,
+            other_store
+        )
+        my_products_url = reverse('product-my-products')
+        response = self.client.get(my_products_url)
+        logger.info(
+            f"Filter by Store Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data['results']
+        ids = [p["id"] for p in results]
+        self.assertIn(product.id, ids)
+        self.assertNotIn(other_store_product.id, ids)
+
+    def test_my_products_with_buyer(self):
+        buyer = TestHelpers.create_user(
+            email="buyer@test.com",
+            account_type='buyer'
+        )
+        self.client.force_authenticate(user=buyer)
+        my_products_url = reverse('product-my-products')
+        response = self.client.get(my_products_url)
+        logger.info(
+            f"Filter by Store Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class DeleteProductSizeViewTests(APITestCase):
