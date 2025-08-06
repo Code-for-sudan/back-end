@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 import json
 import logging
@@ -254,11 +255,87 @@ class ProductViewSetTests(APITestCase):
         timestamps = [p["created_at"] for p in response.data['results']]
         self.assertEqual(timestamps, sorted(timestamps, reverse=True))
 
+    def test_sort_products_by_price_with_offer(self):
+        cheap_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(price=10),
+            self.user,
+            self.store
+        )
+        cheaper_product_after_offer = TestHelpers.creat_product(
+            TestHelpers.add_offer_to_product_data(
+                TestHelpers.get_valid_product_data_without_sizes(price=100),
+                * TestHelpers.get_active_offer_dates(),
+                2
+            ),
+            self.user,
+            self.store
+        )
+        response = self.client.get(self.base_url, {"sort": "-created_at"})
+        logger.info(
+            f"Sort by Pric Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        product_ids = [product["id"] for product in response.data["results"]]
+
+        # Ensure the product with offer (cheaper after discount) comes before the regular cheaper product
+        self.assertIn(cheaper_product_after_offer.id, product_ids)
+        self.assertIn(cheap_product.id, product_ids)
+        self.assertLess(
+            product_ids.index(cheaper_product_after_offer.id),
+            product_ids.index(cheap_product.id),
+            "Product with effective cheaper price due to offer should appear before the regular product"
+        )
+
+    def test_sort_products_by_price_name_and_created_at(self):
+        product_data_1 = TestHelpers.get_valid_product_data_without_sizes(
+            price="9.99", product_name="Apple")
+        product_1 = TestHelpers.creat_product(
+            product_data_1, self.user, self.store)
+
+        product_data_2 = TestHelpers.get_valid_product_data_without_sizes(
+            price="9.99", product_name="Banana")
+        product_2 = TestHelpers.creat_product(
+            product_data_2, self.user, self.store)
+
+        product_data_3 = TestHelpers.get_valid_product_data_without_sizes(
+            price="9.99", product_name="Banana")
+        product_3 = TestHelpers.creat_product(
+            product_data_3, self.user, self.store)
+        # Simulate product_3 being created later than product_2
+        product_3.created_at = product_2.created_at + timedelta(seconds=10)
+        product_3.save()
+        product_data_4 = TestHelpers.get_valid_product_data_without_sizes(
+            price="1", product_name="z")
+        product_4 = TestHelpers.creat_product(
+            product_data_4, self.user, self.store)
+
+        response = self.client.get(
+            self.base_url, {"sort": "price,product_name,recent"})
+        logger.info(
+            f"Combined Sort Response: {response.status_code} - {response.data}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Extract values to compare
+        results = response.data["results"]
+        prices = [float(p["price"]) for p in results]
+        names = [p["product_name"] for p in results]
+        timestamps = [p["created_at"] for p in results]
+
+        # Ensure products are sorted by price, then name, then -created_at
+        expected_order = sorted(
+            zip(prices, names, timestamps),
+            key=lambda x: (
+                x[0], x[1], -datetime.fromisoformat(x[2]).timestamp())
+        )
+        actual_order = list(zip(prices, names, timestamps))
+        self.assertEqual(actual_order, expected_order)
+
     def test_create_product_missing_required_field(self):
         """Test creation fails if a required field is missing."""
         data = TestHelpers.get_valid_product_data_without_sizes()
         data.pop('product_name')
-        response = self.client.post(self.base_url, data, format='multipart')
+        response = self.client.post(
+            self.base_url, data, format='multipart')
         logger.info(
             f"Create Product Missing Field Response: {response.status_code} - {response.data}")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
