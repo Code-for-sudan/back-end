@@ -114,7 +114,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "offer",
-            "classification"
+            "classification",
+            "availability",
         ]
         read_only_fields = [
             "id",
@@ -125,7 +126,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "reserved_quantity",
             'current_price',
             'is_deleted',
-            "offer"
+            "offer",
+            "availability",
         ]
         extra_kwargs = {
             "product_name": {"required": True},

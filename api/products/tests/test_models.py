@@ -1,6 +1,6 @@
 import logging
 from django.test import TestCase
-from products.models import Size
+from products.models import Product, Size
 from products.tests.test_helpers import TestHelpers
 
 logger = logging.getLogger('products_tests')
@@ -119,3 +119,96 @@ class ProductSizeSoftDeleteTests(TestCase):
         self.assertIn("L", returned_sizes)
 
         logger.info("product.sizes.all() excludes deleted sizes test passed.")
+
+
+class ProductAvailabilityTests(TestCase):
+    def setUp(self):
+        self.user, self.store, self.buisness_owner = TestHelpers.create_seller()
+        self.available_product_with_sizes = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=TestHelpers.get_available_sizes()
+            ),
+            self.user,
+            self.store,
+        )
+        self.unavailable_product_with_sizes = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=TestHelpers.get_unavailable_sizes()
+            ),
+            self.user,
+            self.store,
+        )
+        self.paritally_available_product_with_sizes = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=TestHelpers.get_paritally_available_sizes()
+            ),
+            self.user,
+            self.store,
+        )
+        self.available_product_without_sizes = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=10),
+            self.user,
+            self.store,
+        )
+        self.unavailable_product_without_sizes = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=0),
+            self.user,
+            self.store,
+        )
+        self.available_product_with_deleted_size = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=TestHelpers.get_available_sizes()
+            ),
+            self.user,
+            self.store
+        )
+        deleted_size = self.available_product_with_deleted_size.sizes.first()
+        deleted_size.available_quantity = 0
+        deleted_size.save()
+        deleted_size.delete()
+        return super().setUp()
+
+    def test_availability_property(self):
+        self.assertEqual(
+            self.available_product_with_sizes.availability, "available")
+        self.assertEqual(
+            self.unavailable_product_with_sizes.availability, "unavailable")
+        self.assertEqual(
+            self.paritally_available_product_with_sizes.availability, "partially_available")
+        self.assertEqual(
+            self.available_product_without_sizes.availability, "available")
+        self.assertEqual(
+            self.unavailable_product_without_sizes.availability, "unavailable")
+        self.assertEqual(
+            self.available_product_with_deleted_size.availability, "available")
+
+    def test_available_filter(self):
+        available = Product.objects.available()
+        self.assertIn(self.available_product_with_sizes, available)
+        self.assertIn(self.available_product_without_sizes, available)
+        self.assertIn(self.available_product_with_deleted_size, available)
+        self.assertNotIn(self.unavailable_product_with_sizes, available)
+        self.assertNotIn(
+            self.paritally_available_product_with_sizes, available)
+        self.assertNotIn(self.unavailable_product_without_sizes, available)
+
+    def test_unavailable_filter(self):
+        unavailable = Product.objects.unavailable()
+        self.assertIn(self.unavailable_product_with_sizes, unavailable)
+        self.assertIn(self.unavailable_product_without_sizes, unavailable)
+        self.assertNotIn(self.available_product_with_deleted_size, unavailable)
+        self.assertNotIn(self.available_product_with_sizes, unavailable)
+        self.assertNotIn(self.available_product_without_sizes, unavailable)
+        self.assertNotIn(
+            self.paritally_available_product_with_sizes, unavailable)
+
+    def test_partially_available_filter(self):
+        partial = Product.objects.partially_available()
+        self.assertIn(self.paritally_available_product_with_sizes, partial)
+        self.assertNotIn(self.available_product_with_sizes, partial)
+        self.assertNotIn(self.available_product_with_deleted_size, partial)
+        self.assertNotIn(self.unavailable_product_with_sizes, partial)
+        self.assertNotIn(self.unavailable_product_without_sizes, partial)
+        self.assertNotIn(self.available_product_without_sizes, partial)
