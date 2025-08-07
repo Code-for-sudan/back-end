@@ -1,4 +1,5 @@
 import logging
+from rest_framework.decorators import action
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
@@ -45,6 +46,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
         # Allow unauthenticated access for list and retrieve actions
@@ -59,13 +61,16 @@ class ProductViewSet(viewsets.ModelViewSet):
             'offer').prefetch_related('sizes')
         category = self.request.query_params.get("category")
         classification = self.request.query_params.get("classification")
+        store_id = self.request.query_params.get("store")
+        has_offer = self.request.query_params.get("has_offer")
         sort = self.request.query_params.get("sort")
 
         if category:
             queryset = queryset.filter(category=category)
         if classification:
             queryset = queryset.filter(classification=classification)
-        has_offer = self.request.query_params.get("has_offer")
+        if store_id:
+            queryset = queryset.filter(store=store_id)
         if has_offer and has_offer.lower() == "true":
             queryset = queryset.filter(
                 offer__start_date__lte=now(),
@@ -232,6 +237,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         - **category**: Filter by category name
         - **classification**: Filter by classification
+        - **store**: Filter by store id
         - **has_offer**: Filter by active offers (true/false)
         - **sort**: Sort results (comma-separated fields, e.g. `-price,created_at`)
         - **is_favourite**: Added to each product if user is authenticated
@@ -274,6 +280,29 @@ class ProductViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serialized_products)
 
         return Response(serialized_products, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="List authenticated user's products",
+        description="Returns a paginated list of products that belong to the authenticated seller's store. "
+                    "Includes support for filtering, searching, and ordering like the list products endpoint.",
+        responses={
+            200: OpenApiResponse(description="List of products owned by the authenticated seller."),
+            403: OpenApiResponse(description="This user is not a seller."),
+        },
+        tags=["products"]
+    )
+    @action(detail=False, methods=["get"], url_path="my-products", url_name="my-products")
+    def my_products(self, request):
+        user = request.user
+        if not user.account_type == 'seller':
+            return Response({"detail": "This user is not a seller."}, status=403)
+        qs = self.get_queryset().filter(owner_id=user.id)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
 
 
 class DeleteProductSizeView(APIView):
