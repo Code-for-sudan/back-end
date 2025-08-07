@@ -554,12 +554,12 @@ LOGGING = {
             'propagate': False,
         },
         'search_consumers': {
-            'handlers': ['search', 'console'],
+            'handlers': ['search'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
         'chat_consumers': {
-            'handlers': ['chat', 'console'],
+            'handlers': ['chat'],
             'level': 'DEBUG',  # Set to DEBUG for detailed logs
             'propagate': False,
         },
