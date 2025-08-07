@@ -159,7 +159,7 @@ class ProductAvailabilityTests(TestCase):
         )
         self.available_product_with_deleted_size = TestHelpers.creat_product(
             TestHelpers.get_valid_product_data_with_size(
-                TestHelpers.get_available_sizes()
+                sizes=TestHelpers.get_available_sizes()
             ),
             self.user,
             self.store
