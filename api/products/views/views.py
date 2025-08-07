@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 from rest_framework.decorators import action
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
@@ -8,7 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParamet
 from products.models import Offer, Product, Size
 from products.serializers import ProductSerializer
 from django.utils.timezone import now
-from django.db.models import Case, When, F, DecimalField
+from django.db.models import Case, When, F, DecimalField, Q
 logger = logging.getLogger("products_views")
 
 
@@ -54,6 +55,25 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     queryset = Product.objects.alive()
+    query_parameters = [
+        OpenApiParameter(
+            name="category", required=False,
+            type=str, description="Filter by category name"),
+        OpenApiParameter(
+            name="classification", required=False,
+            type=str, description="Filter by classification"),
+        OpenApiParameter(
+            name="has_offer", required=False, type=bool,
+            description="Filter by active offer (true only)"),
+        OpenApiParameter(
+            name="sort", required=False, type=str,
+            description="Sort by fields like `price`, `-price`, `recent`, etc. (comma-separated fields, e.g. `-price,created_at`)"),
+        OpenApiParameter(name='store', description="Filter by store id"),
+        OpenApiParameter(name="availability",
+                         required=False, type=str,
+                         enum=["available", "partially_available", "unavailable"],
+                         description="Filter by availability status. Can be repeated for multiple values (e.g. `?availability=available&availability=partially_available`)"),
+    ]
 
     def get_queryset(self):
         """Override to filter by category and optionally sort by price, recent, or both. Only alive products."""
@@ -64,18 +84,35 @@ class ProductViewSet(viewsets.ModelViewSet):
         store_id = self.request.query_params.get("store")
         has_offer = self.request.query_params.get("has_offer")
         sort = self.request.query_params.get("sort")
+        availability = self.request.query_params.getlist("availability")
+
+        if availability:
+            availability_q = Q()
+            base_qs = Product.objects.only("pk")
+            if "available" in availability:
+                availability_q |= Q(pk__in=base_qs.available())
+            if "partially_available" in availability:
+                availability_q |= Q(pk__in=base_qs.partially_available())
+            if "unavailable" in availability:
+                availability_q |= Q(pk__in=base_qs.unavailable())
+
+            queryset = queryset.filter(availability_q)
 
         if category:
             queryset = queryset.filter(category=category)
+
         if classification:
             queryset = queryset.filter(classification=classification)
+
         if store_id:
             queryset = queryset.filter(store=store_id)
+
         if has_offer and has_offer.lower() == "true":
             queryset = queryset.filter(
                 offer__start_date__lte=now(),
                 offer__end_date__gte=now()
             )
+
         # sort param can be: 'recent', 'price', '-price', 'price,-created_at', etc. (comma-separated list)
         if sort:
             field_map = {
@@ -240,22 +277,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         - **store**: Filter by store id
         - **has_offer**: Filter by active offers (true/false)
         - **sort**: Sort results (comma-separated fields, e.g. `-price,created_at`)
+        - **availability**: Filter by availability status. Can be repeated for multiple values (e.g. `?availability=available&availability=partially_available`)
         - **is_favourite**: Added to each product if user is authenticated
         """,
-        parameters=[
-            OpenApiParameter(
-                name="category", required=False,
-                type=str, description="Filter by category name"),
-            OpenApiParameter(
-                name="classification", required=False,
-                type=str, description="Filter by classification"),
-            OpenApiParameter(
-                name="has_offer", required=False, type=bool,
-                description="Filter by active offer (true only)"),
-            OpenApiParameter(
-                name="sort", required=False, type=str,
-                description="Sort by fields like `price`, `-price`, `recent`, etc."),
-        ],
+        parameters=query_parameters
     )
     def list(self, request, *args, **kwargs):
         products = self.get_queryset()
@@ -289,6 +314,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             200: OpenApiResponse(description="List of products owned by the authenticated seller."),
             403: OpenApiResponse(description="This user is not a seller."),
         },
+
+        parameters=query_parameters,
         tags=["products"]
     )
     @action(detail=False, methods=["get"], url_path="my-products", url_name="my-products")

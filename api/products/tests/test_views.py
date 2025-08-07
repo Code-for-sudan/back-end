@@ -542,6 +542,139 @@ class ProductViewSetTests(APITestCase):
         self.assertIn(product.id, ids)
         self.assertNotIn(other_store_product.id, ids)
 
+    def test_my_products_filtered_by_unavailable(self):
+        other_user, other_store, _ = TestHelpers.create_seller(
+            email="other_seller@test.com",
+            store_name="other_store")
+        other_store_available_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=10
+            ),
+            other_user,
+            other_store
+        )
+        other_store_unavailable_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=0
+            ),
+            other_user,
+            other_store
+        )
+        # Create a product that is available
+        available_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=10
+            ),
+            self.user,
+            self.store
+        )
+        unavailable_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=0
+            ),
+            self.user,
+            self.store
+        )
+
+        my_products_url = reverse('product-my-products')
+
+        # Call endpoint with availability=unavailable
+        response = self.client.get(
+            my_products_url, {"availability": "unavailable"})
+        logger.info(
+            f"Filter by Availability Response: {response.status_code} - {response.data}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        results = response.data['results']
+        ids = [p["id"] for p in results]
+
+        self.assertIn(unavailable_product.id, ids)
+        self.assertNotIn(available_product.id, ids)
+        self.assertNotIn(other_store_available_product.id, ids)
+        self.assertNotIn(other_store_unavailable_product.id, ids)
+
+    def test_filter_products_by_availability(self):
+        # Create products with different availability values
+        available_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=10
+            ),
+            self.user,
+            self.store
+        )
+        partial_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=TestHelpers.get_paritally_available_sizes()
+            ),
+            self.user,
+            self.store
+        )
+        unavailable_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=0
+            ),
+            self.user,
+            self.store
+        )
+
+        # Send request to filter by availability=available
+        url = reverse("product-my-products")
+        response = self.client.get(url, {"availability": "available"})
+
+        logger.info(
+            f"Filter by Availability Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        results = response.data['results']
+        ids = [p["id"] for p in results]
+
+        self.assertIn(available_product.id, ids)
+        self.assertNotIn(partial_product.id, ids)
+        self.assertNotIn(unavailable_product.id, ids)
+
+    def test_filter_products_by_available_and_partially(self):
+        # Create products with different availability values
+        available_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=10
+            ),
+            self.user,
+            self.store
+        )
+        partial_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_with_size(
+                sizes=TestHelpers.get_paritally_available_sizes()
+            ),
+            self.user,
+            self.store
+        )
+        unavailable_product = TestHelpers.creat_product(
+            TestHelpers.get_valid_product_data_without_sizes(
+                available_quantity=0
+            ),
+            self.user,
+            self.store
+        )
+
+        # Send request to filter by availability=available,partially
+        url = reverse("product-my-products")
+        response = self.client.get(
+            url, {"availability": ["available", "partially_available"]}
+        )
+
+        logger.info(
+            f"Filter by Availability (available, partially) Response: {response.status_code} - {response.data}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        results = response.data['results']
+        ids = [p["id"] for p in results]
+
+        self.assertIn(available_product.id, ids)
+        self.assertIn(partial_product.id, ids)
+        self.assertNotIn(unavailable_product.id, ids)
+
     def test_my_products_with_buyer(self):
         buyer = TestHelpers.create_user(
             email="buyer@test.com",
