@@ -27,8 +27,16 @@ class ProductQuerySet(models.QuerySet):
     def delete(self):
         return super().update(is_deleted=True)
 
-    def hard_delete(self):
-        return super().delete()
+    def hard_delete(self, using=None, keep_parents=False):
+        # Delete picture from storage (if it exists)
+        if self.picture:
+            self.picture.delete(save=False)
+
+        # Hard delete related sizes
+        self.sizes.all().delete()
+
+        # Hard delete the product itself
+        return super().delete(using=using, keep_parents=keep_parents)
 
     def alive(self):
         return self.filter(is_deleted=False)
