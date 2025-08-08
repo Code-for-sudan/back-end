@@ -28,6 +28,10 @@ class ProductQuerySet(models.QuerySet):
         return super().update(is_deleted=True)
 
     def hard_delete(self):
+        for product in self:
+            product.history.update(product=None)
+            if product.picture:
+                product.picture.delete(save=False)
         return super().delete()
 
     def alive(self):
@@ -174,16 +178,15 @@ class Product(models.Model):
         blank=True,
         related_name='favourite_products')
     objects = ProductQuerySet.as_manager()
+    all_objects = models.Manager()
 
-    def delete(self, using=None, keep_parents=False, hard=False):
-        if hard:
-            return super().delete(using=using, keep_parents=keep_parents)
+    def delete(self):
         self.is_deleted = True
         self.sizes.all().update(is_deleted=True, deleted_at=now())
         self.save(update_fields=["is_deleted"])
 
-    def hard_delete(self, using=None, keep_parents=False):
-        return super().delete(using=using, keep_parents=keep_parents)
+    def hard_delete(self):
+        return super().delete()
 
     def __str__(self):
         return str(self.product_name)

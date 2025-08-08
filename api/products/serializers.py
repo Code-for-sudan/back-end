@@ -54,9 +54,10 @@ class SizeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Size
-        fields = ["size", "available_quantity", "reserved_quantity"]
+        fields = ["id", "size", "available_quantity", "reserved_quantity"]
         extra_kwargs = {
             "available_quantity": {"required": True},
+            "id": {"read_only": True},
             # Always set to 0 during creation
             "reserved_quantity": {"read_only": True},
         }
