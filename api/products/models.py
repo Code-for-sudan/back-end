@@ -32,9 +32,6 @@ class ProductQuerySet(models.QuerySet):
         if self.picture:
             self.picture.delete(save=False)
 
-        # Hard delete related sizes
-        self.sizes.all().delete()
-
         # Hard delete the product itself
         return super().delete(using=using, keep_parents=keep_parents)
 
