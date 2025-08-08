@@ -156,6 +156,30 @@ class TestHelpers:
         return product_data
 
     @staticmethod
+    def get_available_sizes():
+        return [
+            {"size": "S", "available_quantity": 10},
+            {"size": "M", "available_quantity": 12},
+            {"size": "L", "available_quantity": 4},
+        ]
+
+    @staticmethod
+    def get_paritally_available_sizes():
+        return [
+            {"size": "S", "available_quantity": 10},
+            {"size": "M", "available_quantity": 0},
+            {"size": "L", "available_quantity": 4},
+        ]
+
+    @staticmethod
+    def get_unavailable_sizes():
+        return [
+            {"size": "S", "available_quantity": 0},
+            {"size": "M", "available_quantity": 0},
+            {"size": "L", "available_quantity": 0},
+        ]
+
+    @staticmethod
     def creat_product(product_data, owner, store):
         """
         Helper to create a product instance along with optional sizes and offer.

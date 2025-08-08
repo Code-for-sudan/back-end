@@ -54,19 +54,25 @@ class ChatHistoryViewTestCase(TestCase):
         response = self.client.get(url)
         logger.info(f"Requested chat history with missing customer_id, status={response.status_code}")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("customer_id is required", response.json()["error"])
+        self.assertDictEqual(
+            response.json()["error"],
+            {"customer_id": ["This field is required."]}
+        )
         logger.info("Chat history view missing customer_id test passed.")
 
     def test_chat_history_view_customer_not_found(self):
         """
-        Test that a non-existent customer_id returns a 404 error.
+        Test that a non-existent customer_id returns a 400 error (validated in serializer).
         """
         self.client.force_authenticate(user=self.owner)
         url = reverse("chat-history")
         response = self.client.get(url, {"customer_id": 9999})
         logger.info(f"Requested chat history with non-existent customer_id=9999, status={response.status_code}")
-        self.assertEqual(response.status_code, 404)
-        self.assertIn("Customer not found", response.json()["error"])
+        self.assertEqual(response.status_code, 400)
+        self.assertDictEqual(
+            response.json()["error"],
+            {"customer_id": ["Customer not found."]}
+        )
         logger.info("Chat history view customer not found test passed.")
 
 class ChatContactsViewTestCase(TestCase):

@@ -1,10 +1,12 @@
 import logging
+from typing import Literal
 from django.conf import settings
 from django.db import models
 from accounts.models import User
 from stores.models import Store
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
+from django.db.models import Q, Count, F
 
 
 class Category(models.Model):
@@ -26,6 +28,10 @@ class ProductQuerySet(models.QuerySet):
         return super().update(is_deleted=True)
 
     def hard_delete(self):
+        for product in self:
+            product.history.update(product=None)
+            if product.picture:
+                product.picture.delete(save=False)
         return super().delete()
 
     def alive(self):
@@ -33,6 +39,82 @@ class ProductQuerySet(models.QuerySet):
 
     def dead(self):
         return self.filter(is_deleted=True)
+
+    def available(self):
+        # Products that do not have sizes and have available_quantity > 0
+        no_size_available = Q(
+            has_sizes=False,
+            available_quantity__gt=0
+        )
+
+        # Products with sizes: All non-deleted sizes have available_quantity > 0
+        with_sizes_available = Q(has_sizes=True) & ~Q(
+            id__in=Product.objects.filter(
+                has_sizes=True
+            ).annotate(
+                unavailable_sizes=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False,
+                             sizes__available_quantity__lte=0)
+                )
+            ).filter(unavailable_sizes__gt=0).values_list("id", flat=True)
+        )
+
+        return self.filter(no_size_available | with_sizes_available)
+
+    def unavailable(self):
+        # Products that do not have sizes and have available_quantity <= 0
+        no_size_unavailable = Q(
+            has_sizes=False,
+            available_quantity__lte=0
+        )
+
+        # Products with sizes: All non-deleted sizes have available_quantity <= 0
+        with_sizes_unavailable = Q(
+            id__in=Product.objects.filter(
+                has_sizes=True
+            ).annotate(
+                total_active_sizes=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False)
+                ),
+                sizes_with_stock=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False,
+                             sizes__available_quantity__gt=0)
+                ),
+            ).filter(
+                total_active_sizes__gt=0,
+                sizes_with_stock=0
+            ).values_list('id', flat=True)
+        )
+
+        return self.filter(no_size_unavailable | with_sizes_unavailable)
+
+    def partially_available(self):
+        # Products with sizes
+        return self.filter(
+            id__in=Product.objects.filter(
+                has_sizes=True
+            ).annotate(
+                total_active_sizes=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False)
+                ),
+                sizes_with_stock=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False,
+                             sizes__available_quantity__gt=0)
+                ),
+            ).filter(
+                total_active_sizes__gt=0,
+            ).exclude(
+                sizes_with_stock=0  # exclude products with all sizes unavailable
+            ).exclude(
+                # exclude products with all sizes available
+                sizes_with_stock=F('total_active_sizes')
+            ).values_list('id', flat=True)
+        )
 
 
 class Product(models.Model):
@@ -96,16 +178,15 @@ class Product(models.Model):
         blank=True,
         related_name='favourite_products')
     objects = ProductQuerySet.as_manager()
+    all_objects = models.Manager()
 
-    def delete(self, using=None, keep_parents=False, hard=False):
-        if hard:
-            return super().delete(using=using, keep_parents=keep_parents)
+    def delete(self):
         self.is_deleted = True
         self.sizes.all().update(is_deleted=True, deleted_at=now())
         self.save(update_fields=["is_deleted"])
 
-    def hard_delete(self, using=None, keep_parents=False):
-        return super().delete(using=using, keep_parents=keep_parents)
+    def hard_delete(self):
+        return super().delete()
 
     def __str__(self):
         return str(self.product_name)
@@ -128,6 +209,21 @@ class Product(models.Model):
     @property
     def store_location(self):
         return self.store.location
+
+    @property
+    def availability(self) -> Literal["available", "unavailable", "partially_available"]:
+        if self.has_sizes:
+            sizes = self.sizes.all()
+            if not sizes.exists():
+                return "unavailable"  # No sizes defined
+            available_counts = [size.available_quantity > 0 for size in sizes]
+            if all(available_counts):
+                return "available"
+            elif any(available_counts):
+                return "partially_available"
+            return "unavailable"
+        else:
+            return "available" if (self.available_quantity or 0) > 0 else "unavailable"
 
     def clean(self):
         if self.has_sizes:

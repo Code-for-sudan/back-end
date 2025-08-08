@@ -54,9 +54,10 @@ class SizeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Size
-        fields = ["size", "available_quantity", "reserved_quantity"]
+        fields = ["id", "size", "available_quantity", "reserved_quantity"]
         extra_kwargs = {
             "available_quantity": {"required": True},
+            "id": {"read_only": True},
             # Always set to 0 during creation
             "reserved_quantity": {"read_only": True},
         }
@@ -114,7 +115,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "offer",
-            "classification"
+            "classification",
+            "availability",
         ]
         read_only_fields = [
             "id",
@@ -125,7 +127,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "reserved_quantity",
             'current_price',
             'is_deleted',
-            "offer"
+            "offer",
+            "availability",
         ]
         extra_kwargs = {
             "product_name": {"required": True},
