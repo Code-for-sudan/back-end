@@ -26,4 +26,4 @@ volumes:
 
 networks:
   sudamall-net:
-    driver: bridge
+    external: true
