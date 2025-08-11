@@ -120,6 +120,16 @@ jobs:
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "FRONTEND_ACTIVATION_URL=${{ secrets.FRONTEND_ACTIVATION_URL }}" >> api/.env.prod
 
+      - name: Check if only nginx.conf changed
+        id: nginx_check
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -q "nginx.conf"; then
+            echo "nginx_changed=true" >> $GITHUB_ENV
+          else
+            echo "nginx_changed=false" >> $GITHUB_ENV
+          fi
+
+
       - name: Deploy App
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
@@ -132,7 +142,17 @@ jobs:
             # Remove dangling images (optional, for clean build)
             docker images -aq | xargs docker rmi -f || true
             # Now rebuild and start fresh
-            docker compose -f docker-compose.prod.yml up --build -d
+            if [ "${nginx_changed}" = "true" ]; then
+              echo "Only nginx.conf changed — rebuilding nginx container only"
+              docker compose -f docker-compose.prod.yml build nginx
+              docker compose -f docker-compose.prod.yml up -d nginx
+            else
+              echo "Full deploy"
+              docker ps -aq | xargs docker stop || true
+              docker ps -aq | xargs docker rm || true
+              docker images -aq | xargs docker rmi -f || true
+              docker compose -f docker-compose.prod.yml up --build -d
+            fi
             # Move Frontend files
             docker cp /home/devops/Front-End/SudaMall-front/dist/. nginx:/usr/share/nginx/html/
           EOF
