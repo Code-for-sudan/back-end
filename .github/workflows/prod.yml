@@ -136,4 +136,3 @@ jobs:
             # Move Frontend files
             docker cp /home/devops/Front-End/SudaMall-front/dist/. nginx:/usr/share/nginx/html/
           EOF
-
