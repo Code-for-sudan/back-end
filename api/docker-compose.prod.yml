@@ -32,8 +32,8 @@ services:
       elasticsearch:
         condition: service_healthy
     restart: unless-stopped
-    # networks:
-    #   - sudamall-net
+    networks:
+      - sudamall-net
 
   db:
     image: mysql:8
@@ -52,8 +52,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # networks:
-    #   - sudamall-net
+    networks:
+      - sudamall-net
 
   redis:
     image: redis:7-alpine
@@ -63,8 +63,8 @@ services:
       - "6379:6379" # host:container
     volumes:
       - redis_data:/data
-    # networks:
-    #   - sudamall-net
+    networks:
+      - sudamall-net
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
@@ -82,8 +82,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    # networks:
-    #   - sudamall-net
+    networks:
+      - sudamall-net
 
 volumes:
   static_volume:
@@ -92,6 +92,6 @@ volumes:
   db_data:
   esdata:
 
-# networks:
-#   sudamall-net:
-#     external: true
+networks:
+  sudamall-net:
+    driver: bridge
