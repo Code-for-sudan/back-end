@@ -123,7 +123,7 @@ jobs:
       - name: Check if only nginx.conf changed
         id: nginx_check
         run: |
-          git fetch --no-tags --prune origin main || true
+          git fetch --prune --unshallow origin main || true
           CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
           echo "Changed files in push:"
           echo "$CHANGED_FILES"
