@@ -120,47 +120,19 @@ jobs:
           echo "DB_PORT=${{ secrets.DB_PORT }}" >> api/.env.prod
           echo "FRONTEND_ACTIVATION_URL=${{ secrets.FRONTEND_ACTIVATION_URL }}" >> api/.env.prod
 
-      - name: Check if only nginx.conf changed
-        id: nginx_check
-        run: |
-          git fetch --prune --unshallow origin main || true
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
-          echo "Changed files in push:"
-          echo "$CHANGED_FILES"
-
-          FILES_BASENAMES=$(echo "$CHANGED_FILES" | xargs -n1 basename)
-          echo "Basenames:"
-          echo "$FILES_BASENAMES"
-
-          NON_NGINX=$(echo "$FILES_BASENAMES" | grep -v '^nginx.conf$' || true)
-
-          if [ -z "$NON_NGINX" ]; then
-            echo "nginx_changed=true" >> $GITHUB_ENV
-          else
-            echo "nginx_changed=false" >> $GITHUB_ENV
-          fi
-
       - name: Deploy App
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             export COMPOSE_HTTP_TIMEOUT=300
             cd /home/${{ secrets.SSH_USER }}/back-end/api
             git pull origin main
-
-            if [ "${nginx_changed}" = "true" ]; then
-              echo "Only nginx.conf changed — rebuilding nginx container only"
-              docker compose -f docker-compose.prod.yml build nginx
-              docker compose -f docker-compose.prod.yml up -d nginx
-            else
-              echo "Full deploy"
-              # Stop and remove ALL containers
-              docker ps -aq | xargs docker stop || true
-              docker ps -aq | xargs docker rm || true
-              # Remove dangling images (optional, for clean build)
-              docker images -aq | xargs docker rmi -f || true
-              docker compose -f docker-compose.prod.yml up --build -d
-            fi
-
+            # Stop and remove ALL containers
+            docker ps -aq | xargs docker stop || true
+            docker ps -aq | xargs docker rm || true
+            # Remove dangling images (optional, for clean build)
+            docker images -aq | xargs docker rmi -f || true
+            # Now rebuild and start fresh
+            docker compose -f docker-compose.prod.yml up --build -d
             # Move Frontend files
             docker cp /home/devops/Front-End/SudaMall-front/dist/. nginx:/usr/share/nginx/html/
           EOF
