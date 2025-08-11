@@ -126,12 +126,11 @@ jobs:
             export COMPOSE_HTTP_TIMEOUT=300
             cd /home/${{ secrets.SSH_USER }}/back-end/api
             git pull origin main
-            # Stop and remove ALL containers
-            docker ps -aq | xargs docker stop || true
-            docker ps -aq | xargs docker rm || true
-            # Remove dangling images (optional, for clean build)
-            docker images -aq | xargs docker rmi -f || true
-            # Now rebuild and start fresh
+            # Stop and remove backend services only
+            docker compose -f docker-compose.prod.yml down
+            # Remove only backend project images
+            docker image prune -af --filter "label=com.docker.compose.project=api"
+            # Rebuild and start backend
             docker compose -f docker-compose.prod.yml up --build -d
             # Move Frontend files
             docker cp /home/devops/Front-End/SudaMall-front/dist/. nginx:/usr/share/nginx/html/

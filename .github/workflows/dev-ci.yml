@@ -74,7 +74,7 @@ jobs:
 
       - name: Run tests
         run: |
-          docker compose -f api/docker-compose.prod.yml run --rm web sh -c "
+          docker compose -f api/docker-compose.dev.yml run --rm web sh -c "
             ./wait-for-it.sh elasticsearch:9200 --timeout=60 --strict -- \
             python manage.py makemigrations --noinput &&
             python manage.py migrate --noinput &&
