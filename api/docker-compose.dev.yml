@@ -93,7 +93,3 @@ volumes:
   redis_data:
   db_data:
   esdata:
-
-networks:
-  sudamall-net:
-    driver: bridge

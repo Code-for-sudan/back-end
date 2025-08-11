@@ -69,9 +69,6 @@ jobs:
           echo "ELASTICSEARCH_URL=http://elasticsearch:9200" >> api/.env.prod
           echo "REDIS_DATABASE_URL=redis://redis:6379" >> api/.env.prod
 
-      - name: Create sudamall-net network
-        run: docker network create sudamall-net || true
-
       - name: Build Docker containers
         run: docker compose -f api/docker-compose.dev.yml build
 
