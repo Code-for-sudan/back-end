@@ -21,17 +21,17 @@ def get_user(user_id):
 
 class JwtAuthMiddleware(BaseMiddleware):
     """
-    JWT middleware using Authorization header (Bearer <token>)
+    JWT middleware using ?token=<access_token> query parameter
     """
 
     async def __call__(self, scope, receive, send):
-        # Normalize headers into a dict of {str: str}
-        headers = {k.decode(): v.decode() for k, v in scope.get("headers", [])}
-        auth_header = headers.get("authorization")
+        # Get query string from scope
+        query_string = scope.get("query_string", b"").decode()
+        query_params = parse_qs(query_string)
+        token_list = query_params.get("token", [])
+        token = token_list[0] if token_list else None
 
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-
+        if token:
             try:
                 # Validate token
                 UntypedToken(token)
@@ -53,7 +53,7 @@ class JwtAuthMiddleware(BaseMiddleware):
                 logger.warning(f"JWT validation failed: {e}")
                 scope["user"] = AnonymousUser()
         else:
-            logger.info("Authorization header missing or invalid.")
+            logger.info("Token query parameter missing or invalid.")
             scope["user"] = AnonymousUser()
 
         return await super().__call__(scope, receive, send)
