@@ -15,8 +15,8 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      - my_app_net
+    # networks:
+    #   - sudamall-net
 
 volumes:
   static_volume:
@@ -24,6 +24,6 @@ volumes:
   media_volume:
     external: true
 
-networks:
-  my_app_net:
-    external: true
+# networks:
+#   sudamall-net:
+#     external: true
