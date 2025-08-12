@@ -87,7 +87,9 @@ services:
 
 volumes:
   static_volume:
+    external: true
   media_volume:
+    external: true
   redis_data:
   db_data:
   esdata:
