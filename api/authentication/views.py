@@ -4,6 +4,8 @@ from rest_framework import status # type: ignore
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
@@ -73,9 +75,12 @@ class LoginView(APIView):
                 status=status.HTTP_200_OK
             )
             response.set_cookie(
-                "refresh_token", str(refresh_token),
-                httponly=True, secure=not settings.DEBUG,
-                samesite="Lax"
+                "refresh_token",
+                str(refresh_token),
+                httponly=True,
+                secure=True,
+                samesite="Lax",
+                max_age=7 * 24 * 60 * 60,  # 1 week
             )
             return response
         except ValidationError as exc:
@@ -839,3 +844,94 @@ class ResendVerificationView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+
+class CookieTokenObtainPairView(TokenObtainPairView):
+    """
+    A custom view that extends TokenObtainPairView to handle JWT authentication tokens.
+    On successful authentication, returns the access token in the response body and sets the refresh token as an HttpOnly cookie.
+    This enhances security by preventing JavaScript access to the refresh token and limiting its scope to the refresh endpoint.
+    Methods:
+        post(request, *args, **kwargs): Handles POST requests for token obtain. 
+            - Returns access token in response body.
+            - Sets refresh token as a secure, HttpOnly cookie with path restricted to the token refresh endpoint.
+    """
+    serializer_class = TokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        refresh = response.data.get("refresh")
+        access = response.data.get("access")
+        # Remove refresh from body
+        response.data = {"access": access}
+        # Set refresh as HttpOnly cookie
+        if refresh:
+            response.set_cookie(
+                "refresh_token",
+                refresh,
+                httponly=True,
+                secure=True,  # Set to True in production
+                samesite="Lax",
+                max_age=7*24*60*60,  # 1 week, adjust as needed
+            )
+        return response
+
+
+@extend_schema(
+    summary="Obtain JWT Token Pair (access in body, refresh in HttpOnly cookie)",
+    description=(
+        "Authenticates a user and returns an access token in the response body. "
+        "The refresh token is set as a secure, HttpOnly cookie named `refresh_token`."
+    ),
+    request=TokenObtainPairSerializer,
+    responses={
+        200: OpenApiResponse(
+            description="Access token in response body. Refresh token in HttpOnly cookie.",
+            examples=[
+                OpenApiExample(
+                    "Success",
+                    value={"access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."},
+                    response_only=True,
+                )
+            ]
+        ),
+        401: OpenApiResponse(description="Invalid credentials."),
+    },
+)
+
+
+@extend_schema(
+    summary="Refresh JWT Access Token (refresh from HttpOnly cookie)",
+    description=(
+        "Refreshes the access token. The refresh token is read from the `refresh_token` HttpOnly cookie "
+        "if not provided in the request body."
+    ),
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            description="Returns a new access token.",
+            examples=[
+                OpenApiExample(
+                    "Success",
+                    value={"access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."},
+                    response_only=True,
+                )
+            ]
+        ),
+        401: OpenApiResponse(description="Invalid or expired refresh token."),
+    },
+)
+class CookieTokenRefreshView(TokenRefreshView):
+    """
+    A custom view that extends TokenRefreshView to support retrieving the refresh token from an HTTP cookie.
+    If the "refresh" token is not present in the request body, this view attempts to extract it from the "refresh_token" cookie.
+    This allows clients to perform token refresh operations using cookies for enhanced security and convenience.
+    Methods:
+        post(request, *args, **kwargs): Handles POST requests to refresh JWT tokens, checking both request data and cookies for the refresh token.
+    """
+    def post(self, request, *args, **kwargs):
+        # Get refresh token from cookie if not in body
+        if "refresh" not in request.data:
+            request.data["refresh"] = request.COOKIES.get("refresh_token")
+        return super().post(request, *args, **kwargs)
