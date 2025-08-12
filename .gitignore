@@ -196,6 +196,7 @@ profile_pics/
 staticfiles/
 emails/
 api/.env.development
+media/
 
 
 
