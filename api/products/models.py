@@ -1,9 +1,12 @@
 import logging
+from typing import Literal
 from django.conf import settings
 from django.db import models
+from accounts.models import User
 from stores.models import Store
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
+from django.db.models import Q, Count, F
 
 
 class Category(models.Model):
@@ -25,6 +28,10 @@ class ProductQuerySet(models.QuerySet):
         return super().update(is_deleted=True)
 
     def hard_delete(self):
+        for product in self:
+            product.history.update(product=None)
+            if product.picture:
+                product.picture.delete(save=False)
         return super().delete()
 
     def alive(self):
@@ -32,6 +39,82 @@ class ProductQuerySet(models.QuerySet):
 
     def dead(self):
         return self.filter(is_deleted=True)
+
+    def available(self):
+        # Products that do not have sizes and have available_quantity > 0
+        no_size_available = Q(
+            has_sizes=False,
+            available_quantity__gt=0
+        )
+
+        # Products with sizes: All non-deleted sizes have available_quantity > 0
+        with_sizes_available = Q(has_sizes=True) & ~Q(
+            id__in=Product.objects.filter(
+                has_sizes=True
+            ).annotate(
+                unavailable_sizes=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False,
+                             sizes__available_quantity__lte=0)
+                )
+            ).filter(unavailable_sizes__gt=0).values_list("id", flat=True)
+        )
+
+        return self.filter(no_size_available | with_sizes_available)
+
+    def unavailable(self):
+        # Products that do not have sizes and have available_quantity <= 0
+        no_size_unavailable = Q(
+            has_sizes=False,
+            available_quantity__lte=0
+        )
+
+        # Products with sizes: All non-deleted sizes have available_quantity <= 0
+        with_sizes_unavailable = Q(
+            id__in=Product.objects.filter(
+                has_sizes=True
+            ).annotate(
+                total_active_sizes=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False)
+                ),
+                sizes_with_stock=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False,
+                             sizes__available_quantity__gt=0)
+                ),
+            ).filter(
+                total_active_sizes__gt=0,
+                sizes_with_stock=0
+            ).values_list('id', flat=True)
+        )
+
+        return self.filter(no_size_unavailable | with_sizes_unavailable)
+
+    def partially_available(self):
+        # Products with sizes
+        return self.filter(
+            id__in=Product.objects.filter(
+                has_sizes=True
+            ).annotate(
+                total_active_sizes=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False)
+                ),
+                sizes_with_stock=Count(
+                    'sizes',
+                    filter=Q(sizes__is_deleted=False,
+                             sizes__available_quantity__gt=0)
+                ),
+            ).filter(
+                total_active_sizes__gt=0,
+            ).exclude(
+                sizes_with_stock=0  # exclude products with all sizes unavailable
+            ).exclude(
+                # exclude products with all sizes available
+                sizes_with_stock=F('total_active_sizes')
+            ).values_list('id', flat=True)
+        )
 
 
 class Product(models.Model):
@@ -44,12 +127,13 @@ class Product(models.Model):
     Attributes:
         product_name (CharField): The name of the product (max length 255).
         product_description (TextField): A detailed textual description of the product.
-        price (DecimalField): The price of the product (maximum 10 digits, 2 decimal places).
+        price (DecimalField): The original price of the product (maximum 10 digits, 2 decimal places).
         picture (ImageField): Image of the product, uploaded to the 'products/' directory.
         color (CharField): Optional color of the product (max length 50).
-        size (CharField): Optional size of the product (max length 50).
-        available_quantity (PositiveIntegerField): The quantity of the product available in stock (0 or more).
-        reserved_quantity (BigIntegerField): The quantity currently reserved (optional).
+        available_quantity (int): Quantity currently available for purchase.
+        Only applicable when `has_sizes` is False.
+        reserved_quantity (int): Quantity reserved (e.g., items in carts awaiting payments)
+        and thus not available for sale. Only applicable when `has_sizes` is False.
         has_sizes (BooleanField): Indicates if the product has size variants.
         properties (JSONField): Optional custom properties (key-value structure) defined by the seller.
         owner (ForeignKey): Reference to the User who owns the product.
@@ -63,6 +147,8 @@ class Product(models.Model):
     Properties:
         store_name (str): Returns the name of the associated store.
         store_location (str): Returns the location of the associated store.
+        current_price (DecimalField): The effective price of the product
+        (i.e. offer price if an active offer exists else original price).
     """
 
     product_name = models.CharField(max_length=255)
@@ -81,23 +167,26 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=100)
+    classification = models.CharField(max_length=100, null=True)
     properties = models.JSONField(blank=True, null=True)
     tags = models.ManyToManyField(
         Tag, related_name="products", through="ProductTag")
     picture = models.ImageField(upload_to="products/")
     is_deleted = models.BooleanField(default=False)
-
+    favourited_by = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='favourite_products')
     objects = ProductQuerySet.as_manager()
+    all_objects = models.Manager()
 
-    def delete(self, using=None, keep_parents=False, hard=False):
-        if hard:
-            return super().delete(using=using, keep_parents=keep_parents)
+    def delete(self):
         self.is_deleted = True
         self.sizes.all().update(is_deleted=True, deleted_at=now())
         self.save(update_fields=["is_deleted"])
 
-    def hard_delete(self, using=None, keep_parents=False):
-        return super().delete(using=using, keep_parents=keep_parents)
+    def hard_delete(self):
+        return super().delete()
 
     def __str__(self):
         return f"{self.product_name} - {self.store.name}" if self.store else self.product_name
@@ -120,6 +209,21 @@ class Product(models.Model):
     @property
     def store_location(self):
         return self.store.location
+
+    @property
+    def availability(self) -> Literal["available", "unavailable", "partially_available"]:
+        if self.has_sizes:
+            sizes = self.sizes.all()
+            if not sizes.exists():
+                return "unavailable"  # No sizes defined
+            available_counts = [size.available_quantity > 0 for size in sizes]
+            if all(available_counts):
+                return "available"
+            elif any(available_counts):
+                return "partially_available"
+            return "unavailable"
+        else:
+            return "available" if (self.available_quantity or 0) > 0 else "unavailable"
 
     def clean(self):
         if self.has_sizes:
@@ -260,6 +364,12 @@ class Product(models.Model):
 
 
 class ProductHistory(models.Model):
+    """
+    Stores historical snapshots of a product whenever it is updated.
+
+    This model is useful for tracking changes to important product details over time.
+    Each record represents the state of a product at a specific point.
+    """
     product = models.ForeignKey(
         Product, on_delete=models.SET_NULL, related_name="history", null=True)
     product_name = models.CharField(max_length=255)
@@ -274,6 +384,7 @@ class ProductHistory(models.Model):
     owner_email = models.EmailField(blank=True, null=True)
     owner_phone = models.CharField(max_length=20, blank=True, null=True)
     category = models.CharField(max_length=100)
+    classification = models.CharField(max_length=100, null=True)
     properties = models.JSONField(blank=True, null=True)
     picture = models.ImageField(upload_to="history/products/")
     is_deleted = models.BooleanField(default=False)
@@ -305,6 +416,7 @@ class ProductHistory(models.Model):
             owner_email=getattr(owner, "email", None),
             owner_phone=getattr(owner, "phone_number", None),
             category=product.category,
+            classification=product.classification,
             properties=product.properties,
             picture=product.picture,
             is_deleted=product.is_deleted,
@@ -313,8 +425,11 @@ class ProductHistory(models.Model):
         )
         return history
 
-    def has_product_changed(self, product: Product) -> bool:
-        # Compare key fields - updated field name
+    def has_product_changed(self) -> bool:
+        """
+        Checks if product has changed since this history instance was taken.
+        """
+        # Compare key fields
         fields_to_check = [
             ("product_name", "product_name"),
             ("product_description", "product_description"), 
@@ -328,9 +443,10 @@ class ProductHistory(models.Model):
             ("picture", "picture"),
             ("is_deleted", "is_deleted")
         ]
+        self.product.refresh_from_db()
+        for field in fields_to_check:
 
-        for history_field, product_field in fields_to_check:
-            if getattr(self, history_field) != getattr(product, product_field):
+            if getattr(self.product, field) != getattr(self, field):
                 return True
      
         # Compare store fields
@@ -341,7 +457,8 @@ class ProductHistory(models.Model):
             return True
    
         # Compare owner-related fields
-        owner = product.owner_id
+        owner = self.product.owner_id
+
         owner_full_name = getattr(owner, "get_full_name", lambda: None)()
         if self.owner_full_name != owner_full_name:
             return True
@@ -355,7 +472,7 @@ class ProductHistory(models.Model):
             return True
 
         # Compare sizes (only names)
-        product_sizes = list(product.sizes.values_list("size", flat=True))
+        product_sizes = list(self.product.sizes.values_list("size", flat=True))
         history_sizes = getattr(self, "sizes", []) or []
         if sorted(product_sizes) != sorted(history_sizes):
             return True
@@ -389,8 +506,6 @@ class Offer(models.Model):
     def is_active(self):
         """Return True if the current date is within the offer period."""
         current_time = now()
-        print(
-            f"DEBUG: start_date={self.start_date} ({type(self.start_date)}), end_date={self.end_date} ({type(self.end_date)})")
         return self.start_date <= current_time <= self.end_date
 
 
@@ -400,6 +515,15 @@ class SizeManager(models.Manager):
 
 
 class Size(models.Model):
+    """
+    Represents a specific size variant of a product.
+
+    Attributes:
+        size (str): The size label (e.g., 'S', 'M', 'L').
+        available_quantity (int): Quantity currently available for purchase.
+        reserved_quantity (int): Quantity reserved (e.g., items in carts awaiting payments)
+            and thus not available for sale.
+    """
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="sizes")
     size = models.CharField(max_length=50)
@@ -459,7 +583,7 @@ class Size(models.Model):
     def __str__(self):
         return f"{self.product.product_name} - {self.size}"  # type: ignore
 
-# this model is unused should be removed in the future
+
 class ProductTag(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE)

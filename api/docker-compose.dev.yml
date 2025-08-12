@@ -10,6 +10,8 @@ services:
       ./wait-for-it.sh db:3306 --timeout=60 --strict &&
       ./wait-for-it.sh redis:6379 --timeout=60 --strict &&
       ./wait-for-it.sh elasticsearch:9200 --timeout=60 --strict &&
+      find . -path '*/migrations/*.py' -not -name '__init__.py' -delete &&
+      find . -path '*/migrations/*.pyc' -delete &&
       python manage.py makemigrations --noinput &&
       python manage.py migrate --noinput &&
       python manage.py collectstatic --noinput &&
@@ -32,8 +34,6 @@ services:
       elasticsearch:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - sudamall-net
 
   db:
     image: mysql:8
@@ -52,8 +52,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - sudamall-net
 
   redis:
     image: redis:7-alpine
@@ -63,8 +61,6 @@ services:
       - "6379:6379" # host:container
     volumes:
       - redis_data:/data
-    networks:
-      - sudamall-net
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
@@ -82,18 +78,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - sudamall-net
 
 volumes:
   static_volume:
-    external: true
   media_volume:
-    external: true
   redis_data:
   db_data:
   esdata:
-
-networks:
-  sudamall-net:
-    external: true

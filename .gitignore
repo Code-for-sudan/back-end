@@ -185,6 +185,7 @@ cython_debug/
 
 db.sqlite3
 static/*
+media/*
 *.log
 *.swp
 tmp.py
@@ -194,6 +195,7 @@ log/
 .vscode/
 profile_pics/
 staticfiles/
+media/
 emails/
 api/.env.development
 media/
@@ -203,3 +205,8 @@ media/
 # extra doc local files
 DEV_QUICK_START.md
 TECHNICAL_ARCHITECTURE.md
+
+
+# migrations
+# **/migrations/*.py
+# !**/migrations/__init__.py

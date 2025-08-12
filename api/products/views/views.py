@@ -1,17 +1,28 @@
 import logging
+from typing import Literal
+from rest_framework.decorators import action
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiResponse
-from .models import Product, Size
-from .serializers import ProductSerializer
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from products.models import Offer, Product, Size
+from products.serializers import ProductSerializer
 from django.utils.timezone import now
+from django.db.models import Case, When, F, DecimalField, Q
 logger = logging.getLogger("products_views")
 
 
 @extend_schema(
-    description="Product CRUD operations. Supports listing, creating, retrieving, updating, and deleting products.",
+    description="""
+    Product CRUD operations.
+
+    - **GET /products/**: List products (supports filters and sorting)
+    - **POST /products/**: Create a new product (authenticated only)
+    - **GET /products/{id}/**: Retrieve product with optional favourite info
+    - **PATCH /products/{id}/**: Update product (authenticated owner only)
+    - **DELETE /products/{id}/**: Delete product (soft delete by owner)
+    """,
     summary="Product CRUD",
 )
 class ProductViewSet(viewsets.ModelViewSet):
@@ -36,6 +47,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
         # Allow unauthenticated access for list and retrieve actions
@@ -43,28 +55,71 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     queryset = Product.objects.alive()
+    query_parameters = [
+        OpenApiParameter(
+            name="category", required=False,
+            type=str, description="Filter by category name"),
+        OpenApiParameter(
+            name="classification", required=False,
+            type=str, description="Filter by classification"),
+        OpenApiParameter(
+            name="has_offer", required=False, type=bool,
+            description="Filter by active offer (true only)"),
+        OpenApiParameter(
+            name="sort", required=False, type=str,
+            description="Sort by fields like `price`, `-price`, `recent`, etc. (comma-separated fields, e.g. `-price,created_at`)"),
+        OpenApiParameter(name='store', description="Filter by store id"),
+        OpenApiParameter(name="availability",
+                         required=False, type=str,
+                         enum=["available", "partially_available", "unavailable"],
+                         description="Filter by availability status. Can be repeated for multiple values (e.g. `?availability=available&availability=partially_available`)"),
+    ]
 
     def get_queryset(self):
         """Override to filter by category and optionally sort by price, recent, or both. Only alive products."""
-        queryset = self.queryset
+        queryset = self.queryset.select_related(
+            'offer').prefetch_related('sizes')
         category = self.request.query_params.get("category")
+        classification = self.request.query_params.get("classification")
+        store_id = self.request.query_params.get("store")
+        has_offer = self.request.query_params.get("has_offer")
         sort = self.request.query_params.get("sort")
+        availability = self.request.query_params.getlist("availability")
+
+        if availability:
+            availability_q = Q()
+            base_qs = Product.objects.only("pk")
+            if "available" in availability:
+                availability_q |= Q(pk__in=base_qs.available())
+            if "partially_available" in availability:
+                availability_q |= Q(pk__in=base_qs.partially_available())
+            if "unavailable" in availability:
+                availability_q |= Q(pk__in=base_qs.unavailable())
+
+            queryset = queryset.filter(availability_q)
 
         if category:
             queryset = queryset.filter(category=category)
-        has_offer = self.request.query_params.get("has_offer")
+
+        if classification:
+            queryset = queryset.filter(classification=classification)
+
+        if store_id:
+            queryset = queryset.filter(store=store_id)
+
         if has_offer and has_offer.lower() == "true":
             queryset = queryset.filter(
                 offer__start_date__lte=now(),
                 offer__end_date__gte=now()
             )
+
         # sort param can be: 'recent', 'price', '-price', 'price,-created_at', etc. (comma-separated list)
         if sort:
             field_map = {
                 "recent": "-created_at",
                 "-recent": "created_at",
-                "price": "current_price",
-                "-price": "-current_price",
+                "price": "current_price_",
+                "-price": "-current_price_",
             }
             valid_fields = set(
                 f.name for f in Product._meta.get_fields() if hasattr(f, 'attname'))
@@ -78,6 +133,18 @@ class ProductViewSet(viewsets.ModelViewSet):
                     sort_fields.append(field)
                 # else: ignore unknown fields
             if sort_fields:
+                if 'current_price_' in sort_fields or '-current_price_' in sort_fields:
+                    queryset = queryset.annotate(
+                        current_price_=Case(
+                            When(
+                                offer__start_date__lte=now(),
+                                offer__end_date__gte=now(),
+                                then=F("offer__offer_price")
+                            ),
+                            default=F("price"),
+                            output_field=DecimalField()
+                        )
+                    )
                 queryset = queryset.order_by(*sort_fields)
 
         return queryset
@@ -85,18 +152,13 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(
         request=ProductSerializer,
         responses={
-            201: OpenApiResponse(
-                response=ProductSerializer, description="Product created successfully."
-            ),
-            400: OpenApiResponse(
-                description="Product creation failed or validation error."
-            ),
+            201: OpenApiResponse(ProductSerializer, description="Product created successfully."),
+            400: OpenApiResponse(description="Validation error or user has no store."),
         },
         summary="Create Product",
     )
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-
         user = self.request.user
         business_owner = getattr(user, "business_owner_profile", None)
         store = business_owner.store if business_owner else None
@@ -122,18 +184,15 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         responses={
-            200: OpenApiResponse(
-                response=ProductSerializer,
-                description="Product retrieved successfully.",
-            ),
+            200: OpenApiResponse(ProductSerializer, description="Product retrieved successfully."),
             404: OpenApiResponse(description="Product not found."),
         },
         summary="Retrieve Product",
+        description="Retrieve a single product by ID. Adds `is_favourite` if user is authenticated.",
     )
     def retrieve(self, request, *args, **kwargs):
         try:
-            product = self.get_queryset().prefetch_related(
-                "sizes").get(pk=kwargs["pk"])
+            product = self.get_queryset().get(pk=kwargs["pk"])
         except Product.DoesNotExist:
             return Response({"detail": "Product not found."},
                             status=status.HTTP_404_NOT_FOUND)
@@ -151,9 +210,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(
         responses={
             204: OpenApiResponse(description="Product deleted successfully."),
-            403: OpenApiResponse(
-                description="You do not have permission to delete this product."
-            ),
+            403: OpenApiResponse(description="You do not have permission to delete this product."),
             404: OpenApiResponse(description="Product not found."),
         },
         summary="Delete Product",
@@ -176,6 +233,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             f"Product {product.id} soft-deleted by user {request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        request=ProductSerializer,
+        responses={
+            200: OpenApiResponse(ProductSerializer, description="Product updated successfully."),
+            403: OpenApiResponse(description="User does not own the product."),
+            400: OpenApiResponse(description="Validation error."),
+        },
+        summary="Update Product",
+    )
     def update(self, request, *args, **kwargs):
         product = self.get_object()
         if product.owner_id != request.user:
@@ -203,10 +269,21 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(
         responses={200: ProductSerializer(many=True)},
         summary="List Products",
-        description="Get all products with an `is_favourite` flag if the user is authenticated.",
+        description="""
+        Get all products with support for:
+
+        - **category**: Filter by category name
+        - **classification**: Filter by classification
+        - **store**: Filter by store id
+        - **has_offer**: Filter by active offers (true/false)
+        - **sort**: Sort results (comma-separated fields, e.g. `-price,created_at`)
+        - **availability**: Filter by availability status. Can be repeated for multiple values (e.g. `?availability=available&availability=partially_available`)
+        - **is_favourite**: Added to each product if user is authenticated
+        """,
+        parameters=query_parameters
     )
     def list(self, request, *args, **kwargs):
-        products = self.get_queryset().prefetch_related("sizes")
+        products = self.get_queryset()
         # Apply DRF pagination
         page = self.paginate_queryset(products)
         if page is not None:
@@ -229,6 +306,31 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return Response(serialized_products, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary="List authenticated user's products",
+        description="Returns a paginated list of products that belong to the authenticated seller's store. "
+                    "Includes support for filtering, searching, and ordering like the list products endpoint.",
+        responses={
+            200: OpenApiResponse(description="List of products owned by the authenticated seller."),
+            403: OpenApiResponse(description="This user is not a seller."),
+        },
+
+        parameters=query_parameters,
+        tags=["products"]
+    )
+    @action(detail=False, methods=["get"], url_path="my-products", url_name="my-products")
+    def my_products(self, request):
+        user = request.user
+        if not user.account_type == 'seller':
+            return Response({"detail": "This user is not a seller."}, status=403)
+        qs = self.get_queryset().filter(owner_id=user.id)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
 
 class DeleteProductSizeView(APIView):
     """
@@ -237,6 +339,24 @@ class DeleteProductSizeView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        summary="Delete Product Size",
+        description="""
+        Deletes a size from a product.
+
+        - Only the **product owner** can perform this action.
+        - Fails if:
+            - The size does not exist for the product.
+            - The size is the only one available for a product with sizes.
+            - The size has a non-zero reserved quantity.
+        """,
+        responses={
+            204: OpenApiResponse(description="Size deleted successfully."),
+            400: OpenApiResponse(description="Cannot delete size due to validation (e.g., only size or has reserved stock)."),
+            403: OpenApiResponse(description="User does not have permission to modify this product."),
+            404: OpenApiResponse(description="Product or size not found."),
+        },
+    )
     def delete(self, request, product_id, size_id):
         product = get_object_or_404(Product, pk=product_id)
 
@@ -275,5 +395,50 @@ class DeleteProductSizeView(APIView):
 
         return Response(
             {"message": f"Size '{size.size}' deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class DeleteProductOfferView(APIView):
+    """
+    Deletes the offer for a specific product by product_id.
+    Only the product owner can perform this action.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            204: OpenApiResponse(description="Offer deleted successfully."),
+            403: OpenApiResponse(description="User does not own this product."),
+            404: OpenApiResponse(description="Product or offer not found."),
+        },
+        summary="Delete Product Offer",
+        description="""
+        Deletes the offer associated with a product.
+
+        - Only the **product owner** can delete the offer.
+        - Fails if no active offer exists.
+        """,
+    )
+    def delete(self, request, product_id):
+        product = get_object_or_404(Product, pk=product_id)
+
+        # Check if the current user is the owner of the product
+        if product.owner_id != request.user:
+            logger.critical(
+                "User %s attempted to delete offer on product %s without permission.",
+                request.user.id,
+                product.id,
+            )
+            return Response(
+                {"detail": "You do not have permission to modify this product."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        offer = get_object_or_404(Offer, product=product)
+        offer.delete()
+
+        return Response(
+            {"message": f"Offer on product '{product.product_name}' deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )

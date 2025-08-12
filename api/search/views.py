@@ -1,4 +1,5 @@
 import logging
+from products.serializers import ProductSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -104,13 +105,13 @@ class ProductSearchView(APIView):
 
             product_ids = [hit.meta.id for hit in results]
             products = Product.objects.filter(id__in=product_ids)
-            serializer = ProductSearchSerializer(products, many=True)
 
-            return Response({
-                "results": serializer.data,
+            serializer = ProductSearchSerializer({
+                "results": products,
                 "page": page,
                 "total": total
-            }, status=status.HTTP_200_OK)
+            })
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
             logger.error(f"Search error: {str(e)}", exc_info=True)
