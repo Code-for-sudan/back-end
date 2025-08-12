@@ -878,6 +878,50 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         return response
 
 
+@extend_schema(
+    summary="Obtain JWT Token Pair (access in body, refresh in HttpOnly cookie)",
+    description=(
+        "Authenticates a user and returns an access token in the response body. "
+        "The refresh token is set as a secure, HttpOnly cookie named `refresh_token`."
+    ),
+    request=TokenObtainPairSerializer,
+    responses={
+        200: OpenApiResponse(
+            description="Access token in response body. Refresh token in HttpOnly cookie.",
+            examples=[
+                OpenApiExample(
+                    "Success",
+                    value={"access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."},
+                    response_only=True,
+                )
+            ]
+        ),
+        401: OpenApiResponse(description="Invalid credentials."),
+    },
+)
+
+
+@extend_schema(
+    summary="Refresh JWT Access Token (refresh from HttpOnly cookie)",
+    description=(
+        "Refreshes the access token. The refresh token is read from the `refresh_token` HttpOnly cookie "
+        "if not provided in the request body."
+    ),
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            description="Returns a new access token.",
+            examples=[
+                OpenApiExample(
+                    "Success",
+                    value={"access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."},
+                    response_only=True,
+                )
+            ]
+        ),
+        401: OpenApiResponse(description="Invalid or expired refresh token."),
+    },
+)
 class CookieTokenRefreshView(TokenRefreshView):
     """
     A custom view that extends TokenRefreshView to support retrieving the refresh token from an HTTP cookie.
