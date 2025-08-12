@@ -4,6 +4,8 @@ from rest_framework import status # type: ignore
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
@@ -73,9 +75,12 @@ class LoginView(APIView):
                 status=status.HTTP_200_OK
             )
             response.set_cookie(
-                "refresh_token", str(refresh_token),
-                httponly=True, secure=not settings.DEBUG,
-                samesite="Lax"
+                "refresh_token",
+                str(refresh_token),
+                httponly=True,
+                secure=True,
+                samesite="Lax",
+                max_age=7 * 24 * 60 * 60,  # 1 week
             )
             return response
         except ValidationError as exc:
@@ -839,3 +844,35 @@ class ResendVerificationView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+
+class CookieTokenObtainPairView(TokenObtainPairView):
+    """
+    A custom view that extends TokenObtainPairView to handle JWT authentication tokens.
+    On successful authentication, returns the access token in the response body and sets the refresh token as an HttpOnly cookie.
+    This enhances security by preventing JavaScript access to the refresh token and limiting its scope to the refresh endpoint.
+    Methods:
+        post(request, *args, **kwargs): Handles POST requests for token obtain. 
+            - Returns access token in response body.
+            - Sets refresh token as a secure, HttpOnly cookie with path restricted to the token refresh endpoint.
+    """
+    serializer_class = TokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        refresh = response.data.get("refresh")
+        access = response.data.get("access")
+        # Remove refresh from body
+        response.data = {"access": access}
+        # Set refresh as HttpOnly cookie
+        if refresh:
+            response.set_cookie(
+                "refresh_token",
+                refresh,
+                httponly=True,
+                secure=True,  # Set to True in production
+                samesite="Lax",
+                max_age=7*24*60*60,  # 1 week, adjust as needed
+            )
+        return response
