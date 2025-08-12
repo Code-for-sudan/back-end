@@ -4,7 +4,7 @@ from rest_framework import status # type: ignore
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
@@ -876,3 +876,18 @@ class CookieTokenObtainPairView(TokenObtainPairView):
                 max_age=7*24*60*60,  # 1 week, adjust as needed
             )
         return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    """
+    A custom view that extends TokenRefreshView to support retrieving the refresh token from an HTTP cookie.
+    If the "refresh" token is not present in the request body, this view attempts to extract it from the "refresh_token" cookie.
+    This allows clients to perform token refresh operations using cookies for enhanced security and convenience.
+    Methods:
+        post(request, *args, **kwargs): Handles POST requests to refresh JWT tokens, checking both request data and cookies for the refresh token.
+    """
+    def post(self, request, *args, **kwargs):
+        # Get refresh token from cookie if not in body
+        if "refresh" not in request.data:
+            request.data["refresh"] = request.COOKIES.get("refresh_token")
+        return super().post(request, *args, **kwargs)
