@@ -292,3 +292,29 @@ class ActivateAccountViewTests(TestCase):
         response = self.client.post(self.url, {"token": "invalidtoken"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["message"], "Invalid or expired token.")
+
+
+class AccessTokenFromRefreshViewTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="refreshuser@example.com", password="testpass")
+        self.url = reverse('token_refresh')
+        self.refresh_token = str(RefreshToken.for_user(self.user))
+
+    def test_access_token_from_valid_refresh_cookie(self):
+        self.client.cookies["refresh_token"] = self.refresh_token
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        self.assertTrue(response.data["access"].startswith("ey"))
+
+    def test_access_token_missing_refresh_cookie(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["message"], "Refresh token required.")
+
+    def test_access_token_invalid_refresh_cookie(self):
+        self.client.cookies["refresh"] = "invalidtoken"
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["message"], "Refresh token required.")
+
