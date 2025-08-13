@@ -292,3 +292,76 @@ class ActivateAccountViewTests(TestCase):
         response = self.client.post(self.url, {"token": "invalidtoken"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["message"], "Invalid or expired token.")
+
+
+class CookieTokenPairEdgeCaseTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="jwtuser@example.com", password="testpass")
+        self.token_url = reverse('token_obtain_pair')
+        self.refresh_url = reverse('token_refresh')
+
+    def test_invalid_login(self):
+        response = self.client.post(self.token_url, {
+            "email": "jwtuser@example.com",
+            "password": "wrongpass"
+        })
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn("access", response.data)
+        self.assertNotIn("refresh_token", response.cookies)
+
+    def test_missing_fields_login(self):
+        response = self.client.post(self.token_url, {
+            "email": "jwtuser@example.com"
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("access", response.data)
+
+    def test_refresh_without_cookie_or_body(self):
+        response = self.client.post(self.refresh_url, {})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("refresh", response.data)
+
+    def test_refresh_with_expired_token(self):
+        # Simulate an expired token (not a real expired token, but invalid)
+        self.client.cookies["refresh_token"] = "expired_or_invalid_token"
+        response = self.client.post(self.refresh_url, {})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("detail", response.data)
+
+    def test_refresh_with_valid_token_in_body(self):
+        # Get valid refresh token
+        login_response = self.client.post(self.token_url, {
+            "email": "jwtuser@example.com",
+            "password": "testpass"
+        })
+        refresh_token = login_response.cookies["refresh_token"].value
+        # Send refresh token in body instead of cookie
+        response = self.client.post(self.refresh_url, {"refresh": refresh_token})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+
+    def test_refresh_with_valid_token_in_cookie_and_body(self):
+        # Get valid refresh token
+        login_response = self.client.post(self.token_url, {
+            "email": "jwtuser@example.com",
+            "password": "testpass"
+        })
+        logger.info('need help here: ' + str(login_response.cookies))
+        logger.info('need help here: ' + str(login_response.headers))
+        refresh_token = login_response.cookies["refresh_token"].value
+        self.client.cookies["refresh_token"] = refresh_token
+        # Send refresh token in both cookie and body
+        response = self.client.post(self.refresh_url, {"refresh": refresh_token})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+
+    def test_login_sets_cookie_attributes(self):
+        response = self.client.post(self.token_url, {
+            "email": "jwtuser@example.com",
+            "password": "testpass"
+        })
+        cookie = response.cookies["refresh_token"]
+        self.assertTrue(cookie["httponly"])
+        self.assertTrue(cookie["secure"])
+        self.assertEqual(cookie["samesite"], "Lax")
+        self.assertGreaterEqual(cookie["max-age"], 24 * 60 * 60)
