@@ -301,7 +301,7 @@ class AccessTokenFromRefreshViewTests(APITestCase):
         self.refresh_token = str(RefreshToken.for_user(self.user))
 
     def test_access_token_from_valid_refresh_cookie(self):
-        self.client.cookies["refresh"] = self.refresh_token
+        self.client.cookies["refresh_token"] = self.refresh_token
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
