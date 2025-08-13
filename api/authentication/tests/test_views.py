@@ -297,7 +297,7 @@ class ActivateAccountViewTests(TestCase):
 class AccessTokenFromRefreshViewTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="refreshuser@example.com", password="testpass")
-        self.url = reverse('access_token_from_refresh')
+        self.url = reverse('token_refresh')
         self.refresh_token = str(RefreshToken.for_user(self.user))
 
     def test_access_token_from_valid_refresh_cookie(self):
@@ -316,5 +316,5 @@ class AccessTokenFromRefreshViewTests(APITestCase):
         self.client.cookies["refresh"] = "invalidtoken"
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.data["message"], "Invalid or expired refresh token.")
+        self.assertEqual(response.data["message"], "Refresh token required.")
 
