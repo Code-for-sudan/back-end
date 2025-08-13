@@ -425,11 +425,11 @@ class ProductHistory(models.Model):
         )
         return history
 
-    def has_product_changed(self) -> bool:
+    def has_product_changed(self, product: Product) -> bool:
         """
-        Checks if product has changed since this history instance was taken.
+        Checks if the provided product has changed since this history instance was taken.
         """
-        # Compare key fields
+        # Compare key fields - updated field name
         fields_to_check = [
             ("product_name", "product_name"),
             ("product_description", "product_description"), 
@@ -443,10 +443,9 @@ class ProductHistory(models.Model):
             ("picture", "picture"),
             ("is_deleted", "is_deleted")
         ]
-        self.product.refresh_from_db()
-        for field in fields_to_check:
 
-            if getattr(self.product, field) != getattr(self, field):
+        for history_field, product_field in fields_to_check:
+            if getattr(self, history_field) != getattr(product, product_field):
                 return True
      
         # Compare store fields
@@ -457,8 +456,7 @@ class ProductHistory(models.Model):
             return True
    
         # Compare owner-related fields
-        owner = self.product.owner_id
-
+        owner = product.owner_id
         owner_full_name = getattr(owner, "get_full_name", lambda: None)()
         if self.owner_full_name != owner_full_name:
             return True
@@ -468,6 +466,16 @@ class ProductHistory(models.Model):
             return True
 
         owner_phone = getattr(owner, "phone_number", None)
+        if self.owner_phone != owner_phone:
+            return True
+
+        # Compare sizes (only names)
+        product_sizes = list(product.sizes.values_list("size", flat=True))
+        history_sizes = getattr(self, "sizes", []) or []
+        if sorted(product_sizes) != sorted(history_sizes):
+            return True
+
+        return False
         if self.owner_phone != owner_phone:
             return True
 

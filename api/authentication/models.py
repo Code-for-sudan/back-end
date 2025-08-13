@@ -21,6 +21,7 @@ class VerificationCode(models.Model):
         ]
     )
     is_used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     
@@ -38,6 +39,12 @@ class VerificationCode(models.Model):
     
     def is_valid(self):
         return not self.is_used and not self.is_expired()
+    
+    def mark_as_used(self):
+        """Mark the verification code as used"""
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=['is_used', 'used_at'])
     
     def __str__(self):
         return f"Code for {self.user.email} - {self.code_type}"

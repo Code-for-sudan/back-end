@@ -16,14 +16,6 @@ class StockService:
     @staticmethod
     @transaction.atomic
     def reserve_stock(product_id, quantity, size=None) -> Union[Product, Size]:
-<<<<<<< HEAD
-        """Reserve stock for a product, optionally with size specification"""
-        try:
-            product = Product.objects.select_for_update().get(pk=product_id)
-        except Product.DoesNotExist:
-            logger.error(f"Product {product_id} not found.")
-            raise ValidationError(f"Product {product_id} not found.")
-=======
         """
         Reserve stock for a given product or its size variant.
 
@@ -40,7 +32,6 @@ class StockService:
                              if insufficient stock is available.
         """
         product = Product.objects.select_for_update().get(pk=product_id)
->>>>>>> main
 
         if product.has_sizes:
             if not size:
