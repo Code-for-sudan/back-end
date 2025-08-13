@@ -868,6 +868,8 @@ class AccessTokenFromRefreshView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # Log all incoming cookies for debugging
+        logger.debug(f"Incoming cookies: {request.COOKIES}")
         # Try to get refresh token from cookie
         refresh_token = request.COOKIES.get("refresh_token")
         if not refresh_token:
