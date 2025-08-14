@@ -79,7 +79,7 @@ class LoginView(APIView):
                 str(refresh_token),
                 httponly=True,
                 secure=True,
-                samesite="Lax",
+                samesite="None",
                 max_age=120,  # 2 Minutes 
             )
             return response
@@ -255,7 +255,7 @@ class GoogleCallbackView(APIView):
             str(tokens[1]),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite="Lax"
+            samesite="None"
         )
         logger.info(f"Google OAuth callback successful for user {user.email}.")
         return response
@@ -555,9 +555,8 @@ class ResetPasswordrequestVerifyView(APIView):
             value=str(refresh_token),
             httponly=True,
             secure=True,
-            samesite="Lax",
+            samesite="None",
             max_age=1 * 24 * 60 * 60,  # 1 day
-            path='/api/auth/'
         )
 
         return response
