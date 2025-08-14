@@ -80,7 +80,7 @@ class LoginView(APIView):
                 httponly=True,
                 secure=True,
                 samesite="Lax",
-                max_age=7 * 24 * 60 * 60,  # 1 week
+                max_age=120,  # 2 Minutes 
             )
             return response
         except ValidationError as exc:
