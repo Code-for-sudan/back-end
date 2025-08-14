@@ -1,10 +1,6 @@
 # Sudamall E-Commerce Backend
 
-<<<<<<< HEAD
-A comprehensive Django-based e-commerce platform providing complete order management, inventory control, payment processing, and user management with advanced product history tracking and real-time cart synchronization.
-=======
 A robust Django backend for the SudaMall platform, providing secure user and store owner authentication with JWT and Google OAuth, account management, and store operation APIs.
->>>>>>> main
 
 ---
 
