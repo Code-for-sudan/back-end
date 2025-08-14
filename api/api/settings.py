@@ -291,6 +291,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://sudamall.ddns.net",
     "https://sudamall.me",           # <-- new domain
     "http://localhost:5173",
+    "https://localhost:5173",
     "http://sudamall.ddns.net:5174",
     "http://sudamall.me:5174",       # <-- dev port for new domain
 ]
@@ -328,6 +329,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://sudamall.ddns.net",
     "https://sudamall.me",           # <-- new domain
     "http://localhost:5173",
+    "https://localhost:5173",
     "http://sudamall.ddns.net:5174",
     "http://sudamall.me:5174",       # <-- dev port for new domain
 ]
