@@ -207,6 +207,6 @@ DEV_QUICK_START.md
 TECHNICAL_ARCHITECTURE.md
 
 
-# migrations
-# **/migrations/*.py
-# !**/migrations/__init__.py
+migrations
+**/migrations/*.py
+!**/migrations/__init__.py
