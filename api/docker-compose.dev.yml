@@ -12,7 +12,16 @@ services:
       ./wait-for-it.sh elasticsearch:9200 --timeout=60 --strict &&
       find . -path '*/migrations/*.py' -not -name '__init__.py' -delete &&
       find . -path '*/migrations/*.pyc' -delete &&
-      python manage.py makemigrations --noinput &&
+      python manage.py makemigrations accounts --noinput &&
+      python manage.py makemigrations stores --noinput &&
+      python manage.py makemigrations products --noinput &&
+      python manage.py makemigrations authentication --noinput &&
+      python manage.py makemigrations carts --noinput &&
+      python manage.py makemigrations orders --noinput &&
+      python manage.py makemigrations payments --noinput &&
+      python manage.py makemigrations notifications --noinput &&
+      python manage.py makemigrations chat --noinput &&
+      python manage.py makemigrations search --noinput &&
       python manage.py migrate --noinput &&
       python manage.py collectstatic --noinput &&
       chmod +x /api/start_celery.sh &&
