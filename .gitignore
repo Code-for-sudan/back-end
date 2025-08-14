@@ -203,16 +203,3 @@ api/.env.development
 # migrations
 **/migrations/*.py
 !**/migrations/__init__.py
-
-media/
-
-
-
-# extra doc local files
-DEV_QUICK_START.md
-TECHNICAL_ARCHITECTURE.md
-
-
-migrations
-**/migrations/*.py
-!**/migrations/__init__.py
