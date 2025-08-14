@@ -476,16 +476,6 @@ class ProductHistory(models.Model):
             return True
 
         return False
-        if self.owner_phone != owner_phone:
-            return True
-
-        # Compare sizes (only names)
-        product_sizes = list(self.product.sizes.values_list("size", flat=True))
-        history_sizes = getattr(self, "sizes", []) or []
-        if sorted(product_sizes) != sorted(history_sizes):
-            return True
-
-        return False
 
     def __str__(self):
         """String representation of ProductHistory"""

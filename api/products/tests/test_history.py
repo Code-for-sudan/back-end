@@ -67,7 +67,7 @@ class ProductHistoryTests(TestCase):
                          "History count should increment after update")
 
         latest_history = ProductHistory.objects.filter(
-            product=self.product).order_by("-recorded_at").first()
+            product=self.product).order_by("-snapshot_taken_at").first()
         self.assertEqual(latest_history.product_name, "Updated Product")
 
     def test_history_created_on_soft_delete(self):
@@ -76,7 +76,7 @@ class ProductHistoryTests(TestCase):
         self.product.save()
 
         latest_history = ProductHistory.objects.filter(
-            product=self.product).order_by("-recorded_at").first()
+            product=self.product).order_by("-snapshot_taken_at").first()
         self.assertTrue(latest_history.is_deleted,
                         "Latest history should reflect soft delete")
 
@@ -85,22 +85,22 @@ class ProductHistoryTests(TestCase):
         history = ProductHistory.objects.filter(product=self.product).first()
 
         # Initially, no change should be detected
-        self.assertFalse(history.has_product_changed(),
+        self.assertFalse(history.has_product_changed(self.product),
                          "No changes should be detected initially")
 
         # 1. Change product price (tracked)
         self.product.price = 200.00
         self.product.save()
-        self.assertTrue(history.has_product_changed(),
+        self.assertTrue(history.has_product_changed(self.product),
                         "Price change should be detected")
 
         # Refresh history (optional, for clarity)
         history = ProductHistory.objects.filter(
-            product=self.product).order_by("-recorded_at").first()
+            product=self.product).order_by("-snapshot_taken_at").first()
 
         # 2. Change available_quantity (NOT tracked)
         self.product.available_quantity = 100
-        self.assertFalse(history.has_product_changed(),
+        self.assertFalse(history.has_product_changed(self.product),
                          "Quantity change should not be detected")
 
         # 3. Add a new size (tracked)
@@ -110,7 +110,7 @@ class ProductHistoryTests(TestCase):
         self.product.save()
         self.product.sizes.create(
             size="M", available_quantity=5, reserved_quantity=0)
-        self.assertTrue(history.has_product_changed(),
+        self.assertTrue(history.has_product_changed(self.product),
                         "Adding a new size should be detected")
 
         # Update history to reflect new snapshot
@@ -120,13 +120,13 @@ class ProductHistoryTests(TestCase):
         size_obj = self.product.sizes.first()
         size_obj.available_quantity = 999
         size_obj.save()
-        self.assertFalse(history.has_product_changed(),
+        self.assertFalse(history.has_product_changed(self.product),
                          "Changing size quantity should not be detected")
 
         # 5. Change owner name (tracked)
         self.user.first_name = "Changed"
         self.user.save()
-        self.assertTrue(history.has_product_changed(),
+        self.assertTrue(history.has_product_changed(self.product),
                         "Owner name change should be detected")
 
 
@@ -158,16 +158,16 @@ class ProductHistoryAsOfTests(TestCase):
         )
         # Create initial history snapshot
         self.history1 = ProductHistory.objects.filter(
-            product=self.product).order_by("recorded_at").first()
-        self.history1.recorded_at = now() - timedelta(days=3)
+            product=self.product).order_by("snapshot_taken_at").first()
+        self.history1.snapshot_taken_at = now() - timedelta(days=3)
         self.history1.save()
 
         self.product.price = 150.00
         self.product.save()
 
         self.history2 = ProductHistory.objects.filter(
-            product=self.product).order_by("-recorded_at").first()
-        self.history2.recorded_at = now() - timedelta(days=1)
+            product=self.product).order_by("-snapshot_taken_at").first()
+        self.history2.snapshot_taken_at = now() - timedelta(days=1)
         self.history2.save()
 
     def create_test_image(self):
@@ -187,7 +187,7 @@ class ProductHistoryAsOfTests(TestCase):
     def test_get_product_history_as_of_exact_date(self):
         """Should return history snapshot if it matches the exact date."""
         history = get_product_history_as_of(
-            self.product, self.history1.recorded_at)
+            self.product, self.history1.snapshot_taken_at)
         self.assertEqual(history.id, self.history1.id,
                          "Expected exact history match")
 
