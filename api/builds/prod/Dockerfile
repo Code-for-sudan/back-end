@@ -8,7 +8,8 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /api
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update -o Acquire::Retries=3 && \
+    apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     python3-dev \

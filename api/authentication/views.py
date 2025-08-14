@@ -4,6 +4,8 @@ from rest_framework import status # type: ignore
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.response import Response # type: ignore
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated # type: ignore
 from rest_framework.throttling import  AnonRateThrottle, ScopedRateThrottle
@@ -73,9 +75,12 @@ class LoginView(APIView):
                 status=status.HTTP_200_OK
             )
             response.set_cookie(
-                "refresh_token", str(refresh_token),
-                httponly=True, secure=not settings.DEBUG,
-                samesite="Lax"
+                "refresh_token",
+                str(refresh_token),
+                httponly=True,
+                secure=True,
+                samesite="Lax",
+                max_age=120,  # 2 Minutes 
             )
             return response
         except ValidationError as exc:
@@ -839,3 +844,48 @@ class ResendVerificationView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+@extend_schema(
+    summary="Generate Access Token from Refresh Token (no rotation)",
+    description="Returns a new access token if the refresh token is valid. Does not rotate or update the refresh token.",
+    request=None,
+    responses={
+        200: OpenApiResponse(
+            description="Returns a new access token.",
+            examples=[
+                OpenApiExample(
+                    "Success",
+                    value={"access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."},
+                    response_only=True,
+                )
+            ]
+        ),
+        401: OpenApiResponse(description="Invalid or expired refresh token."),
+    },
+)
+class AccessTokenFromRefreshView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # Log all incoming cookies for debugging
+        logger.debug(f"Incoming cookies: {request.COOKIES}")
+        # Try to get refresh token from cookie
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response(
+                {"message": "Refresh token required."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        try:
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+            return Response(
+                {"access": access_token},
+                status=status.HTTP_200_OK
+            )
+        except Exception:
+            return Response(
+                {"message": "Invalid or expired refresh token."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
