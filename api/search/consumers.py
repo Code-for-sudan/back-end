@@ -111,9 +111,21 @@ class AutocompleteConsumer(AsyncWebsocketConsumer):
         search = ProductDocument.search().query(
             "bool",
             should=[
-                {"match": {"product_name": query}},
-                {"match_phrase_prefix": {"product_name": query}},
-                {"fuzzy": {"product_name": {"value": query, "fuzziness": "AUTO"}}},
+                {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["product_name", "product_description", "category"],
+                        "fuzziness": "AUTO",
+                        "type": "best_fields"  # or "most_fields"
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["product_name", "product_description", "category"],
+                        "type": "phrase_prefix"  # adds prefix matching for autocomplete
+                    }
+                }
             ],
             minimum_should_match=1
         )[:size]
@@ -129,12 +141,25 @@ class AutocompleteConsumer(AsyncWebsocketConsumer):
             "bool",
             must=[{"term": {"store_id": store_id}}],
             should=[
-                {"match": {"product_name": query}},
-                {"match_phrase_prefix": {"product_name": query}},
-                {"fuzzy": {"product_name": {"value": query, "fuzziness": "AUTO"}}},
+                {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["product_name", "product_description", "category"],
+                        "fuzziness": "AUTO",
+                        "type": "best_fields"  # or "most_fields"
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["product_name", "product_description", "category"],
+                        "type": "phrase_prefix"  # adds prefix matching for autocomplete
+                    }
+                }
             ],
             minimum_should_match=1
         )[:size]
+
 
         results = await sync_to_async(search.execute)()
         suggestions = [hit.product_name for hit in results]
