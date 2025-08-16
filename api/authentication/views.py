@@ -376,7 +376,7 @@ class PasswordResetRequestView(APIView):
     """
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_resert'
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         # Get the email from the request data
@@ -516,7 +516,7 @@ class ResetPasswordrequestVerifyView(APIView):
     """
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_resert'
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         serializer = ResetPasswordrequestVerifySerializer(data=request.data)
@@ -608,28 +608,9 @@ class ResetPasswordrequestVerifyView(APIView):
     ]
 )
 class RequestUpdatePasswordView(APIView):
-    """
-    APIView for handling password update requests.
-    This view allows users to securely update their password by providing their registered email and a new password.
-    It performs the following steps:
-    - Validates the input data using `RequestUpdatePasswordSerializer`.
-    - Checks if the provided email exists in the system.
-    - Updates the user's password securely using Django's `set_password` method.
-    - Sends a confirmation email asynchronously to the user upon successful password update.
-    - Implements rate limiting using `ScopedRateThrottle` with the scope 'password_reset'.
-    Responses:
-    - 200 OK: Password updated successfully and confirmation email sent.
-    - 400 Bad Request: Invalid input data or missing required fields.
-    - 404 Not Found: Email is not registered or does not exist.
-    Attributes:
-        throttle_classes (list): List of throttle classes applied to this view.
-        throttle_scope (str): Scope name for rate throttling.
-    Methods:
-        post(request): Handles POST requests to update the user's password.
-    """
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_resert'
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
     def post(self, request):
         serializer = RequestUpdatePasswordSerializer(data=request.data)
         if not serializer.is_valid():
