@@ -374,7 +374,6 @@ class PasswordResetRequestView(APIView):
             Validates the provided email, checks user existence and activation status,
             generates and sends an OTP via email, and returns a generic success message.
     """
-
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'password_resert'
@@ -511,8 +510,8 @@ class ResetPasswordrequestVerifyView(APIView):
         - AnonRateThrottle: Applies rate limiting to anonymous requests.
     """
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
-
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_resert'
 
     def post(self, request):
         serializer = ResetPasswordrequestVerifySerializer(data=request.data)
@@ -538,17 +537,21 @@ class ResetPasswordrequestVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Fetch the user by email
+        # Security best practice: Do NOT reveal if the email exists or not.
+        # Always return a generic success message to prevent user enumeration.
         user = User.objects.filter(email=user_email).first()
         if not user:
-            logger.warning("No user found with this email.")
+            logger.warning("Password reset verification attempted for non-existent email.")
+            # Respond with a generic message (do not reveal existence)
             return Response(
-                {
-                    'message': f'User for email: "{user_email}" not found.'
-                },
-                status=status.HTTP_404_NOT_FOUND
+            {
+                'message': 'Invalid OTP code.'
+            },
+            status=status.HTTP_400_BAD_REQUEST
             )
-
+        # Verify the OTP code
+        # If the OTP is invalid, we do not reveal that the user exists
+        # This prevents user enumeration attacks
         if not user.verify_otp(otp_code):
             logger.warning(f"Invalid OTP for user {user_email}")
             return Response(
@@ -558,30 +561,30 @@ class ResetPasswordrequestVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        access_token, refresh_token = generate_jwt_tokens(user)
-        response = Response(
-            {
-                'message': 'Login successful.',
-                'access_token': access_token,
-                'user': {
-                    'id': str(user.id),
-                    'email': user.email,
-                    'first name': user.first_name,
-                }
-            },
-            status=status.HTTP_200_OK
-        )
+        # access_token, refresh_token = generate_jwt_tokens(user)
+        # response = Response(
+        #     {
+        #         'message': 'Login successful.',
+        #         'access_token': access_token,
+        #         'user': {
+        #             'id': str(user.id),
+        #             'email': user.email,
+        #             'first name': user.first_name,
+        #         }
+        #     },
+        #     status=status.HTTP_200_OK
+        # )
 
-        response.set_cookie(
-            key="refresh_token",
-            value=str(refresh_token),
-            httponly=True,
-            secure=True,
-            samesite="None",
-            max_age=1 * 24 * 60 * 60,  # 1 day
-        )
+        # response.set_cookie(
+        #     key="refresh_token",
+        #     value=str(refresh_token),
+        #     httponly=True,
+        #     secure=True,
+        #     samesite="None",
+        #     max_age=1 * 24 * 60 * 60,  # 1 day
+        # )
 
-        return response
+        # return response
 
 
 @extend_schema(
