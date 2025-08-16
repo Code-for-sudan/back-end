@@ -359,11 +359,28 @@ class SellerSetupView(APIView):
     }
 )
 class PasswordResetRequestView(APIView):
+    """
+    APIView for handling password reset requests via email.
+    This view accepts a POST request containing a user's email address. If the email is valid and corresponds to an active user,
+    an OTP (One-Time Password) is generated and sent to the user's email address for password reset purposes. The response does not
+    indicate whether the email is registered or not, to prevent user enumeration attacks.
+    Attributes:
+        permission_classes (list): Permissions required to access this view (AllowAny).
+        throttle_classes (list): Throttling classes applied to this view (ScopedRateThrottle).
+        throttle_scope (str): Throttle scope name ('password_resert').
+    Methods:
+        post(request):
+            Handles POST requests to initiate the password reset process.
+            Validates the provided email, checks user existence and activation status,
+            generates and sends an OTP via email, and returns a generic success message.
+    """
+
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'password_resert'
 
     def post(self, request):
+        # Get the email from the request data
         serializer = ResetPasswordRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -374,28 +391,28 @@ class PasswordResetRequestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        email = serializer.validated_data['email'].strip().lower()
-        if not email:
-            logger.error("No email provided for OTP resend.")
-            return Response(
-                {
-                    'message': 'Email is required.'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         try:
-            user = User.objects.get(email=email)
+            user_email = serializer.validated_data['email'].strip().lower()
+            user = User.objects.get(email=user_email)
+            if not user.is_active:
+                # If the user exists but is not activated, treat as if not found (security: avoid enumeration)
+                logger.warning(f"User with email {user_email} is not activated.")
+                return Response(
+                    {
+                    'message': 'If this email is registered, an OTP has been sent to it.'
+                    },
+                    status=status.HTTP_200_OK
+                )
         except User.DoesNotExist:
             # If the user does not exist, we still return a success message to prevent email enumeration
-            # This is a security measure to avoid revealing whether an email is registered or not.
-            logger.warning(f"User with email {email} does not exist.")
+            logger.warning(f"User with email {user_email} does not exist.")
             return Response(
-                {
-                    'message': 'If this email is registered, an OTP has been sent to it.'
-                },
-                status=status.HTTP_200_OK
+            {
+                'message': 'If this email is registered, an OTP has been sent to it.'
+            },
+            status=status.HTTP_200_OK
             )
+
         # Create the email context
         subject = "[Attention] Password Reset OTP"
         template_name = "update_password"
@@ -415,6 +432,11 @@ class PasswordResetRequestView(APIView):
             email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
             from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
+        # loge the OTP sending action
+        logger.info(f"OTP sent to {user_email} for password reset.")
+        # Return a success response
+        # Note: We do not return the OTP code for security reasons
+        # Instead, we inform the user that an OTP has been sent to their email
         return Response(
             {
                 'message': 'OTP has been sent to your email.'
