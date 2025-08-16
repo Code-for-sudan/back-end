@@ -238,7 +238,7 @@ class PasswordResetFlowTests(APITestCase):
         data = {
             "email": "nouser@example.com",
             "new_password": "newsecurepassword123",
-            "random_token": "invalidtoken"
+            "random_token": "invalidtokeninvalidtokeninvalidtokeninvalidtokeninvalidtoken"
         }
         response = self.client.post(self.update_password_url, data)
         self.assertEqual(response.status_code, 200)  # Should not reveal user existence
