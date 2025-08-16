@@ -10,7 +10,11 @@ from ..serializers import (
     LoginSerializer,
     ResendVerificationSerializer
 )
-
+from ..serializers import (
+    ResetPasswordRequestSerializer,
+    ResetPasswordrequestVerifySerializer,
+    RequestUpdatePasswordSerializer,
+)
 
 
 class TestLoginSerializer(TestCase):
@@ -166,3 +170,101 @@ class ResendVerificationSerializerTests(TestCase):
         serializer = ResendVerificationSerializer(data=data)
         self.assertFalse(serializer.is_valid())
         self.assertIn("email", serializer.errors)
+
+class ResetPasswordRequestSerializerTests(TestCase):
+    def test_valid_email(self):
+        data = {"email": "user@example.com"}
+        serializer = ResetPasswordRequestSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["email"], "user@example.com")
+
+    def test_missing_email(self):
+        serializer = ResetPasswordRequestSerializer(data={})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+    def test_invalid_email(self):
+        data = {"email": "not-an-email"}
+        serializer = ResetPasswordRequestSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+class ResetPasswordrequestVerifySerializerTests(TestCase):
+    def test_valid_data(self):
+        data = {"email": "user@example.com", "otp": "123456"}
+        serializer = ResetPasswordrequestVerifySerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["email"], "user@example.com")
+        self.assertEqual(serializer.validated_data["otp"], "123456")
+
+    def test_missing_fields(self):
+        serializer = ResetPasswordrequestVerifySerializer(data={})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+        self.assertIn("otp", serializer.errors)
+
+    def test_invalid_email(self):
+        data = {"email": "not-an-email", "otp": "123456"}
+        serializer = ResetPasswordrequestVerifySerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+    def test_invalid_otp_length(self):
+        data = {"email": "user@example.com", "otp": "12345"}  # Too short
+        serializer = ResetPasswordrequestVerifySerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("otp", serializer.errors)
+        data = {"email": "user@example.com", "otp": "1234567"}  # Too long
+        serializer = ResetPasswordrequestVerifySerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("otp", serializer.errors)
+
+class RequestUpdatePasswordSerializerTests(TestCase):
+    def test_valid_data(self):
+        data = {
+            "email": "user@example.com",
+            "random_token": "A" * 43,
+            "new_password": "StrongPass1!"
+        }
+        serializer = RequestUpdatePasswordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["email"], "user@example.com")
+        self.assertEqual(serializer.validated_data["random_token"], "A" * 43)
+        self.assertEqual(serializer.validated_data["new_password"], "StrongPass1!")
+
+    def test_missing_fields(self):
+        serializer = RequestUpdatePasswordSerializer(data={})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+        self.assertIn("random_token", serializer.errors)
+        self.assertIn("new_password", serializer.errors)
+
+    def test_invalid_email(self):
+        data = {
+            "email": "not-an-email",
+            "random_token": "A" * 43,
+            "new_password": "StrongPass1!"
+        }
+        serializer = RequestUpdatePasswordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+    def test_invalid_token_length(self):
+        data = {
+            "email": "user@example.com",
+            "random_token": "short",
+            "new_password": "StrongPass1!"
+        }
+        serializer = RequestUpdatePasswordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("random_token", serializer.errors)
+
+    def test_weak_password(self):
+        data = {
+            "email": "user@example.com",
+            "random_token": "A" * 43,
+            "new_password": "weak"
+        }
+        serializer = RequestUpdatePasswordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("new_password", serializer.errors)

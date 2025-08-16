@@ -1,11 +1,8 @@
-import os
-import random
-import hashlib
-import logging
-import secrets
+import hashlib, logging, secrets
 from datetime import timedelta
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
+from django.utils import timezone
 from django.utils.timezone import now
 from accounts.userManager import UserManager
 from stores.models import Store
@@ -83,6 +80,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False, help_text="Is the user subscribed to the newsletter?")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    password_reset_token = models.CharField(max_length=128, blank=True, null=True)
+    password_reset_token_expires_at = models.DateTimeField(blank=True, null=True)
     account_type = models.CharField(
         max_length=10,
         choices=[('seller', 'Seller'), ('buyer', 'Buyer')],
@@ -178,6 +177,50 @@ class User(AbstractBaseUser, PermissionsMixin):
         self.save()
         logger.info("OTP verified successfully.")
         return True
+
+    def generate_password_reset_token(self, expire_minutes=10):
+        """
+        Generates a secure password reset token for the user and sets its expiration time.
+        Args:
+            expire_minutes (int, optional): Number of minutes until the token expires. Defaults to 10.
+        Returns:
+            str: The generated password reset token.
+        """
+        token = secrets.token_urlsafe(32)
+        self.password_reset_token = token
+        self.password_reset_token_expires_at = timezone.now() + timedelta(minutes=expire_minutes)
+        self.save(update_fields=["password_reset_token", "password_reset_token_expires_at"])
+        return token
+
+    def verify_password_reset_token(self, token_input):
+        """
+        Verifies the provided password reset token against the stored token.
+        This method checks if the input token matches the user's current password reset token,
+        ensures the token has not expired, and revokes the token upon successful verification.
+        Args:
+            token_input (str): The password reset token provided for verification.
+        Returns:
+            bool: True if the token is valid and successfully verified; False otherwise.
+        Side Effects:
+            - Logs information about the verification process.
+            - Clears the password reset token and its expiration time upon successful verification.
+            - Saves the changes to the database.
+        """
+        if not token_input or not self.password_reset_token:
+            logger.info("Password reset token is empty or not set.")
+            return False
+        if not self.password_reset_token_expires_at or timezone.now() > self.password_reset_token_expires_at:
+            logger.info("Password reset token has expired.")
+            return False
+        if secrets.compare_digest(token_input, self.password_reset_token):
+            # Revoke token after use
+            logger.info("Password reset token verified successfully.")
+            # Clear the token and expiration time
+            self.password_reset_token = None
+            self.password_reset_token_expires_at = None
+            self.save(update_fields=["password_reset_token", "password_reset_token_expires_at"])
+            return True
+        return False
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email

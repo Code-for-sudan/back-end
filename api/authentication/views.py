@@ -360,11 +360,27 @@ class SellerSetupView(APIView):
     }
 )
 class PasswordResetRequestView(APIView):
+    """
+    APIView for handling password reset requests via email.
+    This view accepts a POST request containing a user's email address. If the email is valid and corresponds to an active user,
+    an OTP (One-Time Password) is generated and sent to the user's email address for password reset purposes. The response does not
+    indicate whether the email is registered or not, to prevent user enumeration attacks.
+    Attributes:
+        permission_classes (list): Permissions required to access this view (AllowAny).
+        throttle_classes (list): Throttling classes applied to this view (ScopedRateThrottle).
+        throttle_scope (str): Throttle scope name ('password_resert').
+    Methods:
+        post(request):
+            Handles POST requests to initiate the password reset process.
+            Validates the provided email, checks user existence and activation status,
+            generates and sends an OTP via email, and returns a generic success message.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_resert'
+    throttle_scope = 'password_reset'
 
     def post(self, request):
+        # Get the email from the request data
         serializer = ResetPasswordRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -375,28 +391,28 @@ class PasswordResetRequestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        email = serializer.validated_data['email'].strip().lower()
-        if not email:
-            logger.error("No email provided for OTP resend.")
-            return Response(
-                {
-                    'message': 'Email is required.'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         try:
-            user = User.objects.get(email=email)
+            user_email = serializer.validated_data['email'].strip().lower()
+            user = User.objects.get(email=user_email)
+            if not user.is_active:
+                # If the user exists but is not activated, treat as if not found (security: avoid enumeration)
+                logger.warning(f"User with email {user_email} is not activated.")
+                return Response(
+                    {
+                    'message': 'If this email is registered, an OTP has been sent to it.'
+                    },
+                    status=status.HTTP_200_OK
+                )
         except User.DoesNotExist:
             # If the user does not exist, we still return a success message to prevent email enumeration
-            # This is a security measure to avoid revealing whether an email is registered or not.
-            logger.warning(f"User with email {email} does not exist.")
+            logger.warning(f"User with email {user_email} does not exist.")
             return Response(
-                {
-                    'message': 'If this email is registered, an OTP has been sent to it.'
-                },
-                status=status.HTTP_200_OK
+            {
+                'message': 'If this email is registered, an OTP has been sent to it.'
+            },
+            status=status.HTTP_200_OK
             )
+
         # Create the email context
         subject = "[Attention] Password Reset OTP"
         template_name = "update_password"
@@ -416,6 +432,11 @@ class PasswordResetRequestView(APIView):
             email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
             from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
+        # loge the OTP sending action
+        logger.info(f"OTP sent to {user_email} for password reset.")
+        # Return a success response
+        # Note: We do not return the OTP code for security reasons
+        # Instead, we inform the user that an OTP has been sent to their email
         return Response(
             {
                 'message': 'OTP has been sent to your email.'
@@ -426,17 +447,45 @@ class PasswordResetRequestView(APIView):
 
 @extend_schema(
     summary="Verify Password Reset Request",
-    description="Verifies a password reset request using an OTP code sent to the user's email.",
+    description="Verifies a password reset request using an OTP code sent to the user's email. Returns a short-lived token for password update.",
     request=ResetPasswordrequestVerifySerializer,
     responses={
         200: OpenApiResponse(
-            description="Password reset request verified successfully. Returns JWT tokens and user info."
+            description="Password reset request verified successfully. Returns a random token and user info.",
+            examples=[
+                OpenApiExample(
+                    name="Successful Verification Response",
+                    value={
+                        "message": "Password reset verified successfully.",
+                        "random_token": "eyJ0eXAiOiJKV1QiLCJh...",
+                        "user": {
+                            "id": "1234",
+                            "email": "exmple@test.com",
+                            "first name": "John"
+                        }
+                    },
+                    response_only=True
+                ),
+            ]
         ),
         400: OpenApiResponse(
-            description="Invalid data, missing fields, or invalid OTP code."
-        ),
-        404: OpenApiResponse(
-            description="User not found for the provided email."
+            description="Invalid data, missing fields, or invalid OTP code.",
+            examples=[
+                OpenApiExample(
+                    name="Invalid OTP",
+                    value={
+                        "message": "Invalid OTP code."
+                    },
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Missing Fields",
+                    value={
+                        "message": "Email and OTP code are required."
+                    },
+                    response_only=True
+                ),
+            ]
         ),
     },
     examples=[
@@ -448,50 +497,27 @@ class PasswordResetRequestView(APIView):
             },
             request_only=True
         ),
-        OpenApiExample(
-            name="Successful Verification Response",
-            value={
-                "message": "Login successful.",
-                "access_token": "eyJ0eXAiOiJKV1QiLCJh...",
-                "user": {
-                    "id": "1234",
-                    "email": "exmple@test.com",
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "is_store_owner": True,
-                        "is_store_owner": True,
-                        "is_verified": True,
-                        "created_at": "2024-01-01T00:00:00Z"
-                    },
-                    "accountType": "seller",
-                    "needsAccountType": False,
-                    "redirect": "/dashboard/seller-setup"
-            },
-            response_only=True
-        ),
     ]
-   
 )
 class ResetPasswordrequestVerifyView(APIView):
     """
     APIView for verifying a password reset request using an OTP code.
     This view handles POST requests to verify a user's password reset request by validating
-    the provided email and OTP code. If the credentials are valid, it generates JWT access
-    and refresh tokens, sets the refresh token as an HTTP-only cookie, and returns the access
-    token along with basic user information.
+    the provided email and OTP code. If the credentials are valid, it generates a short-lived
+    token for password update and returns basic user information.
     Methods:
         post(request):
             Validates the provided email and OTP code. If valid, authenticates the user and
-            returns JWT tokens. Handles error responses for invalid data, missing fields,
+            returns a random token. Handles error responses for invalid data, missing fields,
             non-existent users, and invalid OTP codes.
     Permissions:
         - AllowAny: No authentication required.
     Throttling:
-        - AnonRateThrottle: Applies rate limiting to anonymous requests.
+        - ScopedRateThrottle: Applies rate limiting to anonymous requests.
     """
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
-
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         serializer = ResetPasswordrequestVerifySerializer(data=request.data)
@@ -517,17 +543,17 @@ class ResetPasswordrequestVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Fetch the user by email
+        # Security best practice: Do NOT reveal if the email exists or not.
         user = User.objects.filter(email=user_email).first()
         if not user:
-            logger.warning("No user found with this email.")
+            logger.warning("Password reset verification attempted for non-existent email.")
             return Response(
                 {
-                    'message': f'User for email: "{user_email}" not found.'
+                    'message': 'Invalid OTP code.'
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
-
+        # Verify the OTP code
         if not user.verify_otp(otp_code):
             logger.warning(f"Invalid OTP for user {user_email}")
             return Response(
@@ -537,11 +563,12 @@ class ResetPasswordrequestVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        access_token, refresh_token = generate_jwt_tokens(user)
+        # Generate a random JWT with 10 minutes expiration
+        random_token = user.generate_password_reset_token()
         response = Response(
             {
-                'message': 'Login successful.',
-                'access_token': access_token,
+                'message': 'Password reset verified successfully.',
+                'random_token': random_token,
                 'user': {
                     'id': str(user.id),
                     'email': user.email,
@@ -551,69 +578,84 @@ class ResetPasswordrequestVerifyView(APIView):
             status=status.HTTP_200_OK
         )
 
-        response.set_cookie(
-            key="refresh_token",
-            value=str(refresh_token),
-            httponly=True,
-            secure=True,
-            samesite="None",
-            max_age=7 * 24 * 60 * 60,  # 7 days 
-        )
-
         return response
-
 
 @extend_schema(
     summary="Update User Password",
-    description="Allows users to securely update their password by providing their registered email and a new password.",
+    description="Allows users to securely update their password by providing their registered email, a new password, and a valid password reset token.",
     request=RequestUpdatePasswordSerializer,
     responses={
-        200: OpenApiResponse(description="Password updated successfully. A confirmation email has been sent."),
-        400: OpenApiResponse(description="Invalid input data or missing required fields."),
-        404: OpenApiResponse(description="Email is not registered or does not exist."),
+        200: OpenApiResponse(
+            description="Password updated successfully. A confirmation email has been sent.",
+            examples=[
+                OpenApiExample(
+                    name="Successful Update Response",
+                    value={
+                        "message": "Password updated successfully. A confirmation email has been sent."
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            description="Invalid input data, missing required fields, or invalid/expired token.",
+            examples=[
+                OpenApiExample(
+                    name="Invalid Data",
+                    value={
+                        "message": "Invalid data provided.",
+                        "errors": {"email": ["This field is required."]}
+                    },
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "message": "Invalid or expired token."
+                    },
+                    response_only=True
+                )
+            ]
+        )
     },
     examples=[
         OpenApiExample(
             name="Update Password Request",
             value={
-                "email": "example@teat.com",
-                "password": "new_secure_password"
+                "email": "example@test.com",
+                "new_password": "new_secure_password",
+                "random_token": "eyJ0eXAiOiJKV1QiLCJh..."
             },
             request_only=True
-        ),
-        OpenApiExample(
-            name="Successful Update Response",
-            value={
-                "message": "Password updated successfully. A confirmation email has been sent."
-            },
-            response_only=True
         )
     ]
 )
 class RequestUpdatePasswordView(APIView):
     """
     APIView for handling password update requests.
-    This view allows users to securely update their password by providing their registered email and a new password.
-    It performs the following steps:
-    - Validates the input data using `RequestUpdatePasswordSerializer`.
-    - Checks if the provided email exists in the system.
-    - Updates the user's password securely using Django's `set_password` method.
-    - Sends a confirmation email asynchronously to the user upon successful password update.
-    - Implements rate limiting using `ScopedRateThrottle` with the scope 'password_reset'.
-    Responses:
-    - 200 OK: Password updated successfully and confirmation email sent.
-    - 400 Bad Request: Invalid input data or missing required fields.
-    - 404 Not Found: Email is not registered or does not exist.
-    Attributes:
-        throttle_classes (list): List of throttle classes applied to this view.
-        throttle_scope (str): Scope name for rate throttling.
+    This view allows users to update their password by providing their email, a valid password reset token, and a new password.
+    Security best practices are followed to prevent user enumeration attacks by returning a generic message regardless of whether the email exists.
     Methods:
-        post(request): Handles POST requests to update the user's password.
+        post(request):
+            Validates the request data, checks for the existence of the user, verifies the password reset token, and updates the user's password.
+            Returns a generic success message if the email exists or not, and logs relevant events for auditing and debugging.
+    Permissions:
+        AllowAny - No authentication required.
+    Throttling:
+        ScopedRateThrottle - Uses the 'password_reset' throttle scope to limit request rate.
+    Request Data:
+        - email: User's email address.
+        - random_token: Password reset token.
+        - new_password: New password to set.
+    Responses:
+        - 200 OK: Password updated successfully or generic message if email does not exist.
+        - 400 Bad Request: Invalid data or expired/invalid token.
     """
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'password_resert'
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
     def post(self, request):
+        # Validate the request data
         serializer = RequestUpdatePasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -624,40 +666,39 @@ class RequestUpdatePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        email = serializer.validated_data['email'].strip().lower()
-        if not email:
-            logger.error("No email provided for password update request.")
+        try:
+            # Get the user by email
+            # Security best practice: Do NOT reveal if the email exists or not.
+            # If the user does not exist, it will raise User.DoesNotExist
+            # and we will return a generic error message.
+            # This prevents user enumeration attacks.
+            email = serializer.validated_data['email'].strip().lower()
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Log the attempt to update password for a non-existent user
+            logger.warning(f"User with email {email} does not exist.")
+            return Response(
+            {
+                'message': 'If this email is registered, your password will be updated.'
+            },
+            status=status.HTTP_200_OK
+            )
+
+        # Check the random token
+        random_token = serializer.validated_data.get('random_token')
+        if not user.verify_password_reset_token(random_token):
+            logger.error(f"Invalid or missing random token for user {email}.")
             return Response(
                 {
-                    'message': 'Email is required.'
+                    'message': 'Invalid or expired token.'
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning(f"User with email {email} does not exist.")
-            return Response(
-                {
-                    'message': 'Email is not registered or does not exist.'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        # Set the new password securely
-        new_password = serializer.validated_data['new_password']
-        if not new_password:
-            logger.error("No new password provided for password update.")
-            return Response(
-                {
-                    'message': 'New password is required.'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
         # Update the user's password
+        new_password = serializer.validated_data['new_password']
         user.set_password(new_password)
         user.save()
-    
         logger.info(f"Password updated successfully for user {email}.")
         return Response(
             {

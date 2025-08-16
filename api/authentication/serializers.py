@@ -225,14 +225,52 @@ class RequestUpdatePasswordSerializer(serializers.Serializer):
         max_length=254,
         help_text="User's email address"
     )
-    new_password = serializers.CharField(
+    random_token = serializers.CharField(
         required=True,
+        max_length=64,
+        min_length=40,
+        write_only=True,
+        help_text="Short-lived token for password update"
+    )
+    new_password = serializers.CharField(
         write_only=True,
         min_length=8,
-        max_length=128,
         help_text="New password for the user"
     )
 
+    def validate_password(self, attrs):
+        """
+        Validates the strength of a password.
+        The password must meet the following criteria:
+            - At least 8 characters long
+            - Contains at least one digit
+            - Contains at least one uppercase letter
+            - Contains at least one lowercase letter
+            - Contains at least one special character (!@#$%^&*(),.?":{}|<>)
+        Args:
+            attrs (str): The password string to validate.
+        Raises:
+            serializers.ValidationError: If the password does not meet any of the criteria.
+        Returns:
+            str: The validated password string.
+        """
+        password = attrs
+        if len(password) < 8:
+            logger.error("Password must be at least 8 characters long.")
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not re.search(r'\d', password):
+            logger.error("Password must contain at least one digit.")
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not re.search(r'[A-Z]', password):
+            logger.error("Password must contain at least one uppercase letter.")
+            raise serializers.ValidationError("Password must contain at least one uppercase letter.")
+        if not re.search(r'[a-z]', password):
+            logger.error("Password must contain at least one lowercase letter.")
+            raise serializers.ValidationError("Password must contain at least one lowercase letter.")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            logger.error("Password must contain at least one special character.")
+            raise serializers.ValidationError("Password must contain at least one special character.")
+        return password
 
 class ResendVerificationSerializer(serializers.Serializer):
     """
