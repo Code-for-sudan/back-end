@@ -446,17 +446,45 @@ class PasswordResetRequestView(APIView):
 
 @extend_schema(
     summary="Verify Password Reset Request",
-    description="Verifies a password reset request using an OTP code sent to the user's email.",
+    description="Verifies a password reset request using an OTP code sent to the user's email. Returns a short-lived token for password update.",
     request=ResetPasswordrequestVerifySerializer,
     responses={
         200: OpenApiResponse(
-            description="Password reset request verified successfully. Returns JWT tokens and user info."
+            description="Password reset request verified successfully. Returns a random token and user info.",
+            examples=[
+                OpenApiExample(
+                    name="Successful Verification Response",
+                    value={
+                        "message": "Password reset verified successfully.",
+                        "random_token": "eyJ0eXAiOiJKV1QiLCJh...",
+                        "user": {
+                            "id": "1234",
+                            "email": "exmple@test.com",
+                            "first name": "John"
+                        }
+                    },
+                    response_only=True
+                ),
+            ]
         ),
         400: OpenApiResponse(
-            description="Invalid data, missing fields, or invalid OTP code."
-        ),
-        404: OpenApiResponse(
-            description="User not found for the provided email."
+            description="Invalid data, missing fields, or invalid OTP code.",
+            examples=[
+                OpenApiExample(
+                    name="Invalid OTP",
+                    value={
+                        "message": "Invalid OTP code."
+                    },
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Missing Fields",
+                    value={
+                        "message": "Email and OTP code are required."
+                    },
+                    response_only=True
+                ),
+            ]
         ),
     },
     examples=[
@@ -468,46 +496,23 @@ class PasswordResetRequestView(APIView):
             },
             request_only=True
         ),
-        OpenApiExample(
-            name="Successful Verification Response",
-            value={
-                "message": "Login successful.",
-                "access_token": "eyJ0eXAiOiJKV1QiLCJh...",
-                "user": {
-                    "id": "1234",
-                    "email": "exmple@test.com",
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "is_store_owner": True,
-                        "is_store_owner": True,
-                        "is_verified": True,
-                        "created_at": "2024-01-01T00:00:00Z"
-                    },
-                    "accountType": "seller",
-                    "needsAccountType": False,
-                    "redirect": "/dashboard/seller-setup"
-            },
-            response_only=True
-        ),
     ]
-   
 )
 class ResetPasswordrequestVerifyView(APIView):
     """
     APIView for verifying a password reset request using an OTP code.
     This view handles POST requests to verify a user's password reset request by validating
-    the provided email and OTP code. If the credentials are valid, it generates JWT access
-    and refresh tokens, sets the refresh token as an HTTP-only cookie, and returns the access
-    token along with basic user information.
+    the provided email and OTP code. If the credentials are valid, it generates a short-lived
+    token for password update and returns basic user information.
     Methods:
         post(request):
             Validates the provided email and OTP code. If valid, authenticates the user and
-            returns JWT tokens. Handles error responses for invalid data, missing fields,
+            returns a random token. Handles error responses for invalid data, missing fields,
             non-existent users, and invalid OTP codes.
     Permissions:
         - AllowAny: No authentication required.
     Throttling:
-        - AnonRateThrottle: Applies rate limiting to anonymous requests.
+        - ScopedRateThrottle: Applies rate limiting to anonymous requests.
     """
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
@@ -538,20 +543,16 @@ class ResetPasswordrequestVerifyView(APIView):
             )
 
         # Security best practice: Do NOT reveal if the email exists or not.
-        # Always return a generic success message to prevent user enumeration.
         user = User.objects.filter(email=user_email).first()
         if not user:
             logger.warning("Password reset verification attempted for non-existent email.")
-            # Respond with a generic message (do not reveal existence)
             return Response(
-            {
-                'message': 'Invalid OTP code.'
-            },
-            status=status.HTTP_400_BAD_REQUEST
+                {
+                    'message': 'Invalid OTP code.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
             )
         # Verify the OTP code
-        # If the OTP is invalid, we do not reveal that the user exists
-        # This prevents user enumeration attacks
         if not user.verify_otp(otp_code):
             logger.warning(f"Invalid OTP for user {user_email}")
             return Response(
