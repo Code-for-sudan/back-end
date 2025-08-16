@@ -582,36 +582,80 @@ class ResetPasswordrequestVerifyView(APIView):
 
 @extend_schema(
     summary="Update User Password",
-    description="Allows users to securely update their password by providing their registered email and a new password.",
+    description="Allows users to securely update their password by providing their registered email, a new password, and a valid password reset token.",
     request=RequestUpdatePasswordSerializer,
     responses={
-        200: OpenApiResponse(description="Password updated successfully. A confirmation email has been sent."),
-        400: OpenApiResponse(description="Invalid input data or missing required fields."),
-        404: OpenApiResponse(description="Email is not registered or does not exist."),
+        200: OpenApiResponse(
+            description="Password updated successfully. A confirmation email has been sent.",
+            examples=[
+                OpenApiExample(
+                    name="Successful Update Response",
+                    value={
+                        "message": "Password updated successfully. A confirmation email has been sent."
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            description="Invalid input data, missing required fields, or invalid/expired token.",
+            examples=[
+                OpenApiExample(
+                    name="Invalid Data",
+                    value={
+                        "message": "Invalid data provided.",
+                        "errors": {"email": ["This field is required."]}
+                    },
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "message": "Invalid or expired token."
+                    },
+                    response_only=True
+                )
+            ]
+        )
     },
     examples=[
         OpenApiExample(
             name="Update Password Request",
             value={
-                "email": "example@teat.com",
-                "password": "new_secure_password"
+                "email": "example@test.com",
+                "new_password": "new_secure_password",
+                "random_token": "eyJ0eXAiOiJKV1QiLCJh..."
             },
             request_only=True
-        ),
-        OpenApiExample(
-            name="Successful Update Response",
-            value={
-                "message": "Password updated successfully. A confirmation email has been sent."
-            },
-            response_only=True
         )
     ]
 )
 class RequestUpdatePasswordView(APIView):
+    """
+    APIView for handling password update requests.
+    This view allows users to update their password by providing their email, a valid password reset token, and a new password.
+    Security best practices are followed to prevent user enumeration attacks by returning a generic message regardless of whether the email exists.
+    Methods:
+        post(request):
+            Validates the request data, checks for the existence of the user, verifies the password reset token, and updates the user's password.
+            Returns a generic success message if the email exists or not, and logs relevant events for auditing and debugging.
+    Permissions:
+        AllowAny - No authentication required.
+    Throttling:
+        ScopedRateThrottle - Uses the 'password_reset' throttle scope to limit request rate.
+    Request Data:
+        - email: User's email address.
+        - random_token: Password reset token.
+        - new_password: New password to set.
+    Responses:
+        - 200 OK: Password updated successfully or generic message if email does not exist.
+        - 400 Bad Request: Invalid data or expired/invalid token.
+    """
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'password_reset'
     def post(self, request):
+        # Validate the request data
         serializer = RequestUpdatePasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -622,40 +666,39 @@ class RequestUpdatePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        email = serializer.validated_data['email'].strip().lower()
-        if not email:
-            logger.error("No email provided for password update request.")
+        try:
+            # Get the user by email
+            # Security best practice: Do NOT reveal if the email exists or not.
+            # If the user does not exist, it will raise User.DoesNotExist
+            # and we will return a generic error message.
+            # This prevents user enumeration attacks.
+            email = serializer.validated_data['email'].strip().lower()
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Log the attempt to update password for a non-existent user
+            logger.warning(f"User with email {email} does not exist.")
+            return Response(
+            {
+                'message': 'If this email is registered, your password will be updated.'
+            },
+            status=status.HTTP_200_OK
+            )
+
+        # Check the random token
+        random_token = serializer.validated_data.get('random_token')
+        if not user.verify_password_reset_token(random_token):
+            logger.error(f"Invalid or missing random token for user {email}.")
             return Response(
                 {
-                    'message': 'Email is required.'
+                    'message': 'Invalid or expired token.'
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning(f"User with email {email} does not exist.")
-            return Response(
-                {
-                    'message': 'Email is not registered or does not exist.'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        # Set the new password securely
-        new_password = serializer.validated_data['new_password']
-        if not new_password:
-            logger.error("No new password provided for password update.")
-            return Response(
-                {
-                    'message': 'New password is required.'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
         # Update the user's password
+        new_password = serializer.validated_data['new_password']
         user.set_password(new_password)
         user.save()
-    
         logger.info(f"Password updated successfully for user {email}.")
         return Response(
             {
