@@ -561,30 +561,22 @@ class ResetPasswordrequestVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # access_token, refresh_token = generate_jwt_tokens(user)
-        # response = Response(
-        #     {
-        #         'message': 'Login successful.',
-        #         'access_token': access_token,
-        #         'user': {
-        #             'id': str(user.id),
-        #             'email': user.email,
-        #             'first name': user.first_name,
-        #         }
-        #     },
-        #     status=status.HTTP_200_OK
-        # )
+        # Generate a random JWT with 10 minutes expiration
+        random_token = user.generate_password_reset_token()
+        response = Response(
+            {
+                'message': 'Password reset verified successfully.',
+                'random_token': random_token,
+                'user': {
+                    'id': str(user.id),
+                    'email': user.email,
+                    'first name': user.first_name,
+                }
+            },
+            status=status.HTTP_200_OK
+        )
 
-        # response.set_cookie(
-        #     key="refresh_token",
-        #     value=str(refresh_token),
-        #     httponly=True,
-        #     secure=True,
-        #     samesite="None",
-        #     max_age=1 * 24 * 60 * 60,  # 1 day
-        # )
-
-        # return response
+        return response
 
 
 @extend_schema(
