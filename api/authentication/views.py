@@ -255,7 +255,7 @@ class GoogleCallbackView(APIView):
             str(tokens[1]),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite="None"
+            samesite="None",
             max_age=7 * 24 * 60 * 60,  # 7 days 
         )
         logger.info(f"Google OAuth callback successful for user {user.email}.")
