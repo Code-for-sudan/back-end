@@ -173,65 +173,56 @@ class PasswordResetFlowTests(APITestCase):
         self.reset_verify_url = reverse('reset_password_verify')
         self.update_password_url = reverse('request_update_password')
 
-        # Authenticate the client for update password tests
-        refresh = RefreshToken.for_user(self.user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
-
-        self.otp = self.user.generate_otp()
-        self.reset_request_url = reverse('reset_password_request')
-        self.reset_verify_url = reverse('reset_password_verify')
-        self.update_password_url = reverse('request_update_password')
-
     def test_password_reset_request_success(self):
-        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email}
         response = self.client.post(self.reset_request_url, data)
         self.assertEqual(response.status_code, 200)
         self.assertIn("message", response.data)
 
     def test_password_reset_request_missing_email(self):
-        self.client.credentials()  # Remove authentication headers
         response = self.client.post(self.reset_request_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_password_reset_request_nonexistent_user(self):
-        self.client.credentials()  # Remove authentication headers
         data = {"email": "notfound@example.com"}
         response = self.client.post(self.reset_request_url, data)
         self.assertEqual(response.status_code, 200)  # Should not reveal user existence
+        self.assertIn("message", response.data)
 
     def test_password_reset_verify_success(self):
-        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email, "otp": self.otp}
         response = self.client.post(self.reset_verify_url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("access_token", response.data)
+        self.assertIn("random_token", response.data)
         self.assertIn("user", response.data)
 
     def test_password_reset_verify_invalid_otp(self):
-        self.client.credentials()  # Remove authentication headers
         data = {"email": self.user.email, "otp": "wrongotp"}
         response = self.client.post(self.reset_verify_url, data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_password_reset_verify_missing_fields(self):
-        self.client.credentials()  # Remove authentication headers
         response = self.client.post(self.reset_verify_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
     def test_password_reset_verify_nonexistent_user(self):
-        self.client.credentials()  # Remove authentication headers
         data = {"email": "nouser@example.com", "otp": "123456"}
         response = self.client.post(self.reset_verify_url, data)
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 400)  # Should not reveal user existence
         self.assertIn("message", response.data)
 
     def test_update_password_success(self):
-        self.client.credentials()  # Remove authentication headers
-        data = {"email": self.user.email, "new_password": "newsecurepassword123"}
+        # First, verify OTP to get the token
+        verify_response = self.client.post(self.reset_verify_url, {"email": self.user.email, "otp": self.otp})
+        token = verify_response.data.get("random_token")
+        data = {
+            "email": self.user.email,
+            "new_password": "newsecurepassword123",
+            "random_token": token
+        }
         response = self.client.post(self.update_password_url, data)
         self.assertEqual(response.status_code, 200)
         self.assertIn("message", response.data)
@@ -239,19 +230,29 @@ class PasswordResetFlowTests(APITestCase):
         self.assertTrue(self.user.check_password("newsecurepassword123"))
 
     def test_update_password_missing_fields(self):
-        self.client.credentials()  # Remove authentication headers
         response = self.client.post(self.update_password_url, {})
         self.assertEqual(response.status_code, 400)
         self.assertIn("message", response.data)
 
-
     def test_update_password_nonexistent_user(self):
-        self.client.credentials()  # Remove authentication headers
-        data = {"email": "nouser@example.com", "new_password": "newsecurepassword123"}
+        data = {
+            "email": "nouser@example.com",
+            "new_password": "newsecurepassword123",
+            "random_token": "invalidtoken"
+        }
         response = self.client.post(self.update_password_url, data)
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)  # Should not reveal user existence
         self.assertIn("message", response.data)
-        User = get_user_model()
+
+    def test_update_password_invalid_token(self):
+        data = {
+            "email": self.user.email,
+            "new_password": "newsecurepassword123",
+            "random_token": "invalidtoken"
+        }
+        response = self.client.post(self.update_password_url, data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("message", response.data)
 
 
 class ActivateAccountViewTests(TestCase):
