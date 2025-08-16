@@ -66,6 +66,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if event == "send_message":
                 receiver_id = data.get("receiver_id")
                 message_text = data.get("message")
+                temp_id = data.get("temp_id")
                 message = await self.create_message(self.user.id, receiver_id, message_text)
 
                 response = {
@@ -74,7 +75,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         "message_id": message.id,
                         "sender_id": message.sender_id,
                         "receiver_id": message.receiver_id,
-                        "temp_id": getattr(message, "temp_id", None),
+                        "temp_id": temp_id,
                         "message": message.message,
                         "timestamp": message.timestamp.isoformat(),
                         "status": "sent",

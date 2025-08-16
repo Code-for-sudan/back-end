@@ -19,17 +19,21 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         - validate(data): Validates that the sender and receiver are not the same user.
         - validate_message(value): Validates the message content, ensuring it is not empty and does not exceed 1000 characters.
     """
+    sender_id = serializers.IntegerField(source='sender.id', read_only=True)
+    receiver_id = serializers.IntegerField(source='receiver.id', read_only=True)
+    message_id = serializers.IntegerField(source='id', read_only=True)
+
     class Meta:
         model = ChatMessage
         fields = [
-            'id',
-            'sender',
-            'receiver',
+            'message_id',
+            'sender_id',
+            'receiver_id',
             'message',
             'timestamp',
             'is_read',
         ]
-        read_only_fields = ['id', 'timestamp']
+        read_only_fields = ['message_id', 'timestamp']
 
     def validate(self, data):
         sender = data.get('sender')
