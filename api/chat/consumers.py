@@ -100,6 +100,39 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 await self.mark_messages_read(message_ids)
                 logger.info(f"User {self.user.id} marked messages as read: {message_ids}")
 
+            elif event == "delete_messages":
+                message_ids = data.get("message_ids", [])
+                receiver_id = data.get("receiver_id")
+
+                # Fetch messages and check sender
+                messages = await database_sync_to_async(list)(
+                    ChatMessage.objects.filter(id__in=message_ids)
+                )
+                # Ensure all messages belong to the requesting user
+                if not all(msg.sender_id == self.user.id for msg in messages):
+                    await self.send_json({
+                        "event": "error",
+                        "data": {"message": "You can only delete your own messages."}
+                    })
+                    return
+
+                # Delete messages
+                await database_sync_to_async(ChatMessage.objects.filter(id__in=message_ids).delete)()
+                logger.info(f"User {self.user.id} deleted messages: {message_ids}")
+
+                # Broadcast deletion to both users
+                response = {
+                    "event": "deleted_messages",
+                    "data": {
+                        "message_ids": message_ids
+                    }
+                }
+                await self.channel_layer.group_send(
+                    f"user_{self.user.id}", {"type": "chat.message", "message": response}
+                )
+                await self.channel_layer.group_send(
+                    f"user_{receiver_id}", {"type": "chat.message", "message": response}
+                )
             else:
                 logger.warning(f"Unknown event type: {event}")
                 await self.send_json({"event": "error", "data": {"message": "Unknown event type."}})
