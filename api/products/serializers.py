@@ -88,6 +88,7 @@ class ProductSerializer(serializers.ModelSerializer):
     logger = logging.getLogger(__name__)
     current_price = serializers.SerializerMethodField()
     offer = OfferSerializer(required=False)
+    ALLOWED_IMAGE_SIZE = 10 * 1024 * 1024
 
     def get_current_price(self, obj):
         return str(obj.current_price)
@@ -270,7 +271,6 @@ class ProductSerializer(serializers.ModelSerializer):
         if image is None:
             return image
         allowed_image_extensions = ["jpg", "jpeg", "png"]
-        allowed_image_size = 5 * 1024 * 1024  # 5MB
 
         image_extension = os.path.splitext(image.name)[1][1:].lower()
         if image_extension not in allowed_image_extensions:
@@ -280,7 +280,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 "Unsupported file extension. Allowed: jpg, jpeg, png."
             )
 
-        if image.size > allowed_image_size:
+        if image.size > ProductSerializer.ALLOWED_IMAGE_SIZE:
             self.logger.error("The image is too large. Max size: 5MB.")
             raise serializers.ValidationError(
                 "The image is too large. Max size: 5MB.")
