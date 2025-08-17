@@ -80,7 +80,7 @@ class LoginView(APIView):
                 httponly=True,
                 secure=True,
                 samesite="None",
-                max_age=120,  # 2 Minutes 
+                max_age=7 * 24 * 60 * 60,  # 7 days 
             )
             return response
         except ValidationError as exc:
@@ -255,7 +255,8 @@ class GoogleCallbackView(APIView):
             str(tokens[1]),
             httponly=True,
             secure=not settings.DEBUG,
-            samesite="None"
+            samesite="None",
+            max_age=7 * 24 * 60 * 60,  # 7 days 
         )
         logger.info(f"Google OAuth callback successful for user {user.email}.")
         return response
@@ -578,7 +579,6 @@ class ResetPasswordrequestVerifyView(APIView):
         )
 
         return response
-
 
 @extend_schema(
     summary="Update User Password",
