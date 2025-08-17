@@ -54,7 +54,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
-    queryset = Product.objects.alive()
+    queryset = Product.objects.all()
     query_parameters = [
         OpenApiParameter(
             name="category", required=False,
@@ -158,7 +158,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         summary="Create Product",
     )
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        data = request.data
         user = self.request.user
         business_owner = getattr(user, "business_owner_profile", None)
         store = business_owner.store if business_owner else None
@@ -254,7 +254,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 {"detail": "You do not have permission to update this product."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        data = request.data.copy()
+        data = request.data
         serializer = self.get_serializer(product, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_product = serializer.save()
