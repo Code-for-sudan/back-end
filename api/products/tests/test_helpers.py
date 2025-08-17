@@ -1,4 +1,6 @@
+import os
 from accounts.models import BusinessOwner, User
+from api.settings import BASE_DIR
 from products.models import Offer, Product, Size
 from stores.models import Store
 from typing import Literal
@@ -100,13 +102,15 @@ class TestHelpers:
             category='Electronics',
             classification="General",
             color='Red',
-            available_quantity=10):
+            available_quantity=10,
+            picture=None):
+        picture = picture or TestHelpers.create_test_image()
         return {
             'product_name': product_name,
             'product_description': product_description,
             'price': price,
             'category': category,
-            'picture': TestHelpers.create_test_image(),
+            'picture': picture,
             'color': color,
             'has_sizes': False,
             'available_quantity': available_quantity,
@@ -235,6 +239,13 @@ class TestHelpers:
             content=b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xFF\xFF\xFF\x21\xF9\x04\x01\x0A\x00\x01\x00\x2C\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x4C\x01\x00\x3B',
             content_type='image/jpeg'
         )
+
+    @staticmethod
+    def get_test_image(filename="small.jpg"):
+        path = os.path.join(BASE_DIR, "products",
+                            "tests", "assets", filename)
+        with open(path, "rb") as f:
+            return SimpleUploadedFile(filename, f.read(), content_type="image/jpeg")
 
     @staticmethod
     def create_user(

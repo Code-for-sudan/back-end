@@ -50,11 +50,36 @@ class ProductViewSetTests(APITestCase):
             logger.info(
                 f"Create Product Response: {response.status_code} - {response.data}")
             self.assertEqual(response.status_code,
-                             status.HTTP_201_CREATED, response.data)
+                             status.HTTP_201_CREATED, (response.data, description))
             self.assertEqual(response.data['message'],
                              "Product created successfully")
             self.assertEqual(response.data['product']['product_name'],
                              product_data['product_name'])
+
+    def test_create_product_with_real_image(self):
+        product_data = TestHelpers.get_valid_product_data_without_sizes(
+            picture=TestHelpers.get_test_image("valid_product.jpg")
+        )
+        response = self.client.post(
+            self.base_url, product_data, format='multipart')
+        logger.info(
+            f"Create Product Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code,
+                         status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data['message'],
+                         "Product created successfully")
+
+    def test_create_product_with_big_image(self):
+        product_data = TestHelpers.get_valid_product_data_without_sizes(
+            picture=TestHelpers.get_test_image("invalid_product.jpg")
+        )
+        response = self.client.post(
+            self.base_url, product_data, format='multipart')
+        logger.info(
+            f"Create Product Response: {response.status_code} - {response.data}")
+        self.assertEqual(response.status_code,
+                         status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertIn("picture", response.data)
 
     def test_retrieve_product(self):
         product = TestHelpers.creat_product(

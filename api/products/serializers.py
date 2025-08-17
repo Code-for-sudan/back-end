@@ -146,7 +146,6 @@ class ProductSerializer(serializers.ModelSerializer):
         return [tag.name for tag in obj.tags.all()]
 
     def to_internal_value(self, data):
-        data = data.copy()
         if "sizes" in data and isinstance(data["sizes"], str):
             try:
                 data["sizes"] = json.loads(data["sizes"])
