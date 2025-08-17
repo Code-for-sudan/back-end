@@ -281,9 +281,9 @@ class ProductSerializer(serializers.ModelSerializer):
             )
 
         if image.size > ProductSerializer.ALLOWED_IMAGE_SIZE:
-            self.logger.error("The image is too large. Max size: 5MB.")
-            raise serializers.ValidationError(
-                "The image is too large. Max size: 5MB.")
+            message = f"The image is too large. Max size: {ProductSerializer.ALLOWED_IMAGE_SIZE / 1024 / 1024}MB."
+            self.logger.error(message)
+            raise serializers.ValidationError(message)
         return image
 
     def update(self, instance, validated_data):
