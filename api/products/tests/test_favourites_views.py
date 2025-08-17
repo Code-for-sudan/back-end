@@ -70,3 +70,17 @@ class FavouritesViewTests(APITestCase):
         url = reverse('unset-favourite', args=[9999])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_deleted_product_not_in_favourites_list(self):
+        """Deleted product should not be retrieved in favourites list."""
+        # Add product to favourites
+        self.user.favourite_products.add(self.product)
+
+        self.product.delete()
+
+        # Call favourites list
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # The list should be empty since the product is deleted
+        self.assertEqual(len(response.data), 0, response.data)

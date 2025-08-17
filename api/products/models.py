@@ -24,8 +24,12 @@ class Tag(models.Model):
 
 
 class ProductQuerySet(models.QuerySet):
-    def get_queryset(self):
-        return super().get_queryset().filter(is_deleted=False)
+    def alive(self):
+        return self.filter(is_deleted=False)
+
+    def deleted(self):
+        return self.filter(is_deleted=True)
+
     def delete(self):
         return super().update(is_deleted=True)
 
@@ -113,6 +117,25 @@ class ProductQuerySet(models.QuerySet):
         )
 
 
+class ProductManager(models.Manager):
+    def get_queryset(self):
+        # Always hide deleted products
+        return ProductQuerySet(self.model, using=self._db).alive()
+
+    def all_with_deleted(self):
+        # Explicit access to deleted + alive
+        return ProductQuerySet(self.model, using=self._db)
+
+    def available(self):
+        return self.get_queryset().available()
+
+    def unavailable(self):
+        return self.get_queryset().unavailable()
+
+    def partially_available(self):
+        return self.get_queryset().partially_available()
+
+
 class Product(models.Model):
     logger = logging.getLogger(__name__)
     """
@@ -173,8 +196,7 @@ class Product(models.Model):
         User,
         blank=True,
         related_name='favourite_products')
-    objects = ProductQuerySet.as_manager()
-    all_objects = models.Manager()
+    objects = ProductManager()
 
     def delete(self):
         self.is_deleted = True

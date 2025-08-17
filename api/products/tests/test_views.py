@@ -136,8 +136,10 @@ class ProductViewSetTests(APITestCase):
         response = self.client.delete(url)
         logger.info(f"Delete Product Response: {response.status_code}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertTrue(Product.objects.filter(id=product.id).exists())
-        self.assertTrue(Product.objects.get(id=product.id).is_deleted)
+        self.assertTrue(Product.objects.all_with_deleted().filter(
+            id=product.id).exists())
+        self.assertTrue(Product.objects.all_with_deleted().get(
+            id=product.id).is_deleted)
 
     def test_list_products(self):
         product = TestHelpers.creat_product(
