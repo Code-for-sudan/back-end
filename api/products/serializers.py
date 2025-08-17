@@ -88,7 +88,7 @@ class ProductSerializer(serializers.ModelSerializer):
     logger = logging.getLogger(__name__)
     current_price = serializers.SerializerMethodField()
     offer = OfferSerializer(required=False)
-    ALLOWED_IMAGE_SIZE = 10 * 1024 * 1024
+    ALLOWED_IMAGE_SIZE = 5 * 1024 * 1024
 
     def get_current_price(self, obj):
         return str(obj.current_price)
