@@ -42,11 +42,11 @@ def user_created_handler(sender, instance, created, **kwargs):
                 email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
                 from_email=settings.EMAIL_HOST_USER_NO_REPLY
             )
-    # After sending the welcome email:
-    send_activation_email_task.apply_async(
-        args=[instance.id],
-        countdown=60
-    )  # 60 seconds delay
+        # After sending the welcome email:
+        send_activation_email_task.apply_async(
+            args=[instance.id],
+            countdown=60
+        )  # 60 seconds delay
 
 
 @receiver(post_save, sender=BusinessOwner)
@@ -73,8 +73,8 @@ def business_owner_created_handler(sender, instance, created, **kwargs):
             email_host_password=settings.EMAIL_HOST_PASSWORD_NO_REPLY,
             from_email=settings.EMAIL_HOST_USER_NO_REPLY
         )
-    # After sending the welcome email:
-    send_activation_email_task.apply_async(
-        args=[instance.id],
-        countdown=60
-    )  # 60 seconds delay
+        # After sending the welcome email:
+        send_activation_email_task.apply_async(
+            args=[instance.id],
+            countdown=60
+        )  # 60 seconds delay
