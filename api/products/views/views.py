@@ -54,7 +54,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
-    queryset = Product.objects.alive()
+    queryset = Product.objects.all()
     query_parameters = [
         OpenApiParameter(
             name="category", required=False,

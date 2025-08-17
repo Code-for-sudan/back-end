@@ -24,6 +24,8 @@ class Tag(models.Model):
 
 
 class ProductQuerySet(models.QuerySet):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
     def delete(self):
         return super().update(is_deleted=True)
 
@@ -33,12 +35,6 @@ class ProductQuerySet(models.QuerySet):
             if product.picture:
                 product.picture.delete(save=False)
         return super().delete()
-
-    def alive(self):
-        return self.filter(is_deleted=False)
-
-    def dead(self):
-        return self.filter(is_deleted=True)
 
     def available(self):
         # Products that do not have sizes and have available_quantity > 0
